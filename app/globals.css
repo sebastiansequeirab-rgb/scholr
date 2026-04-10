@@ -1,27 +1,374 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════
+   SCHOLR — REFINED CLARITY DESIGN SYSTEM
+   "The Digital Sanctuary"
+═══════════════════════════════════════════════ */
+
+/* ── Dark mode (default) ── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surface layers (obsidian glass) */
+  --s-bg:      #0b0e14;
+  --s-dim:     #10131a;
+  --s-low:     #191c22;
+  --s-base:    #1d2026;
+  --s-high:    #272a31;
+  --s-highest: #32353c;
+  --s-bright:  #363940;
+  --s-variant: #32353c;
+
+  /* Accent — default: Indigo Blue */
+  --color-primary:           #adc6ff;
+  --color-primary-container: #4b8eff;
+  --color-secondary:         #c6c6cb;
+  --color-tertiary:          #e9b3ff;
+  --color-tertiary-container:#c863fb;
+  --color-error:             #ffb4ab;
+
+  /* On-colors */
+  --on-primary:         #002e69;
+  --on-surface:         #e1e2eb;
+  --on-surface-variant: #c1c6d7;
+  --color-outline:      #8b90a0;
+  --color-outline-variant: #414755;
+
+  /* Semantic border tokens */
+  --border-subtle:  rgba(65, 71, 85, 0.12);
+  --border-default: rgba(65, 71, 85, 0.25);
+  --border-strong:  rgba(65, 71, 85, 0.45);
+
+  /* Glass / overlay */
+  --glass-bg:   rgba(11, 14, 20, 0.75);
+  --overlay-bg: rgba(0, 0, 0, 0.60);
+
+  /* Legacy tokens — referenced by existing components */
+  --color-accent:    var(--color-primary-container);
+  --color-surface:   var(--s-low);
+  --color-surface-2: var(--s-base);
+  --color-border:    var(--border-default);
+  --color-muted:     var(--color-outline);
+  --background:      var(--s-bg);
+  --foreground:      var(--on-surface);
+
+  /* Semantic aliases (document master spec) */
+  --background-secondary: var(--s-dim);
+  --surface:              var(--s-low);
+  --surface-elevated:     var(--s-base);
+  --surface-hover:        var(--s-high);
+  --text-primary:         var(--on-surface);
+  --text-secondary:       var(--on-surface-variant);
+  --text-muted:           var(--color-outline);
+  --accent:               var(--color-primary);
+  --accent-soft:          color-mix(in srgb, var(--color-primary) 12%, transparent);
+
+  /* Semantic state colors */
+  --success:     #6ee7b7;
+  --warning:     #fbbf24;
+  --danger:      #f87171;
+  --info:        #60a5fa;
+
+  /* Priority tokens */
+  --priority-high:    #f87171;
+  --priority-high-bg: rgba(248, 113, 113, 0.08);
+  --priority-mid:     #fbbf24;
+  --priority-mid-bg:  rgba(251, 191, 36, 0.08);
+  --priority-low:     #60a5fa;
+  --priority-low-bg:  rgba(96, 165, 250, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ── Light mode ── */
+.light {
+  /* Surface layers (clean iOS-inspired) */
+  --s-bg:      #f5f5f7;
+  --s-dim:     #ececef;
+  --s-low:     #ffffff;
+  --s-base:    #ffffff;
+  --s-high:    #f5f5f7;
+  --s-highest: #e8e8ed;
+  --s-bright:  #dcdce1;
+  --s-variant: #e8e8ed;
+
+  /* On-colors */
+  --on-surface:         #1d1d1f;
+  --on-surface-variant: #3d3d41;
+  --color-outline:      #6e6e73;
+  --color-outline-variant: #c7c7cc;
+  --color-secondary:    #8e8e93;
+
+  /* Semantic borders */
+  --border-subtle:  rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.10);
+  --border-strong:  rgba(0, 0, 0, 0.18);
+
+  /* Glass / overlay */
+  --glass-bg:   rgba(245, 245, 247, 0.85);
+  --overlay-bg: rgba(0, 0, 0, 0.40);
+
+  /* Legacy */
+  --color-surface:   var(--s-low);
+  --color-surface-2: var(--s-base);
+  --color-border:    var(--border-default);
+  --color-muted:     var(--color-outline);
+  --background:      var(--s-bg);
+  --foreground:      var(--on-surface);
+
+  /* Tertiary accent (light mode needs darker value for contrast on white) */
+  --color-tertiary:           #9333ea;
+  --color-tertiary-container: #7e22ce;
+  --color-error:              #ef4444;
+
+  /* Semantic state colors (more saturated for light bg) */
+  --success:     #10b981;
+  --warning:     #d97706;
+  --danger:      #ef4444;
+  --info:        #3b82f6;
+
+  /* Priority tokens (more saturated for light bg) */
+  --priority-high:    #ef4444;
+  --priority-high-bg: rgba(239, 68, 68, 0.10);
+  --priority-mid:     #d97706;
+  --priority-mid-bg:  rgba(217, 119, 6, 0.10);
+  --priority-low:     #3b82f6;
+  --priority-low-bg:  rgba(59, 130, 246, 0.10);
+}
+
+/* ── Theme accent variants — dark mode ── */
+[data-theme="indigo"] {
+  --color-primary:           #adc6ff;
+  --color-primary-container: #4b8eff;
+  --color-accent:            #4b8eff;
+  --on-primary:              #002e69;
+}
+[data-theme="purple"] {
+  --color-primary:           #e9b3ff;
+  --color-primary-container: #c863fb;
+  --color-accent:            #c863fb;
+  --on-primary:              #22005d;
+}
+[data-theme="green"] {
+  --color-primary:           #86efac;
+  --color-primary-container: #34d399;
+  --color-accent:            #34d399;
+  --on-primary:              #003918;
+}
+
+/* ── Theme accent variants — light mode ── */
+.light[data-theme="indigo"],
+.light [data-theme="indigo"] {
+  --color-primary:           #2563eb;
+  --color-primary-container: #1d4ed8;
+  --color-accent:            #2563eb;
+  --on-primary:              #ffffff;
+}
+.light[data-theme="purple"],
+.light [data-theme="purple"] {
+  --color-primary:           #7c3aed;
+  --color-primary-container: #6d28d9;
+  --color-accent:            #7c3aed;
+  --on-primary:              #ffffff;
+}
+.light[data-theme="green"],
+.light [data-theme="green"] {
+  --color-primary:           #059669;
+  --color-primary-container: #047857;
+  --color-accent:            #059669;
+  --on-primary:              #ffffff;
+}
+
+/* ═══════════════════════════════════════════════
+   BASE STYLES
+═══════════════════════════════════════════════ */
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-color: var(--s-bg);
+    color: var(--on-surface);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar        { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { background-color: var(--s-highest); border-radius: 10px; }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+/* ═══════════════════════════════════════════════
+   COMPONENT UTILITIES
+═══════════════════════════════════════════════ */
+
+@layer components {
+
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-150 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-container));
+    color: var(--on-primary);
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-150 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--s-high);
+    color: var(--on-surface);
+    border: 1px solid var(--border-default);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 active:scale-95;
+    color: var(--color-muted);
+  }
+  .btn-ghost:hover {
+    background-color: color-mix(in srgb, var(--on-surface) 5%, transparent);
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-150 hover:brightness-110 active:scale-95;
+    background-color: #DC2626;
+    color: #fff;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply rounded-2xl p-5 transition-all duration-200;
+    background-color: var(--s-base);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .card-hover {
+    @apply card cursor-pointer;
+  }
+  .card-hover:hover {
+    background-color: var(--s-high);
+    transform: translateY(-1px);
+    border-color: var(--border-default);
+  }
+
+  /* ── Glass ── */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Ghost border (barely visible separator) */
+  .ghost-border {
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full rounded-xl px-4 py-2.5 text-sm transition-all duration-150 outline-none;
+    background-color: var(--s-bg);
+    border: 1px solid var(--border-default);
+    color: var(--on-surface);
+  }
+  .input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+  .input::placeholder { color: var(--color-outline); }
+
+  /* Light mode input fix: use surface instead of bg so it doesn't blend into page */
+  .light .input {
+    background-color: var(--s-low);
+  }
+
+  .label {
+    @apply block text-xs font-semibold mb-1.5 tracking-wide uppercase;
+    color: var(--color-muted);
+  }
+
+  /* ── Badges ── */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* ── Skeleton ── */
+  .skeleton {
+    @apply animate-pulse rounded-xl;
+    background-color: var(--s-base);
+  }
+
+  /* ── Sidebar links ── */
+  .sidebar-link {
+    @apply flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-200;
+    color: var(--color-outline);
+  }
+  .sidebar-link:hover {
+    background-color: color-mix(in srgb, var(--on-surface) 5%, transparent);
+    color: var(--on-surface);
+  }
+  .sidebar-link.active {
+    background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+  }
+
+  /* ── Modals ── */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in;
+    background-color: var(--overlay-bg);
+    backdrop-filter: blur(8px);
+  }
+  .modal-content {
+    @apply rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-slide-up p-6;
+    background-color: var(--s-high);
+    border: 1px solid var(--border-default);
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    @apply h-2 rounded-full overflow-hidden;
+    background-color: var(--s-highest);
+  }
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-700;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-container));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 50%, transparent);
+  }
+
+  /* Light mode modal elevation fix */
+  .light .modal-content {
+    background-color: var(--s-low);
+  }
+
+  /* ── Mono label ── */
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── AI glow (tertiary accent) ── */
+  .ai-glow {
+    box-shadow: inset 0 0 12px color-mix(in srgb, var(--color-tertiary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-tertiary) 12%, transparent);
+  }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* ── Sidebar collapse layout ── */
+@media (min-width: 1024px) {
+  body[data-sidebar="collapsed"] .sidebar-offset { padding-left: 4rem; }
+  body[data-sidebar="expanded"]  .sidebar-offset,
+  body:not([data-sidebar])       .sidebar-offset { padding-left: 16rem; }
 }

@@ -1,0 +1,229 @@
+{
+  "app": {
+    "name": "Scholr",
+    "tagline": "Tu productividad académica, potenciada",
+    "description": "La herramienta todo-en-uno para estudiantes"
+  },
+  "nav": {
+    "dashboard": "Inicio",
+    "calendar": "Calendario",
+    "subjects": "Materias",
+    "tasks": "Tareas",
+    "notes": "Notas",
+    "exams": "Exámenes",
+    "settings": "Ajustes",
+    "ai": "Asistente IA",
+    "logout": "Cerrar sesión"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "register": "Crear cuenta",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "fullName": "Nombre completo",
+    "rememberMe": "Recordarme",
+    "forgotPassword": "Olvidé mi contraseña",
+    "resetPassword": "Restablecer contraseña",
+    "noAccount": "¿No tienes cuenta?",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "signUp": "Regístrate",
+    "signIn": "Inicia sesión",
+    "sendResetLink": "Enviar enlace",
+    "backToLogin": "Volver al login",
+    "errors": {
+      "invalidEmail": "Correo no válido",
+      "passwordMin": "Mínimo 8 caracteres",
+      "passwordMismatch": "Las contraseñas no coinciden",
+      "required": "Este campo es requerido",
+      "generic": "Ocurrió un error. Intenta de nuevo."
+    }
+  },
+  "dashboard": {
+    "greeting": "Hola",
+    "todayProgress": "Progreso de hoy",
+    "upcomingExams": "Próximos exámenes",
+    "urgentTasks": "Tareas urgentes",
+    "noExams": "No hay exámenes próximos",
+    "noTasks": "No hay tareas urgentes",
+    "daysLeft": "días",
+    "quickAccess": "Acceso rápido"
+  },
+  "subjects": {
+    "title": "Materias",
+    "add": "Nueva materia",
+    "edit": "Editar materia",
+    "delete": "Eliminar",
+    "confirmDelete": "¿Eliminar esta materia?",
+    "confirmDeleteDesc": "Se eliminarán también sus horarios asociados.",
+    "name": "Nombre de la materia",
+    "professor": "Profesor",
+    "room": "Salón",
+    "credits": "Créditos",
+    "color": "Color",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "noSubjects": "Aún no tienes materias",
+    "schedules": "Horarios",
+    "addSchedule": "Agregar horario",
+    "days": {
+      "0": "Domingo",
+      "1": "Lunes",
+      "2": "Martes",
+      "3": "Miércoles",
+      "4": "Jueves",
+      "5": "Viernes",
+      "6": "Sábado"
+    },
+    "startTime": "Inicio",
+    "endTime": "Fin",
+    "conflict": "Conflicto de horario detectado",
+    "icon": "Ícono",
+    "scheduleRoom": "Salón"
+  },
+  "tasks": {
+    "title": "Tareas",
+    "all": "Todas",
+    "pending": "Pendientes",
+    "completed": "Completadas",
+    "urgent": "Urgentes",
+    "add": "Agregar tarea",
+    "placeholder": "¿Qué tienes que hacer?",
+    "priority": "Prioridad",
+    "high": "Alta",
+    "mid": "Media",
+    "low": "Baja",
+    "dueDate": "Fecha límite",
+    "subject": "Materia",
+    "noSubject": "Sin materia",
+    "subtasks": "Subtareas",
+    "addSubtask": "Agregar subtarea",
+    "noTasks": "No hay tareas aquí",
+    "completed_section": "Completadas",
+    "pending_section": "Pendientes",
+    "allDone": "¡Todo listo! 🎉",
+    "allDoneDesc": "Completaste todas tus tareas.",
+    "progress": "Progreso",
+    "taskNotes": "Notas"
+  },
+  "notes": {
+    "title": "Notas",
+    "add": "Nueva nota",
+    "untitled": "Sin título",
+    "saving": "Guardando...",
+    "saved": "Guardado",
+    "noNotes": "Sin notas en esta materia",
+    "noSubject": "Sin materia",
+    "lastSaved": "Guardado hace",
+    "insertImage": "Insertar imagen",
+    "uploadingImage": "Subiendo...",
+    "sortRecent": "Recientes",
+    "sortAlpha": "A-Z",
+    "allSubjects": "Todas las materias",
+    "noSubjectNotes": "Sin materia"
+  },
+  "exams": {
+    "title": "Exámenes",
+    "add": "Nuevo examen",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "past": "Exámenes pasados",
+    "noExams": "No hay exámenes",
+    "examTitle": "Título del examen",
+    "date": "Fecha",
+    "time": "Hora",
+    "location": "Salón / Lugar",
+    "notes": "Notas",
+    "daysLeft": "días",
+    "today": "Hoy",
+    "tomorrow": "Mañana",
+    "past_label": "Pasado"
+  },
+  "calendar": {
+    "title": "Calendario",
+    "month": "Mes",
+    "week": "Semana",
+    "day": "Día",
+    "today": "Hoy",
+    "addExam": "Agregar examen"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "profile": "Perfil",
+    "fullName": "Nombre completo",
+    "save": "Guardar cambios",
+    "theme": "Tema de color",
+    "colorMode": "Modo de color",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema",
+    "language": "Idioma",
+    "spanish": "Español",
+    "english": "English",
+    "plan": "Plan",
+    "free": "Gratis",
+    "premium": "Premium",
+    "upgrade": "Mejorar a Premium",
+    "themes": {
+      "indigo": "Modo Foco",
+      "purple": "Scholar Creativo",
+      "green": "Nature Brain"
+    }
+  },
+  "ai": {
+    "title": "Asistente IA",
+    "locked": "Función Premium",
+    "lockedDesc": "Mejora tu plan para acceder al Asistente IA.",
+    "upgrade": "Mejorar a Premium",
+    "placeholder": "¿En qué puedo ayudarte?",
+    "send": "Enviar",
+    "suggestions": {
+      "studyPlan": "Hazme un plan de estudio",
+      "summarize": "Resume mis notas",
+      "examsWeek": "¿Qué exámenes tengo esta semana?"
+    }
+  },
+  "landing": {
+    "hero": {
+      "title": "Domina tu vida académica",
+      "subtitle": "Scholr centraliza tus materias, tareas, exámenes y notas en un solo lugar. Enfócate en aprender.",
+      "cta": "Empieza gratis",
+      "login": "Iniciar sesión"
+    },
+    "features": {
+      "title": "Todo lo que necesitas",
+      "calendar": { "title": "Calendario inteligente", "desc": "Visualiza tus clases, exámenes y tareas en un solo lugar." },
+      "tasks": { "title": "Gestión de tareas", "desc": "Organiza, prioriza y sigue el progreso de tus tareas." },
+      "notes": { "title": "Notas por materia", "desc": "Toma notas con editor rico y accede a ellas cuando las necesites." },
+      "exams": { "title": "Seguimiento de exámenes", "desc": "Nunca te olvides de un examen con conteos regresivos en tiempo real." }
+    },
+    "pricing": {
+      "title": "Planes simples",
+      "free": { "name": "Gratis", "price": "$0", "features": ["Materias ilimitadas", "Calendario", "Tareas y notas", "Exámenes"] },
+      "premium": { "name": "Premium", "price": "$4.99/mes", "features": ["Todo lo del plan gratuito", "Asistente IA", "Análisis de progreso", "Soporte prioritario"] },
+      "cta": "Comenzar",
+      "popular": "Más popular"
+    },
+    "footer": {
+      "rights": "Todos los derechos reservados"
+    }
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "retry": "Reintentar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "add": "Agregar",
+    "search": "Buscar",
+    "justNow": "ahora mismo",
+    "minutesAgo": "min",
+    "hoursAgo": "h",
+    "daysAgo": "días"
+  }
+}

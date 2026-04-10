@@ -1,0 +1,229 @@
+{
+  "app": {
+    "name": "Scholr",
+    "tagline": "Your academic productivity, supercharged",
+    "description": "The all-in-one tool for students"
+  },
+  "nav": {
+    "dashboard": "Home",
+    "calendar": "Calendar",
+    "subjects": "Subjects",
+    "tasks": "Tasks",
+    "notes": "Notes",
+    "exams": "Exams",
+    "settings": "Settings",
+    "ai": "AI Assistant",
+    "logout": "Sign out"
+  },
+  "auth": {
+    "login": "Sign in",
+    "register": "Create account",
+    "logout": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "fullName": "Full name",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "resetPassword": "Reset password",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "signUp": "Sign up",
+    "signIn": "Sign in",
+    "sendResetLink": "Send reset link",
+    "backToLogin": "Back to login",
+    "errors": {
+      "invalidEmail": "Invalid email",
+      "passwordMin": "At least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "required": "This field is required",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "dashboard": {
+    "greeting": "Hello",
+    "todayProgress": "Today's progress",
+    "upcomingExams": "Upcoming exams",
+    "urgentTasks": "Urgent tasks",
+    "noExams": "No upcoming exams",
+    "noTasks": "No urgent tasks",
+    "daysLeft": "days",
+    "quickAccess": "Quick access"
+  },
+  "subjects": {
+    "title": "Subjects",
+    "add": "New subject",
+    "edit": "Edit subject",
+    "delete": "Delete",
+    "confirmDelete": "Delete this subject?",
+    "confirmDeleteDesc": "Its schedules will also be removed.",
+    "name": "Subject name",
+    "professor": "Professor",
+    "room": "Room",
+    "credits": "Credits",
+    "color": "Color",
+    "save": "Save",
+    "cancel": "Cancel",
+    "noSubjects": "No subjects yet",
+    "schedules": "Schedules",
+    "addSchedule": "Add schedule",
+    "days": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
+    "startTime": "Start",
+    "endTime": "End",
+    "conflict": "Schedule conflict detected",
+    "icon": "Icon",
+    "scheduleRoom": "Room"
+  },
+  "tasks": {
+    "title": "Tasks",
+    "all": "All",
+    "pending": "Pending",
+    "completed": "Completed",
+    "urgent": "Urgent",
+    "add": "Add task",
+    "placeholder": "What do you need to do?",
+    "priority": "Priority",
+    "high": "High",
+    "mid": "Medium",
+    "low": "Low",
+    "dueDate": "Due date",
+    "subject": "Subject",
+    "noSubject": "No subject",
+    "subtasks": "Subtasks",
+    "addSubtask": "Add subtask",
+    "noTasks": "Nothing here",
+    "completed_section": "Completed",
+    "pending_section": "Pending",
+    "allDone": "All done! 🎉",
+    "allDoneDesc": "You completed all your tasks.",
+    "progress": "Progress",
+    "taskNotes": "Notes"
+  },
+  "notes": {
+    "title": "Notes",
+    "add": "New note",
+    "untitled": "Untitled",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "noNotes": "No notes for this subject",
+    "noSubject": "No subject",
+    "lastSaved": "Saved",
+    "insertImage": "Insert image",
+    "uploadingImage": "Uploading...",
+    "sortRecent": "Recent",
+    "sortAlpha": "A-Z",
+    "allSubjects": "All subjects",
+    "noSubjectNotes": "No subject"
+  },
+  "exams": {
+    "title": "Exams",
+    "add": "New exam",
+    "edit": "Edit",
+    "delete": "Delete",
+    "past": "Past exams",
+    "noExams": "No exams",
+    "examTitle": "Exam title",
+    "date": "Date",
+    "time": "Time",
+    "location": "Room / Location",
+    "notes": "Notes",
+    "daysLeft": "days",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "past_label": "Past"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "month": "Month",
+    "week": "Week",
+    "day": "Day",
+    "today": "Today",
+    "addExam": "Add exam"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "fullName": "Full name",
+    "save": "Save changes",
+    "theme": "Color theme",
+    "colorMode": "Color mode",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "language": "Language",
+    "spanish": "Español",
+    "english": "English",
+    "plan": "Plan",
+    "free": "Free",
+    "premium": "Premium",
+    "upgrade": "Upgrade to Premium",
+    "themes": {
+      "indigo": "Focus Mode",
+      "purple": "Creative Scholar",
+      "green": "Nature Brain"
+    }
+  },
+  "ai": {
+    "title": "AI Assistant",
+    "locked": "Premium Feature",
+    "lockedDesc": "Upgrade your plan to access the AI Assistant.",
+    "upgrade": "Upgrade to Premium",
+    "placeholder": "How can I help you?",
+    "send": "Send",
+    "suggestions": {
+      "studyPlan": "Make me a study plan",
+      "summarize": "Summarize my notes",
+      "examsWeek": "What exams do I have this week?"
+    }
+  },
+  "landing": {
+    "hero": {
+      "title": "Master your academic life",
+      "subtitle": "Scholr centralizes your subjects, tasks, exams, and notes in one place. Focus on learning.",
+      "cta": "Get started free",
+      "login": "Sign in"
+    },
+    "features": {
+      "title": "Everything you need",
+      "calendar": { "title": "Smart calendar", "desc": "Visualize your classes, exams, and tasks in one place." },
+      "tasks": { "title": "Task management", "desc": "Organize, prioritize, and track your task progress." },
+      "notes": { "title": "Subject notes", "desc": "Take notes with a rich editor and access them anytime." },
+      "exams": { "title": "Exam tracking", "desc": "Never miss an exam with real-time countdown timers." }
+    },
+    "pricing": {
+      "title": "Simple plans",
+      "free": { "name": "Free", "price": "$0", "features": ["Unlimited subjects", "Calendar", "Tasks & notes", "Exams"] },
+      "premium": { "name": "Premium", "price": "$4.99/mo", "features": ["Everything in Free", "AI Assistant", "Progress analytics", "Priority support"] },
+      "cta": "Get started",
+      "popular": "Most popular"
+    },
+    "footer": {
+      "rights": "All rights reserved"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "close": "Close",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "add": "Add",
+    "search": "Search",
+    "justNow": "just now",
+    "minutesAgo": "min ago",
+    "hoursAgo": "h ago",
+    "daysAgo": "days ago"
+  }
+}
