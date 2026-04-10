@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
+import type { Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
@@ -9,7 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { debounce } from '@/lib/utils'
 import type { Task } from '@/types'
 
-const MINI_TOOLBAR = (editor: ReturnType<typeof useEditor>) => [
+const MINI_TOOLBAR = (editor: Editor | null) => [
   { icon: 'format_bold',          title: 'Negrita',        action: () => editor?.chain().focus().toggleBold().run(),          active: editor?.isActive('bold')       ?? false },
   { icon: 'format_italic',        title: 'Cursiva',        action: () => editor?.chain().focus().toggleItalic().run(),        active: editor?.isActive('italic')     ?? false },
   { icon: 'format_list_bulleted', title: 'Lista',          action: () => editor?.chain().focus().toggleBulletList().run(),    active: editor?.isActive('bulletList') ?? false },

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { daysUntil } from '@/lib/utils'
-import type { Exam, Subject, Schedule } from '@/types'
+import type { Exam, Subject } from '@/types'
 
 interface ExamFormProps {
   exam?: Exam | null

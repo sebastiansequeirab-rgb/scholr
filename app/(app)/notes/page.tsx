@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { debounce, timeAgo } from '@/lib/utils'
@@ -135,17 +135,16 @@ function NoteEditor({
         style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div className="flex items-center gap-0.5 flex-wrap flex-1">
           {editor && TOOLBAR.map(({ icon, title, action, active, isText }, i) => (
-            <>
-              {/* Divider before inline formatting group */}
+            <React.Fragment key={icon}>
               {i === 3 && (
-                <span key="div1" className="w-px h-4 mx-1 rounded-full flex-shrink-0"
+                <span className="w-px h-4 mx-1 rounded-full flex-shrink-0"
                   style={{ backgroundColor: 'var(--border-default)' }} />
               )}
               {i === 7 && (
-                <span key="div2" className="w-px h-4 mx-1 rounded-full flex-shrink-0"
+                <span className="w-px h-4 mx-1 rounded-full flex-shrink-0"
                   style={{ backgroundColor: 'var(--border-default)' }} />
               )}
-              <button key={icon} onClick={action} type="button" title={title}
+              <button onClick={action} type="button" title={title}
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:brightness-110"
                 style={{
                   backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
@@ -157,7 +156,7 @@ function NoteEditor({
                   : <span className="material-symbols-outlined text-[17px]">{icon}</span>
                 }
               </button>
-            </>
+            </React.Fragment>
           ))}
 
           {/* Image upload button */}
