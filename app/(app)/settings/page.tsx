@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { useTheme } from 'next-themes'
+import { useTimeFormat } from '@/hooks/useTimeFormat'
 import type { Profile } from '@/types'
 
 const THEMES: Array<{ key: 'indigo' | 'purple' | 'green'; labelKey: string; primary: string; secondary: string }> = [
@@ -15,6 +16,7 @@ const THEMES: Array<{ key: 'indigo' | 'purple' | 'green'; labelKey: string; prim
 export default function SettingsPage() {
   const { t, language, changeLanguage } = useTranslation()
   const { theme, setTheme } = useTheme()
+  const { use12h, setFormat } = useTimeFormat()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [fullName, setFullName] = useState('')
   const [colorTheme, setColorTheme] = useState<'indigo' | 'purple' | 'green'>('indigo')
@@ -136,6 +138,30 @@ export default function SettingsPage() {
               aria-pressed={theme === m}
             >
               {m === 'light' ? `☀️ ${t('settings.light')}` : m === 'dark' ? `🌙 ${t('settings.dark')}` : `⚙️ ${t('settings.system')}`}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Time format */}
+      <section className="card space-y-3">
+        <h2 className="font-semibold text-base">{language === 'es' ? 'Formato de hora' : 'Time format'}</h2>
+        <div className="flex gap-2">
+          {(['24h', '12h'] as const).map(fmt => (
+            <button
+              key={fmt}
+              onClick={() => setFormat(fmt)}
+              className="flex-1 py-2 rounded-xl text-sm font-medium border transition-all"
+              style={{
+                backgroundColor: (use12h ? '12h' : '24h') === fmt ? 'var(--color-primary)' : 'var(--color-surface)',
+                borderColor:     (use12h ? '12h' : '24h') === fmt ? 'var(--color-primary)' : 'var(--color-border)',
+                color:           (use12h ? '12h' : '24h') === fmt ? 'white' : 'var(--color-muted)',
+              }}
+              aria-pressed={(use12h ? '12h' : '24h') === fmt}
+            >
+              {fmt === '24h'
+                ? (language === 'es' ? '⏰ 24h — 13:30' : '⏰ 24h — 1:30 PM')
+                : (language === 'es' ? '🕑 12h — 1:30 pm' : '🕑 12h — 1:30 pm')}
             </button>
           ))}
         </div>

@@ -59,6 +59,18 @@ export function getInitials(name: string): string {
     .toUpperCase()
 }
 
+/** Formats a "HH:mm" or "HH:mm:ss" time string as 24h or 12h AM/PM */
+export function formatTime(timeStr: string, use12h: boolean): string {
+  if (!timeStr) return ''
+  const parts = timeStr.split(':')
+  const hours   = parseInt(parts[0], 10)
+  const minutes = parts[1] || '00'
+  if (!use12h) return `${String(hours).padStart(2, '0')}:${minutes}`
+  const period = hours >= 12 ? 'pm' : 'am'
+  const h12    = hours % 12 || 12
+  return `${h12}:${minutes} ${period}`
+}
+
 export function timeAgo(dateStr: string, t: (key: string) => string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
   if (diff < 60) return t('justNow')

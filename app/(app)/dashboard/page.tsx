@@ -65,7 +65,7 @@ export default async function DashboardPage() {
     { href: '/subjects', icon: 'menu_book',       label: 'Materias',   color: 'var(--color-tertiary)' },
     { href: '/tasks',    icon: 'check_circle',    label: 'Tareas',     color: 'var(--success)'        },
     { href: '/notes',    icon: 'sticky_note_2',   label: 'Notas',      color: 'var(--warning)'        },
-    { href: '/exams',    icon: 'event_upcoming',  label: 'Exámenes',   color: 'var(--danger)'         },
+    { href: '/exams',    icon: 'event_upcoming',  label: 'Actividades', color: 'var(--danger)'        },
   ]
 
   return (

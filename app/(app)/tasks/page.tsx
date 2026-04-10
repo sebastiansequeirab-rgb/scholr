@@ -344,8 +344,6 @@ export default function TasksPage() {
 
       {/* Header */}
       <div className="mb-8">
-        <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-2"
-          style={{ color: 'var(--color-primary)' }}>Curriculum Tasks</span>
         <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
           {t('tasks.title')}
         </h1>
@@ -441,13 +439,13 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Filter tabs with counts */}
-      <div className="flex gap-1 mb-6 p-1 rounded-xl" style={{ backgroundColor: 'var(--s-base)' }}>
+      {/* Filter tabs with counts — scrollable on mobile */}
+      <div className="flex gap-1 mb-6 p-1 rounded-xl overflow-x-auto scrollbar-hide" style={{ backgroundColor: 'var(--s-base)' }}>
         {FILTERS.map(({ key, label }) => {
           const isActive = filter === key
           return (
             <button key={key} onClick={() => setFilter(key)}
-              className="flex-1 text-xs py-2 px-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5"
+              className="flex-shrink-0 text-xs py-2 px-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
               style={{
                 backgroundColor: isActive ? 'var(--s-high)' : 'transparent',
                 color:           isActive ? 'var(--on-surface)' : 'var(--color-outline)',

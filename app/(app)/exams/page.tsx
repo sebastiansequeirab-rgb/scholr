@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { daysUntil } from '@/lib/utils'
+import { daysUntil, formatTime } from '@/lib/utils'
+import { useTimeFormat } from '@/hooks/useTimeFormat'
 import type { Exam, Subject, ActivityType } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
 
@@ -210,6 +211,8 @@ export default function ExamsPage() {
   const [editingExam,   setEditingExam]   = useState<Exam | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
+  const { use12h } = useTimeFormat()
+
   const fetchData = useCallback(async () => {
     const supabase = createClient()
     const [{ data: es }, { data: ss }] = await Promise.all([
@@ -299,7 +302,7 @@ export default function ExamsPage() {
                     <span className="material-symbols-outlined text-[15px]" style={{ color: 'var(--color-outline)' }}>schedule</span>
                     <div>
                       <span className="mono text-[9px] uppercase tracking-widest block leading-none mb-0.5" style={{ color: 'var(--color-outline)' }}>{t('activities.time')}</span>
-                      <span className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>{exam.exam_time.slice(0, 5)}</span>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>{formatTime(exam.exam_time, use12h)}</span>
                     </div>
                   </div>
                 )}
@@ -393,7 +396,7 @@ export default function ExamsPage() {
             {exam.exam_time && (
               <span className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-[12px]">schedule</span>
-                {exam.exam_time.slice(0, 5)}
+                {formatTime(exam.exam_time, use12h)}
               </span>
             )}
             {exam.location && (
@@ -427,7 +430,7 @@ export default function ExamsPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-5">
         <div>
           <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-2"
-            style={{ color: 'var(--color-primary)' }}>Academic Activities</span>
+            style={{ color: 'var(--color-primary)' }}>{language === 'es' ? 'Actividades Académicas' : 'Academic Activities'}</span>
           <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
             {t('activities.title')}
           </h1>

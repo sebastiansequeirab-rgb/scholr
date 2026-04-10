@@ -34,7 +34,7 @@ export default async function AppLayout({
           {/* Mobile top bar offset */}
           <div className="pt-14 lg:pt-0" />
 
-          <main className="min-h-screen p-4 lg:p-8">
+          <main className="min-h-screen p-4 pb-20 lg:pb-8 lg:p-8">
             {children}
           </main>
         </div>

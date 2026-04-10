@@ -18,6 +18,15 @@ const NAV_ITEMS = [
   { key: 'exams',     href: '/exams',      icon: 'event_upcoming' },
 ]
 
+// Bottom nav items (mobile only) — keep to 5 for comfortable spacing
+const BOTTOM_NAV = [
+  { key: 'dashboard', href: '/dashboard', icon: 'home'           },
+  { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
+  { key: 'tasks',     href: '/tasks',     icon: 'check_circle'   },
+  { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
+  { key: 'exams',     href: '/exams',     icon: 'event_upcoming' },
+]
+
 interface SidebarProps {
   profile: Profile | null
 }
@@ -239,6 +248,59 @@ export function Sidebar({ profile }: SidebarProps) {
         </button>
       </header>
 
+      {/* Mobile bottom navigation bar */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center glass safe-bottom"
+        style={{ borderTop: '1px solid var(--border-subtle)', height: '56px' }}
+        aria-label="Mobile navigation"
+      >
+        {BOTTOM_NAV.map(({ key, href, icon }) => {
+          const active = isActive(href)
+          return (
+            <Link
+              key={key}
+              href={href}
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-all duration-150 active:scale-95"
+              aria-current={pathname === href ? 'page' : undefined}
+            >
+              <span
+                className="material-symbols-outlined text-[22px] transition-all duration-150"
+                style={{
+                  color: active ? 'var(--color-primary)' : 'var(--color-outline)',
+                  fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
+                }}
+              >
+                {icon}
+              </span>
+              <span className="text-[9px] font-semibold leading-none transition-colors duration-150"
+                style={{ color: active ? 'var(--color-primary)' : 'var(--color-outline)' }}>
+                {t(`nav.${key}`)}
+              </span>
+            </Link>
+          )
+        })}
+        {/* Profile/settings icon */}
+        <Link
+          href="/settings"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-all duration-150 active:scale-95"
+          aria-current={pathname === '/settings' ? 'page' : undefined}
+        >
+          <span
+            className="material-symbols-outlined text-[22px] transition-all duration-150"
+            style={{
+              color: pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-outline)',
+              fontVariationSettings: pathname === '/settings' ? "'FILL' 1" : "'FILL' 0",
+            }}
+          >
+            person
+          </span>
+          <span className="text-[9px] font-semibold leading-none"
+            style={{ color: pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-outline)' }}>
+            {t('nav.settings')}
+          </span>
+        </Link>
+      </nav>
+
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
@@ -249,7 +311,7 @@ export function Sidebar({ profile }: SidebarProps) {
         />
       )}
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer (for subjects + AI only now) */}
       <aside
         className={`lg:hidden fixed top-0 left-0 z-40 h-full w-72 transform transition-transform duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'

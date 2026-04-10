@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import type { Subject, Schedule, Exam, Task } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
+import { useTimeFormat } from '@/hooks/useTimeFormat'
 
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -318,6 +319,7 @@ export default function CalendarPage() {
   const [tasks,        setTasks]        = useState<Task[]>([])
   const [loading,      setLoading]      = useState(true)
   const [clickedEvent, setClickedEvent] = useState<ClickedEvent | null>(null)
+  const { use12h } = useTimeFormat()
   const [addExamDate,  setAddExamDate]  = useState<string | null>(null)
 
   const [newExamTitle,   setNewExamTitle]   = useState('')
@@ -528,6 +530,14 @@ export default function CalendarPage() {
           scrollTime="07:00:00"
           slotLabelInterval="01:00:00"
           locale="es"
+          eventTimeFormat={use12h
+            ? { hour: 'numeric', minute: '2-digit', meridiem: 'short' }
+            : { hour: '2-digit', minute: '2-digit', hour12: false }
+          }
+          slotLabelFormat={use12h
+            ? { hour: 'numeric', minute: '2-digit', meridiem: 'short' }
+            : { hour: '2-digit', minute: '2-digit', hour12: false }
+          }
           dayMaxEvents={3}
           eventDisplay="block"
           nowIndicator={true}
