@@ -119,7 +119,7 @@ export default async function DashboardPage() {
               return (
                 <span className="flex items-center gap-1.5 text-[12px]" style={{ color: c }}>
                   <span className="material-symbols-outlined text-[14px]">event_upcoming</span>
-                  {d === 0 ? 'Examen hoy' : d === 1 ? 'Examen mañana' : `Examen en ${d}d`}
+                  {d === 0 ? 'Actividad hoy' : d === 1 ? 'Actividad mañana' : `Actividad en ${d}d`}
                 </span>
               )
             })()}
@@ -284,7 +284,7 @@ export default async function DashboardPage() {
                 <span className="material-symbols-outlined text-xl" style={{ color: 'var(--color-primary)' }}>
                   event_upcoming
                 </span>
-                Próximos exámenes
+                Próximas actividades
               </h2>
               <Link href="/exams"
                 className="mono text-[10px] uppercase tracking-widest transition-colors hover:opacity-80"
@@ -297,7 +297,7 @@ export default async function DashboardPage() {
               <div className="text-center py-6">
                 <span className="material-symbols-outlined text-3xl mb-2 block"
                   style={{ color: 'var(--color-outline)' }}>event_available</span>
-                <p className="text-sm" style={{ color: 'var(--color-outline)' }}>Sin exámenes próximos ✓</p>
+                <p className="text-sm" style={{ color: 'var(--color-outline)' }}>Sin actividades próximas ✓</p>
               </div>
             ) : (
               <div className="space-y-2">

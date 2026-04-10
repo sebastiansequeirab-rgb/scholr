@@ -531,12 +531,12 @@ export default function CalendarPage() {
           slotLabelInterval="01:00:00"
           locale="es"
           eventTimeFormat={use12h
-            ? { hour: 'numeric', minute: '2-digit', meridiem: 'short' }
-            : { hour: '2-digit', minute: '2-digit', hour12: false }
+            ? { hour: 'numeric', minute: '2-digit', meridiem: 'lowercase' }
+            : { hour: '2-digit', minute: '2-digit', meridiem: false }
           }
           slotLabelFormat={use12h
-            ? { hour: 'numeric', minute: '2-digit', meridiem: 'short' }
-            : { hour: '2-digit', minute: '2-digit', hour12: false }
+            ? { hour: 'numeric', minute: '2-digit', meridiem: 'lowercase' }
+            : { hour: '2-digit', minute: '2-digit', meridiem: false }
           }
           dayMaxEvents={3}
           eventDisplay="block"

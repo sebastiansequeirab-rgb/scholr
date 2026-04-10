@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTimeFormat } from '@/hooks/useTimeFormat'
 
 export function LiveClock() {
   const [now, setNow] = useState<Date | null>(null)
+  const { use12h } = useTimeFormat()
 
   useEffect(() => {
     setNow(new Date())
@@ -13,9 +15,20 @@ export function LiveClock() {
 
   if (!now) return null
 
-  const hh = now.getHours().toString().padStart(2, '0')
+  const rawHours = now.getHours()
   const mm = now.getMinutes().toString().padStart(2, '0')
   const ss = now.getSeconds().toString().padStart(2, '0')
+
+  let hh: string
+  let period: string | null = null
+  if (use12h) {
+    const h12 = rawHours % 12 || 12
+    hh = h12.toString()
+    period = rawHours >= 12 ? 'pm' : 'am'
+  } else {
+    hh = rawHours.toString().padStart(2, '0')
+  }
+
   const dateStr = now.toLocaleDateString('es-ES', {
     weekday: 'long',
     year: 'numeric',
@@ -41,6 +54,9 @@ export function LiveClock() {
         <span className="text-4xl animate-pulse-slow" style={{ color: 'var(--color-primary)' }}>:</span>
         <span className="text-4xl">{mm}</span>
         <span className="text-xl ml-1 opacity-40">:{ss}</span>
+        {period && (
+          <span className="text-base ml-1 font-bold" style={{ color: 'var(--color-outline)' }}>{period}</span>
+        )}
       </div>
 
       {/* Date */}
