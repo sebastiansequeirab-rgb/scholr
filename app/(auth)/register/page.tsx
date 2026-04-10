@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
 
   const validate = () => {
     if (!fullName.trim()) return t('auth.errors.required')
@@ -53,8 +54,44 @@ export default function RegisterPage() {
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    setSent(true)
+  }
+
+  if (sent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" data-theme="indigo">
+        <div className="w-full max-w-sm text-center">
+          <div className="relative inline-block mb-6">
+            <div className="absolute inset-0 rounded-full blur-[40px] opacity-20"
+              style={{ backgroundColor: 'var(--color-primary)' }} />
+            <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
+              style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-default)' }}>
+              <span className="material-symbols-outlined text-3xl" style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                mark_email_unread
+              </span>
+            </div>
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight mb-2" style={{ color: 'var(--on-surface)' }}>
+            Revisa tu correo
+          </h1>
+          <p className="text-sm mb-2" style={{ color: 'var(--on-surface-variant)' }}>
+            Enviamos un enlace de confirmación a
+          </p>
+          <p className="text-sm font-semibold mb-6" style={{ color: 'var(--color-primary)' }}>
+            {email}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
+            Abre el correo y haz click en el enlace para activar tu cuenta.
+          </p>
+          <p className="text-xs mt-4" style={{ color: 'var(--color-outline)' }}>
+            ¿Ya confirmaste?{' '}
+            <Link href="/login" className="font-semibold hover:underline" style={{ color: 'var(--color-primary)' }}>
+              Iniciar sesión
+            </Link>
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -28,7 +28,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password'
+  const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname.startsWith('/auth/callback')
   const isAppRoute = pathname.startsWith('/dashboard') ||
     pathname.startsWith('/calendar') ||
     pathname.startsWith('/subjects') ||
