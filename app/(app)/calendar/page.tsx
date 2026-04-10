@@ -21,6 +21,7 @@ interface ClickedEvent {
   professor?: string
   priority?: string
   subjectName?: string
+  taskStatus?: string
 }
 
 const SANCTUARY_CALENDAR_CSS = `
@@ -386,17 +387,19 @@ export default function CalendarPage() {
   tasks.forEach((task) => {
     if (!task.due_date || task.is_done) return
     const subject = subjects.find(s => s.id === task.subject_id)
-    const color   = task.priority === 'high' ? '#f87171' : task.priority === 'mid' ? '#fbbf24' : '#60a5fa'
+    // Use subject color if available, otherwise priority color
+    const color = subject?.color
+      || (task.priority === 'high' ? '#ef4444' : task.priority === 'mid' ? '#f59e0b' : '#60a5fa')
     events.push({
       id:              `task-${task.id}`,
-      title:           `☑ ${task.text}`,
+      title:           task.text,
       start:           task.due_date,
       allDay:          true,
-      backgroundColor: `color-mix(in srgb, ${color} 15%, var(--s-base))`,
+      backgroundColor: `color-mix(in srgb, ${color} 12%, var(--s-base))`,
       borderColor:     color,
       textColor:       color,
       classNames:      ['fc-ev-task'],
-      extendedProps:   { type: 'task', priority: task.priority, subjectName: subject?.name },
+      extendedProps:   { type: 'task', priority: task.priority, subjectName: subject?.name, taskStatus: task.status },
     })
   })
 
@@ -412,6 +415,7 @@ export default function CalendarPage() {
       professor:   p.professor,
       priority:    p.priority,
       subjectName: p.subjectName,
+      taskStatus:  p.taskStatus,
     })
   }
 
@@ -547,7 +551,28 @@ export default function CalendarPage() {
                 </div>
               )
             }
-            // Default render for tasks and allDay exams
+            // Task: dashed border visually, prefix with check icon
+            if (type === 'task') {
+              const status = arg.event.extendedProps.taskStatus as string | undefined
+              const statusIcon = status === 'done' ? '✓' : status === 'in_progress' ? '◑' : '○'
+              return (
+                <div style={{
+                  padding: '1px 5px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  borderLeft: `2px dashed ${arg.event.borderColor}`,
+                  borderRadius: '4px',
+                  height: '100%',
+                }}>
+                  <span style={{ fontSize: '9px', flexShrink: 0, opacity: 0.8 }}>{statusIcon}</span>
+                  <span style={{ fontSize: '10.5px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {arg.event.title}
+                  </span>
+                </div>
+              )
+            }
             return undefined
           }}
         />

@@ -9,25 +9,31 @@ import type { Task, Subtask, Subject } from '@/types'
 
 type Filter = 'all' | 'pending' | 'completed' | 'urgent'
 
+// Status config
+const STATUS_CONFIG = {
+  not_started: { label: 'Sin empezar', icon: 'radio_button_unchecked', color: 'var(--color-outline)',  bg: 'transparent' },
+  in_progress: { label: 'En progreso', icon: 'pending',                color: 'var(--warning)',        bg: 'var(--priority-mid-bg)' },
+  done:        { label: 'Completado',  icon: 'check_circle',           color: 'var(--success)',        bg: 'color-mix(in srgb, var(--success) 12%, transparent)' },
+} as const
+
 function TaskItem({
   task,
   subjects,
-  onToggle,
   onDelete,
   onRefresh,
 }: {
   task: Task
   subjects: Subject[]
-  onToggle: (id: string, done: boolean) => void
   onDelete: (id: string) => void
   onRefresh: () => void
 }) {
   const { t } = useTranslation()
-  const [expanded,      setExpanded]      = useState(false)
-  const [notesOpen,     setNotesOpen]     = useState(false)
-  const [subtasks,      setSubtasks]      = useState<Subtask[]>([])
-  const [subtaskText,   setSubtaskText]   = useState('')
+  const [expanded,       setExpanded]       = useState(false)
+  const [notesOpen,      setNotesOpen]      = useState(false)
+  const [subtasks,       setSubtasks]       = useState<Subtask[]>([])
+  const [subtaskText,    setSubtaskText]    = useState('')
   const [subtasksLoaded, setSubtasksLoaded] = useState(false)
+  const [taskStatus,     setTaskStatus]     = useState<Task['status']>(task.status || 'not_started')
 
   const subject = subjects.find(s => s.id === task.subject_id)
   const supabase = createClient()
@@ -42,6 +48,20 @@ function TaskItem({
   const handleExpand = () => {
     setExpanded(!expanded)
     if (!expanded) loadSubtasks()
+  }
+
+  // Cycle: not_started → in_progress → done → not_started
+  const cycleStatus = async () => {
+    const next: Task['status'] = taskStatus === 'not_started' ? 'in_progress'
+      : taskStatus === 'in_progress' ? 'done' : 'not_started'
+    setTaskStatus(next)
+    const isDone = next === 'done'
+    await supabase.from('tasks').update({
+      status: next,
+      is_done: isDone,
+      done_at: isDone ? new Date().toISOString() : null,
+    }).eq('id', task.id)
+    onRefresh()
   }
 
   const toggleSubtask = async (st: Subtask) => {
@@ -73,7 +93,8 @@ function TaskItem({
     onRefresh()
   }
 
-  const priorityColor = { high: 'var(--priority-high)', mid: 'var(--priority-mid)', low: 'var(--priority-low)' }[task.priority]
+  const statusCfg = STATUS_CONFIG[taskStatus]
+  const isDone = taskStatus === 'done'
 
   const dueBadge = () => {
     if (!task.due_date) return null
@@ -87,34 +108,45 @@ function TaskItem({
 
   return (
     <div
-      className={`rounded-2xl p-5 mb-2 transition-all duration-200 group ${task.is_done ? 'opacity-50' : 'hover:brightness-105'}`}
-      style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
+      className={`rounded-2xl p-5 mb-2 transition-all duration-200 group ${isDone ? 'opacity-50' : 'hover:brightness-105'}`}
+      style={{
+        backgroundColor: 'var(--s-low)',
+        border: taskStatus === 'in_progress'
+          ? '1px solid color-mix(in srgb, var(--warning) 30%, transparent)'
+          : '1px solid var(--border-subtle)',
+      }}
     >
       <div className="flex items-start gap-4">
-        {/* Circular checkbox */}
+        {/* Status cycle button */}
         <button
-          onClick={() => onToggle(task.id, task.is_done)}
-          className="w-6 h-6 rounded-full border-2 flex-shrink-0 mt-0.5 transition-all duration-200 flex items-center justify-center hover:scale-110"
-          style={{
-            borderColor: priorityColor,
-            backgroundColor: task.is_done ? priorityColor : 'transparent',
-          }}
-          aria-label={task.is_done ? 'Mark undone' : 'Mark done'}
+          onClick={cycleStatus}
+          title={statusCfg.label}
+          className="w-6 h-6 flex-shrink-0 mt-0.5 transition-all duration-200 flex items-center justify-center hover:scale-110 rounded-full"
+          style={{ color: statusCfg.color }}
+          aria-label={`Estado: ${statusCfg.label}`}
         >
-          {task.is_done && (
-            <span className="material-symbols-outlined text-[14px]" style={{ color: 'var(--s-bg)', fontVariationSettings: "'wght' 700" }}>
-              check
-            </span>
-          )}
+          <span className="material-symbols-outlined text-[22px]"
+            style={{ fontVariationSettings: taskStatus === 'done' ? "'FILL' 1" : "'FILL' 0" }}>
+            {statusCfg.icon}
+          </span>
         </button>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`text-sm font-semibold ${task.is_done ? 'line-through' : ''}`}
-              style={{ color: task.is_done ? 'var(--color-outline)' : 'var(--on-surface)' }}>
+            <span className={`text-sm font-semibold ${isDone ? 'line-through' : ''}`}
+              style={{ color: isDone ? 'var(--color-outline)' : 'var(--on-surface)' }}>
               {task.text}
             </span>
+
+            {/* Status pill — only show in_progress */}
+            {taskStatus === 'in_progress' && (
+              <span className="mono text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase flex items-center gap-1"
+                style={{ backgroundColor: statusCfg.bg, color: statusCfg.color }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--warning)' }} />
+                En progreso
+              </span>
+            )}
 
             {badge && (
               <span className="mono text-[9px] px-1.5 py-0.5 rounded font-bold uppercase"
@@ -141,7 +173,7 @@ function TaskItem({
             )}
           </div>
 
-          {/* Action row: subtasks + notes toggles */}
+          {/* Action row */}
           <div className="flex items-center gap-3 mt-1.5">
             <button onClick={handleExpand} className="mono text-[10px] flex items-center gap-1 transition-colors hover:opacity-80"
               style={{ color: 'var(--color-outline)' }}>
@@ -262,15 +294,6 @@ export default function TasksPage() {
       is_done: false, position: tasks.length,
     })
     setText(''); setDueDate(''); setSubjectId('')
-    fetchData()
-  }
-
-  const toggleTask = async (id: string, currentDone: boolean) => {
-    const supabase = createClient()
-    await supabase.from('tasks').update({
-      is_done: !currentDone,
-      done_at: !currentDone ? new Date().toISOString() : null,
-    }).eq('id', id)
     fetchData()
   }
 
@@ -463,7 +486,7 @@ export default function TasksPage() {
               )}
               {pending.map(task => (
                 <TaskItem key={task.id} task={task} subjects={subjects}
-                  onToggle={toggleTask} onDelete={deleteTask} onRefresh={fetchData} />
+                  onDelete={deleteTask} onRefresh={fetchData} />
               ))}
             </section>
           )}
@@ -478,7 +501,7 @@ export default function TasksPage() {
               <div className="mt-2">
                 {completed.map(task => (
                   <TaskItem key={task.id} task={task} subjects={subjects}
-                    onToggle={toggleTask} onDelete={deleteTask} onRefresh={fetchData} />
+                    onDelete={deleteTask} onRefresh={fetchData} />
                 ))}
               </div>
             </details>

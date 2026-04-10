@@ -172,12 +172,18 @@ export default async function DashboardPage() {
 
             {/* Header row */}
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold flex items-center gap-2" style={{ color: 'var(--on-surface)' }}>
-                <span className="material-symbols-outlined text-xl" style={{ color: 'var(--danger)' }}>
-                  priority_high
-                </span>
-                Tareas urgentes
-              </h2>
+              <div>
+                <h2 className="font-bold flex items-center gap-2" style={{ color: 'var(--on-surface)' }}>
+                  <span className="material-symbols-outlined text-xl"
+                    style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                    task_alt
+                  </span>
+                  Lo que tienes por delante
+                </h2>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-outline)' }}>
+                  Ordenado por urgencia · haz click para marcar progreso
+                </p>
+              </div>
               <div className="flex items-center gap-3">
                 {todayTasks.length > 0 && (
                   <span className="mono text-[10px]" style={{ color: 'var(--color-outline)' }}>

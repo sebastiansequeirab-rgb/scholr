@@ -36,6 +36,7 @@ export type Task = {
   subject_id: string | null
   text: string
   priority: 'high' | 'mid' | 'low'
+  status: 'not_started' | 'in_progress' | 'done'
   due_date: string | null
   is_done: boolean
   done_at: string | null
