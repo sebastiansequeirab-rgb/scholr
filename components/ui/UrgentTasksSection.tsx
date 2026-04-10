@@ -23,7 +23,7 @@ export function UrgentTasksSection({
     }).eq('id', task.id)
   }
 
-  // Sort all pending tasks by urgency: today > tomorrow > days remaining > priority
+  // Urgency score: today=0-2, tomorrow=10-12, future by days, no date=500+
   const urgencyScore = (task: Task): number => {
     const p = task.priority === 'high' ? 0 : task.priority === 'mid' ? 1 : 2
     if (!task.due_date) return 500 + p
@@ -40,61 +40,120 @@ export function UrgentTasksSection({
 
   if (visible.length === 0) {
     return (
-      <div className="text-center py-6">
-        <span className="material-symbols-outlined text-3xl mb-2 block" style={{ color: 'var(--color-outline)' }}>
+      <div className="text-center py-8">
+        <span className="material-symbols-outlined text-3xl mb-2 block"
+          style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 1" }}>
           done_all
         </span>
-        <p className="text-sm" style={{ color: 'var(--color-outline)' }}>Sin tareas pendientes ✓</p>
+        <p className="text-sm font-medium" style={{ color: 'var(--color-outline)' }}>
+          Sin tareas pendientes ✓
+        </p>
       </div>
     )
   }
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-2.5">
       {visible.map(task => {
-        const subject       = subjects.find(s => s.id === task.subject_id)
-        const priorityColor = { high: 'var(--priority-high)', mid: 'var(--priority-mid)', low: 'var(--priority-low)' }[task.priority]
-        const priorityBg    = { high: 'var(--priority-high-bg)', mid: 'var(--priority-mid-bg)', low: 'var(--priority-low-bg)' }[task.priority]
+        const subject = subjects.find(s => s.id === task.subject_id)
 
-        const dueLabel = !task.due_date
+        // Time label + colors based on urgency
+        const isToday_    = task.due_date && isToday(task.due_date)
+        const isTomorrow_ = task.due_date && isTomorrow(task.due_date)
+        const days        = task.due_date ? daysUntil(task.due_date) : null
+
+        const timeLabel = !task.due_date
           ? null
-          : isToday(task.due_date) ? 'Hoy'
-          : isTomorrow(task.due_date) ? 'Mañana'
-          : `${daysUntil(task.due_date)}d`
+          : isToday_    ? 'Hoy'
+          : isTomorrow_ ? 'Mañana'
+          : `${days}d`
+
+        // Urgency tier drives the accent color for the whole row
+        const urgencyColor = !task.due_date
+          ? 'var(--color-outline)'
+          : isToday_         ? 'var(--danger)'
+          : isTomorrow_      ? 'var(--warning)'
+          : (days ?? 99) <= 7 ? 'var(--warning)'
+          : 'var(--color-primary)'
+
+        const urgencyBg = !task.due_date
+          ? 'transparent'
+          : isToday_         ? 'var(--priority-high-bg)'
+          : isTomorrow_      ? 'var(--priority-mid-bg)'
+          : (days ?? 99) <= 7 ? 'var(--priority-mid-bg)'
+          : 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
+
+        const priorityColor = {
+          high: 'var(--priority-high)',
+          mid:  'var(--priority-mid)',
+          low:  'var(--priority-low)',
+        }[task.priority]
 
         return (
-          <li key={task.id} className={`flex items-start gap-3 transition-opacity duration-300 ${task.is_done ? 'opacity-40' : ''}`}>
+          <li
+            key={task.id}
+            className="flex items-center gap-3 p-3 rounded-xl transition-all duration-200"
+            style={{
+              backgroundColor: isToday_
+                ? 'color-mix(in srgb, var(--danger) 5%, var(--s-base))'
+                : 'var(--s-base)',
+              border: isToday_
+                ? '1px solid color-mix(in srgb, var(--danger) 18%, transparent)'
+                : '1px solid var(--border-subtle)',
+            }}
+          >
+            {/* Priority checkbox */}
             <button
               onClick={() => toggle(task)}
-              className="mt-0.5 w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 hover:scale-110"
-              style={{ borderColor: priorityColor, backgroundColor: task.is_done ? priorityColor : 'transparent' }}
+              className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 hover:scale-110"
+              style={{
+                borderColor:     priorityColor,
+                backgroundColor: task.is_done ? priorityColor : 'transparent',
+              }}
               aria-label={task.is_done ? 'Marcar pendiente' : 'Marcar hecha'}
             >
               {task.is_done && (
-                <span className="material-symbols-outlined text-[11px]"
+                <span className="material-symbols-outlined text-[10px]"
                   style={{ color: 'var(--s-bg)', fontVariationSettings: "'wght' 700" }}>check</span>
               )}
             </button>
 
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium truncate ${task.is_done ? 'line-through' : ''}`}
-                style={{ color: task.is_done ? 'var(--color-outline)' : 'var(--on-surface)' }}>
-                {task.text}
-              </p>
-              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                {dueLabel && (
-                  <span className="mono text-[9px] px-1.5 py-0.5 rounded font-bold uppercase"
-                    style={{ backgroundColor: priorityBg, color: priorityColor }}>
-                    {dueLabel}
-                  </span>
-                )}
-                {subject && (
-                  <span className="text-[10px] font-medium" style={{ color: subject.color }}>
-                    {subject.name}
-                  </span>
+            {/* Time badge — left-aligned, always visible when date set */}
+            {timeLabel && (
+              <div
+                className="flex-shrink-0 min-w-[52px] text-center px-2 py-1 rounded-lg"
+                style={{ backgroundColor: urgencyBg }}
+              >
+                <span className="mono text-[10px] font-extrabold uppercase block leading-none"
+                  style={{ color: urgencyColor }}>
+                  {timeLabel}
+                </span>
+                {isToday_ && (
+                  <span className="mono text-[8px] block mt-0.5 leading-none"
+                    style={{ color: urgencyColor, opacity: 0.7 }}>urgente</span>
                 )}
               </div>
+            )}
+
+            {/* Task text + subject */}
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-semibold truncate ${task.is_done ? 'line-through opacity-50' : ''}`}
+                style={{ color: 'var(--on-surface)' }}>
+                {task.text}
+              </p>
+              {subject && (
+                <span className="text-[10px] font-medium mt-0.5 block" style={{ color: subject.color }}>
+                  {subject.name}
+                </span>
+              )}
             </div>
+
+            {/* Priority dot */}
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: priorityColor }}
+              title={task.priority}
+            />
           </li>
         )
       })}

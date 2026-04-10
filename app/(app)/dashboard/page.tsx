@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { daysUntil, isToday, isTomorrow } from '@/lib/utils'
+import { daysUntil, isToday } from '@/lib/utils'
 import type { Task, Exam, Subject, Schedule } from '@/types'
 import { UrgentTasksSection } from '@/components/ui/UrgentTasksSection'
 import { LiveClock } from '@/components/ui/LiveClock'
@@ -38,10 +38,8 @@ export default async function DashboardPage() {
   const todayStr      = new Date().toISOString().split('T')[0]
   const upcomingExams = allExams.filter(e => e.exam_date >= todayStr).slice(0, 4)
 
-  // Urgent tasks (today/tomorrow, not done, max 5)
-  const urgentTasks = allTasks
-    .filter(t => !t.is_done && t.due_date && (isToday(t.due_date) || isTomorrow(t.due_date)))
-    .slice(0, 5)
+  // All pending tasks — UrgentTasksSection handles urgency sorting + slicing
+  const pendingTasks = allTasks.filter(t => !t.is_done)
 
   const pendingCount = allTasks.filter(t => !t.is_done).length
 
@@ -205,7 +203,7 @@ export default async function DashboardPage() {
               </div>
             )}
 
-            <UrgentTasksSection initialTasks={urgentTasks} subjects={allSubjects} />
+            <UrgentTasksSection initialTasks={pendingTasks} subjects={allSubjects} />
           </div>
         </div>
 

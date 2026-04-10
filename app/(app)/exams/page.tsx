@@ -27,25 +27,35 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
   const [loading,         setLoading]         = useState(false)
   const [autoFilled,      setAutoFilled]      = useState(false)
 
-  // Auto-fill time + room from schedule when subject is selected
+  // Auto-fill time + room from schedule when subject or date changes
   useEffect(() => {
     if (!subjectId || isEditing) return
     const fetchSchedule = async () => {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('schedules')
-        .select('*')
-        .eq('subject_id', subjectId)
-        .limit(1)
-        .single()
+      // If exam date is set, prefer the schedule slot that matches the day of week
+      let query = supabase.from('schedules').select('*').eq('subject_id', subjectId)
+      if (examDate) {
+        const dow = new Date(examDate + 'T12:00:00').getDay()
+        query = query.eq('day_of_week', dow)
+      }
+      const { data } = await query.limit(1).maybeSingle()
       if (data) {
         setExamTime(data.start_time?.slice(0, 5) || '')
         setLocation(data.room || '')
         setAutoFilled(true)
+      } else if (!examDate) {
+        // No date filter — grab any schedule for this subject
+        const { data: fallback } = await supabase
+          .from('schedules').select('*').eq('subject_id', subjectId).limit(1).maybeSingle()
+        if (fallback) {
+          setExamTime(fallback.start_time?.slice(0, 5) || '')
+          setLocation(fallback.room || '')
+          setAutoFilled(true)
+        }
       }
     }
     fetchSchedule()
-  }, [subjectId, isEditing])
+  }, [subjectId, examDate, isEditing])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
