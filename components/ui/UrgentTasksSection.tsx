@@ -119,20 +119,28 @@ export function UrgentTasksSection({
             </button>
 
             {/* Time badge — left-aligned, always visible when date set */}
-            {timeLabel && (
-              <div
-                className="flex-shrink-0 min-w-[52px] text-center px-2 py-1 rounded-lg"
-                style={{ backgroundColor: urgencyBg }}
-              >
-                <span className="mono text-[10px] font-extrabold uppercase block leading-none"
-                  style={{ color: urgencyColor }}>
-                  {timeLabel}
-                </span>
+            {timeLabel ? (
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 {isToday_ && (
-                  <span className="mono text-[8px] block mt-0.5 leading-none"
-                    style={{ color: urgencyColor, opacity: 0.7 }}>urgente</span>
+                  <span className="relative flex h-2 w-2 flex-shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
+                      style={{ backgroundColor: urgencyColor }} />
+                    <span className="relative inline-flex rounded-full h-2 w-2"
+                      style={{ backgroundColor: urgencyColor }} />
+                  </span>
                 )}
+                <div
+                  className="min-w-[44px] text-center px-2 py-1 rounded-lg"
+                  style={{ backgroundColor: urgencyBg }}
+                >
+                  <span className="mono text-[10px] font-extrabold uppercase block leading-none"
+                    style={{ color: urgencyColor }}>
+                    {timeLabel}
+                  </span>
+                </div>
               </div>
+            ) : (
+              <div className="flex-shrink-0 min-w-[44px]" />
             )}
 
             {/* Task text + subject */}

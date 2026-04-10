@@ -7,7 +7,7 @@ import { isToday, isTomorrow, daysUntil } from '@/lib/utils'
 import { TaskNotes } from '@/components/tasks/TaskNotes'
 import type { Task, Subtask, Subject } from '@/types'
 
-type Filter = 'all' | 'pending' | 'completed' | 'urgent'
+type Filter = 'all' | 'not_started' | 'in_progress' | 'completed' | 'urgent'
 
 // Status config
 const STATUS_CONFIG = {
@@ -309,16 +309,18 @@ export default function TasksPage() {
   )
 
   const filterCounts: Record<Filter, number> = {
-    all:       subjectFiltered.length,
-    pending:   subjectFiltered.filter(t => !t.is_done).length,
-    completed: subjectFiltered.filter(t => t.is_done).length,
-    urgent:    subjectFiltered.filter(t => !t.is_done && !!t.due_date && daysUntil(t.due_date) <= 1).length,
+    all:         subjectFiltered.length,
+    not_started: subjectFiltered.filter(t => !t.is_done && (t.status || 'not_started') === 'not_started').length,
+    in_progress: subjectFiltered.filter(t => !t.is_done && t.status === 'in_progress').length,
+    completed:   subjectFiltered.filter(t => t.is_done).length,
+    urgent:      subjectFiltered.filter(t => !t.is_done && !!t.due_date && daysUntil(t.due_date) <= 1).length,
   }
 
   const filteredTasks = subjectFiltered.filter(t => {
-    if (filter === 'pending')   return !t.is_done
-    if (filter === 'completed') return t.is_done
-    if (filter === 'urgent')    return !t.is_done && t.due_date && daysUntil(t.due_date) <= 1
+    if (filter === 'not_started') return !t.is_done && (t.status || 'not_started') === 'not_started'
+    if (filter === 'in_progress') return !t.is_done && t.status === 'in_progress'
+    if (filter === 'completed')   return t.is_done
+    if (filter === 'urgent')      return !t.is_done && t.due_date && daysUntil(t.due_date) <= 1
     return true
   })
 
@@ -330,10 +332,11 @@ export default function TasksPage() {
   const allDone      = totalTasks > 0 && totalPending === 0
 
   const FILTERS: { key: Filter; label: string }[] = [
-    { key: 'all',       label: t('tasks.all')       },
-    { key: 'pending',   label: t('tasks.pending')   },
-    { key: 'completed', label: t('tasks.completed') },
-    { key: 'urgent',    label: t('tasks.urgent')    },
+    { key: 'all',         label: t('tasks.all')         },
+    { key: 'not_started', label: t('tasks.not_started') },
+    { key: 'in_progress', label: t('tasks.in_progress') },
+    { key: 'completed',   label: t('tasks.completed')   },
+    { key: 'urgent',      label: t('tasks.urgent')      },
   ]
 
   return (
@@ -477,7 +480,9 @@ export default function TasksPage() {
             <section>
               <h2 className="mono text-[10px] uppercase tracking-widest mb-3"
                 style={{ color: 'var(--color-outline)' }}>
-                {t('tasks.pending_section')} ({pending.length})
+                {filter === 'not_started' ? t('tasks.not_started')
+                  : filter === 'in_progress' ? t('tasks.in_progress')
+                  : t('tasks.pending_section')} ({pending.length})
               </h2>
               {pending.length === 0 && (
                 <p className="text-sm text-center py-8" style={{ color: 'var(--color-outline)' }}>
@@ -491,7 +496,7 @@ export default function TasksPage() {
             </section>
           )}
 
-          {filter !== 'pending' && filter !== 'urgent' && completed.length > 0 && (
+          {filter !== 'not_started' && filter !== 'in_progress' && filter !== 'urgent' && completed.length > 0 && (
             <details className="mt-5">
               <summary className="mono text-[10px] uppercase tracking-widest cursor-pointer mb-3 flex items-center gap-2"
                 style={{ color: 'var(--color-outline)' }}>

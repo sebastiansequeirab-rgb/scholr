@@ -10,7 +10,7 @@
     "subjects": "Subjects",
     "tasks": "Tasks",
     "notes": "Notes",
-    "exams": "Exams",
+    "exams": "Activities",
     "settings": "Settings",
     "ai": "AI Assistant",
     "logout": "Sign out"
@@ -86,6 +86,8 @@
     "title": "Tasks",
     "all": "All",
     "pending": "Pending",
+    "not_started": "Not started",
+    "in_progress": "In progress",
     "completed": "Completed",
     "urgent": "Urgent",
     "add": "Add task",
@@ -124,13 +126,13 @@
     "noSubjectNotes": "No subject"
   },
   "exams": {
-    "title": "Exams",
-    "add": "New exam",
+    "title": "Activities",
+    "add": "New activity",
     "edit": "Edit",
     "delete": "Delete",
-    "past": "Past exams",
-    "noExams": "No exams",
-    "examTitle": "Exam title",
+    "past": "Past activities",
+    "noExams": "No activities",
+    "examTitle": "Title",
     "date": "Date",
     "time": "Time",
     "location": "Room / Location",
@@ -140,13 +142,39 @@
     "tomorrow": "Tomorrow",
     "past_label": "Past"
   },
+  "activities": {
+    "title": "Activities",
+    "add": "New activity",
+    "edit": "Edit activity",
+    "past": "Past activities",
+    "noActivities": "No activities yet",
+    "activityTitle": "Title",
+    "type": "Activity type",
+    "date": "Date",
+    "time": "Time",
+    "location": "Room / Location",
+    "notes": "Notes",
+    "percentage": "Grade weight",
+    "daysLeft": "days",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "past_label": "Past",
+    "autoFilled": "Time and room auto-filled from class schedule",
+    "types": {
+      "exam": "Exam",
+      "workshop": "Workshop",
+      "activity": "Activity",
+      "task": "Assignment",
+      "study_session": "Study session"
+    }
+  },
   "calendar": {
     "title": "Calendar",
     "month": "Month",
     "week": "Week",
     "day": "Day",
     "today": "Today",
-    "addExam": "Add exam"
+    "addExam": "Add activity"
   },
   "settings": {
     "title": "Settings",

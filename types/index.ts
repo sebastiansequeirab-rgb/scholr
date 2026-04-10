@@ -54,6 +54,8 @@ export type Subtask = {
   position: number
 }
 
+export type ActivityType = 'exam' | 'workshop' | 'activity' | 'task' | 'study_session'
+
 export type Exam = {
   id: string
   user_id: string
@@ -64,6 +66,16 @@ export type Exam = {
   location: string | null
   notes: string | null
   created_at: string
+  activity_type: ActivityType
+  percentage: number | null
+}
+
+export const ACTIVITY_TYPES: Record<ActivityType, { label_es: string; label_en: string; icon: string; color: string; requiresPercentage: boolean }> = {
+  exam:          { label_es: 'Examen',           label_en: 'Exam',          icon: 'school',       color: '#ef4444', requiresPercentage: true  },
+  workshop:      { label_es: 'Taller',            label_en: 'Workshop',      icon: 'build',        color: '#f59e0b', requiresPercentage: true  },
+  activity:      { label_es: 'Actividad',         label_en: 'Activity',      icon: 'assignment',   color: '#8b5cf6', requiresPercentage: true  },
+  task:          { label_es: 'Tarea',             label_en: 'Assignment',    icon: 'task_alt',     color: '#3b82f6', requiresPercentage: true  },
+  study_session: { label_es: 'Sesión de estudio', label_en: 'Study session', icon: 'menu_book',    color: '#10b981', requiresPercentage: false },
 }
 
 export type Note = {

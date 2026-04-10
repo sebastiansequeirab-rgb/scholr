@@ -4,35 +4,39 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { daysUntil } from '@/lib/utils'
-import type { Exam, Subject } from '@/types'
+import type { Exam, Subject, ActivityType } from '@/types'
+import { ACTIVITY_TYPES } from '@/types'
 
-interface ExamFormProps {
+interface ActivityFormProps {
   exam?: Exam | null
   subjects: Subject[]
   onClose: () => void
   onSaved: () => void
 }
 
-function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
-  const { t } = useTranslation()
+function ActivityForm({ exam, subjects, onClose, onSaved }: ActivityFormProps) {
+  const { t, language } = useTranslation()
   const isEditing = !!exam
 
-  const [title,           setTitle]           = useState(exam?.title || '')
-  const [subjectId,       setSubjectId]       = useState(exam?.subject_id || '')
-  const [examDate,        setExamDate]        = useState(exam?.exam_date || '')
-  const [examTime,        setExamTime]        = useState(exam?.exam_time || '')
-  const [location,        setLocation]        = useState(exam?.location || '')
-  const [notes,           setNotes]           = useState(exam?.notes || '')
-  const [error,           setError]           = useState('')
-  const [loading,         setLoading]         = useState(false)
-  const [autoFilled,      setAutoFilled]      = useState(false)
+  const [activityType, setActivityType] = useState<ActivityType>(exam?.activity_type || 'exam')
+  const [title,        setTitle]        = useState(exam?.title || '')
+  const [subjectId,    setSubjectId]    = useState(exam?.subject_id || '')
+  const [examDate,     setExamDate]     = useState(exam?.exam_date || '')
+  const [examTime,     setExamTime]     = useState(exam?.exam_time || '')
+  const [percentage,   setPercentage]   = useState<string>(exam?.percentage != null ? String(exam.percentage) : '')
+  const [location,     setLocation]     = useState(exam?.location || '')
+  const [notes,        setNotes]        = useState(exam?.notes || '')
+  const [error,        setError]        = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [autoFilled,   setAutoFilled]   = useState(false)
+
+  const typeCfg = ACTIVITY_TYPES[activityType]
 
   // Auto-fill time + room from schedule when subject or date changes
   useEffect(() => {
     if (!subjectId || isEditing) return
     const fetchSchedule = async () => {
       const supabase = createClient()
-      // If exam date is set, prefer the schedule slot that matches the day of week
       let query = supabase.from('schedules').select('*').eq('subject_id', subjectId)
       if (examDate) {
         const dow = new Date(examDate + 'T12:00:00').getDay()
@@ -44,7 +48,6 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
         setLocation(data.room || '')
         setAutoFilled(true)
       } else if (!examDate) {
-        // No date filter — grab any schedule for this subject
         const { data: fallback } = await supabase
           .from('schedules').select('*').eq('subject_id', subjectId).limit(1).maybeSingle()
         if (fallback) {
@@ -64,11 +67,14 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const pctNum = percentage !== '' ? parseFloat(percentage) : null
     const payload = {
       user_id: user.id, title: title.trim(),
       subject_id: subjectId || null, exam_date: examDate,
       exam_time: examTime || null, location: location.trim() || null,
       notes: notes.trim() || null,
+      activity_type: activityType,
+      percentage: pctNum,
     }
     const { error: dbError } = isEditing
       ? await supabase.from('exams').update(payload).eq('id', exam!.id)
@@ -77,20 +83,56 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
     onSaved(); onClose()
   }
 
+  const TYPE_ORDER: ActivityType[] = ['exam', 'workshop', 'activity', 'task', 'study_session']
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <h2 className="text-lg font-bold mb-5" style={{ color: 'var(--on-surface)' }}>
-          {isEditing ? t('exams.edit') : t('exams.add')}
+          {isEditing ? t('activities.edit') : t('activities.add')}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Activity type selector */}
           <div>
-            <label htmlFor="examTitle" className="label">{t('exams.examTitle')} *</label>
-            <input id="examTitle" className="input" value={title} onChange={e => setTitle(e.target.value)} aria-required="true" />
+            <label className="label">{t('activities.type')}</label>
+            <div className="grid grid-cols-5 gap-1.5">
+              {TYPE_ORDER.map(type => {
+                const cfg = ACTIVITY_TYPES[type]
+                const isActive = activityType === type
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setActivityType(type)}
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl transition-all border"
+                    style={{
+                      backgroundColor: isActive ? `${cfg.color}15` : 'var(--s-base)',
+                      borderColor:     isActive ? cfg.color : 'var(--border-subtle)',
+                      color:           isActive ? cfg.color : 'var(--color-outline)',
+                    }}
+                    title={language === 'es' ? cfg.label_es : cfg.label_en}
+                  >
+                    <span className="material-symbols-outlined text-[18px]"
+                      style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                      {cfg.icon}
+                    </span>
+                    <span className="text-[8px] font-semibold text-center leading-tight">
+                      {language === 'es' ? cfg.label_es : cfg.label_en}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="actTitle" className="label">{t('activities.activityTitle')} *</label>
+            <input id="actTitle" className="input" value={title} onChange={e => setTitle(e.target.value)} aria-required="true" />
           </div>
           <div>
-            <label htmlFor="examSubject" className="label">{t('tasks.subject')}</label>
-            <select id="examSubject" className="input" value={subjectId} onChange={e => setSubjectId(e.target.value)}>
+            <label htmlFor="actSubject" className="label">{t('tasks.subject')}</label>
+            <select id="actSubject" className="input" value={subjectId} onChange={e => setSubjectId(e.target.value)}>
               <option value="">{t('tasks.noSubject')}</option>
               {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -99,26 +141,47 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
             <div className="flex items-center gap-1.5 text-[11px] px-3 py-2 rounded-xl"
               style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', color: 'var(--color-primary)' }}>
               <span className="material-symbols-outlined text-[13px]">auto_awesome</span>
-              Hora y salón auto-completados desde el horario de la materia
+              {t('activities.autoFilled')}
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="examDate" className="label">{t('exams.date')} *</label>
-              <input id="examDate" type="date" className="input" value={examDate} onChange={e => setExamDate(e.target.value)} aria-required="true" />
+              <label htmlFor="actDate" className="label">{t('activities.date')} *</label>
+              <input id="actDate" type="date" className="input" value={examDate} onChange={e => setExamDate(e.target.value)} aria-required="true" />
             </div>
             <div>
-              <label htmlFor="examTime" className="label">{t('exams.time')}</label>
-              <input id="examTime" type="time" className="input" value={examTime} onChange={e => { setExamTime(e.target.value); setAutoFilled(false) }} />
+              <label htmlFor="actTime" className="label">{t('activities.time')}</label>
+              <input id="actTime" type="time" className="input" value={examTime} onChange={e => { setExamTime(e.target.value); setAutoFilled(false) }} />
             </div>
           </div>
+
+          {/* Percentage — only for types that require it */}
+          {typeCfg.requiresPercentage && (
+            <div>
+              <label htmlFor="actPct" className="label">{t('activities.percentage')}</label>
+              <div className="relative">
+                <input
+                  id="actPct"
+                  type="number"
+                  min="0" max="100" step="0.5"
+                  className="input pr-8"
+                  placeholder="0 – 100"
+                  value={percentage}
+                  onChange={e => setPercentage(e.target.value)}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
+                  style={{ color: 'var(--color-outline)' }}>%</span>
+              </div>
+            </div>
+          )}
+
           <div>
-            <label htmlFor="location" className="label">{t('exams.location')}</label>
-            <input id="location" className="input" value={location} onChange={e => { setLocation(e.target.value); setAutoFilled(false) }} placeholder="Se completa automáticamente" />
+            <label htmlFor="actLocation" className="label">{t('activities.location')}</label>
+            <input id="actLocation" className="input" value={location} onChange={e => { setLocation(e.target.value); setAutoFilled(false) }} />
           </div>
           <div>
-            <label htmlFor="examNotes" className="label">{t('exams.notes')}</label>
-            <textarea id="examNotes" className="input min-h-[80px] resize-none" value={notes} onChange={e => setNotes(e.target.value)} />
+            <label htmlFor="actNotes" className="label">{t('activities.notes')}</label>
+            <textarea id="actNotes" className="input min-h-[80px] resize-none" value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
           {error && (
             <p className="text-xs px-3 py-2.5 rounded-xl" role="alert"
@@ -139,7 +202,7 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
 }
 
 export default function ExamsPage() {
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [exams,         setExams]         = useState<Exam[]>([])
   const [subjects,      setSubjects]      = useState<Subject[]>([])
   const [loading,       setLoading]       = useState(true)
@@ -171,29 +234,36 @@ export default function ExamsPage() {
   const past     = exams.filter(e => e.exam_date < now)
   const featured = upcoming[0] || null
 
-  const ExamCard = ({ exam, isFeatured = false }: { exam: Exam; isFeatured?: boolean }) => {
-    const subject = subjects.find(s => s.id === exam.subject_id)
-    const days    = daysUntil(exam.exam_date)
-    const urgency = days < 0 ? 'var(--color-outline)' : days < 3 ? 'var(--danger)' : days < 7 ? 'var(--warning)' : 'var(--color-primary)'
-    const accentColor = subject?.color || urgency
-    const date    = new Date(exam.exam_date + 'T00:00:00')
+  const ActivityCard = ({ exam, isFeatured = false }: { exam: Exam; isFeatured?: boolean }) => {
+    const subject  = subjects.find(s => s.id === exam.subject_id)
+    const days     = daysUntil(exam.exam_date)
+    const typeCfg  = ACTIVITY_TYPES[exam.activity_type || 'exam']
+    const typeColor = typeCfg.color
+    const date     = new Date(exam.exam_date + 'T00:00:00')
+    const typeLabel = language === 'es' ? typeCfg.label_es : typeCfg.label_en
 
     if (isFeatured) {
-      const daysLabel = days < 0 ? 'Pasado' : days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `${days} días`
+      const urgency = days < 0 ? 'var(--color-outline)' : days < 3 ? 'var(--danger)' : days < 7 ? 'var(--warning)' : 'var(--color-primary)'
+      const daysLabel = days < 0 ? t('activities.past_label') : days === 0 ? t('activities.today') : days === 1 ? t('activities.tomorrow') : `${days} ${t('activities.daysLeft')}`
       return (
         <div className="rounded-2xl relative overflow-hidden"
           style={{
             backgroundColor: 'var(--s-low)',
             border: '1px solid var(--border-subtle)',
-            borderTop: `2px solid color-mix(in srgb, ${accentColor} 40%, transparent)`,
+            borderTop: `3px solid ${typeColor}`,
           }}>
-          {/* Subtle ambient glow */}
           <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-[80px] opacity-10 pointer-events-none"
-            style={{ backgroundColor: accentColor }} />
+            style={{ backgroundColor: typeColor }} />
 
           <div className="relative z-10 p-7">
-            {/* Top row: countdown badge + date */}
             <div className="flex items-center gap-3 mb-5">
+              {/* Type badge */}
+              <span className="flex items-center gap-1.5 mono text-[10px] px-2.5 py-1 rounded-full font-bold"
+                style={{ backgroundColor: `${typeColor}15`, color: typeColor }}>
+                <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>{typeCfg.icon}</span>
+                {typeLabel}
+              </span>
+              {/* Countdown badge */}
               <span className="mono text-[11px] px-3 py-1 rounded-full font-bold uppercase tracking-widest inline-flex items-center gap-1.5"
                 style={{
                   color: urgency,
@@ -204,19 +274,23 @@ export default function ExamsPage() {
                 {daysLabel}
               </span>
               <span className="mono text-[10px] capitalize" style={{ color: 'var(--color-outline)' }}>
-                {date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
               </span>
             </div>
 
-            {/* Title */}
             <h2 className="text-2xl font-extrabold tracking-tight mb-2" style={{ color: 'var(--on-surface)' }}>
               {exam.title}
             </h2>
             {subject && (
               <span className="text-sm font-semibold" style={{ color: subject.color }}>{subject.name}</span>
             )}
+            {exam.percentage != null && (
+              <span className="ml-3 mono text-xs font-bold px-2 py-0.5 rounded-lg"
+                style={{ backgroundColor: `${typeColor}15`, color: typeColor }}>
+                {exam.percentage}%
+              </span>
+            )}
 
-            {/* Detail grid */}
             {(exam.exam_time || exam.location || exam.notes) && (
               <div className="flex flex-wrap gap-5 mt-6 pt-5"
                 style={{ borderTop: '1px solid var(--border-subtle)' }}>
@@ -224,7 +298,7 @@ export default function ExamsPage() {
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[15px]" style={{ color: 'var(--color-outline)' }}>schedule</span>
                     <div>
-                      <span className="mono text-[9px] uppercase tracking-widest block leading-none mb-0.5" style={{ color: 'var(--color-outline)' }}>Hora</span>
+                      <span className="mono text-[9px] uppercase tracking-widest block leading-none mb-0.5" style={{ color: 'var(--color-outline)' }}>{t('activities.time')}</span>
                       <span className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>{exam.exam_time.slice(0, 5)}</span>
                     </div>
                   </div>
@@ -233,7 +307,7 @@ export default function ExamsPage() {
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[15px]" style={{ color: 'var(--color-outline)' }}>location_on</span>
                     <div>
-                      <span className="mono text-[9px] uppercase tracking-widest block leading-none mb-0.5" style={{ color: 'var(--color-outline)' }}>Lugar</span>
+                      <span className="mono text-[9px] uppercase tracking-widest block leading-none mb-0.5" style={{ color: 'var(--color-outline)' }}>{t('activities.location')}</span>
                       <span className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>{exam.location}</span>
                     </div>
                   </div>
@@ -242,7 +316,7 @@ export default function ExamsPage() {
                   <div className="flex items-start gap-2">
                     <span className="material-symbols-outlined text-[15px] mt-3.5" style={{ color: 'var(--color-outline)' }}>sticky_note_2</span>
                     <div>
-                      <span className="mono text-[9px] uppercase tracking-widest block leading-none mb-0.5" style={{ color: 'var(--color-outline)' }}>Notas</span>
+                      <span className="mono text-[9px] uppercase tracking-widest block leading-none mb-0.5" style={{ color: 'var(--color-outline)' }}>{t('activities.notes')}</span>
                       <span className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>{exam.notes}</span>
                     </div>
                   </div>
@@ -250,18 +324,17 @@ export default function ExamsPage() {
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-2.5 mt-6">
               <button onClick={() => { setEditingExam(exam); setModalOpen(true) }}
                 className="btn-secondary flex items-center gap-1.5 text-sm">
                 <span className="material-symbols-outlined text-[15px]">edit</span>
-                Editar
+                {t('common.edit')}
               </button>
               <button onClick={() => setDeleteConfirm(exam.id)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110"
                 style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
                 <span className="material-symbols-outlined text-[15px]">delete</span>
-                Eliminar
+                {t('common.delete')}
               </button>
             </div>
           </div>
@@ -270,25 +343,32 @@ export default function ExamsPage() {
     }
 
     // Regular card
+    const urgency = days < 0 ? 'var(--color-outline)' : days < 3 ? 'var(--danger)' : days < 7 ? 'var(--warning)' : 'var(--color-primary)'
     return (
       <div className="rounded-2xl p-5 flex flex-col gap-3 group transition-all duration-200 hover:-translate-y-0.5"
         style={{
           backgroundColor: 'var(--s-low)',
           border: '1px solid var(--border-subtle)',
-          borderLeft: `3px solid color-mix(in srgb, ${urgency} 50%, transparent)`,
+          borderLeft: `3px solid ${typeColor}`,
         }}>
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: `color-mix(in srgb, ${urgency} 12%, transparent)` }}>
-              <span className="material-symbols-outlined text-[16px]" style={{ color: urgency }}>event_upcoming</span>
+              style={{ backgroundColor: `${typeColor}15` }}>
+              <span className="material-symbols-outlined text-[16px]"
+                style={{ color: typeColor, fontVariationSettings: "'FILL' 1" }}>
+                {typeCfg.icon}
+              </span>
             </div>
-            <span className="mono text-[10px] font-bold" style={{ color: urgency }}>
-              {days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `${days}d`}
-            </span>
+            <div>
+              <span className="mono text-[8px] font-bold uppercase block" style={{ color: typeColor }}>{typeLabel}</span>
+              <span className="mono text-[10px] font-bold" style={{ color: urgency }}>
+                {days === 0 ? t('activities.today') : days === 1 ? t('activities.tomorrow') : `${days}d`}
+              </span>
+            </div>
           </div>
           <span className="mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--color-outline)' }}>
-            {date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}
+            {date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' })}
           </span>
         </div>
 
@@ -296,7 +376,15 @@ export default function ExamsPage() {
           <h3 className="text-sm font-bold leading-snug" style={{ color: 'var(--on-surface)' }}>
             {exam.title}
           </h3>
-          {subject && <p className="text-xs mt-0.5 font-medium" style={{ color: subject.color }}>{subject.name}</p>}
+          <div className="flex items-center gap-2 mt-0.5">
+            {subject && <p className="text-xs font-medium" style={{ color: subject.color }}>{subject.name}</p>}
+            {exam.percentage != null && (
+              <span className="mono text-[9px] font-bold px-1.5 py-0.5 rounded"
+                style={{ backgroundColor: `${typeColor}15`, color: typeColor }}>
+                {exam.percentage}%
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between pt-3"
@@ -339,20 +427,20 @@ export default function ExamsPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-5">
         <div>
           <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-2"
-            style={{ color: 'var(--color-primary)' }}>Exam Assessment Center</span>
+            style={{ color: 'var(--color-primary)' }}>Academic Activities</span>
           <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-            {t('exams.title')}
+            {t('activities.title')}
           </h1>
           {!loading && upcoming.length > 0 && (
             <p className="text-sm mt-1.5" style={{ color: 'var(--on-surface-variant)' }}>
-              {upcoming.length} próximo{upcoming.length !== 1 ? 's' : ''}
-              {past.length > 0 && ` · ${past.length} completado${past.length !== 1 ? 's' : ''}`}
+              {upcoming.length} {language === 'es' ? `próxima${upcoming.length !== 1 ? 's' : ''}` : `upcoming`}
+              {past.length > 0 && ` · ${past.length} ${language === 'es' ? `completada${past.length !== 1 ? 's' : ''}` : 'past'}`}
             </p>
           )}
         </div>
-        <button onClick={() => { setEditingExam(null); setModalOpen(true) }} className="btn-primary" id="add-exam-btn">
+        <button onClick={() => { setEditingExam(null); setModalOpen(true) }} className="btn-primary">
           <span className="material-symbols-outlined text-[18px]">add</span>
-          {t('exams.add')}
+          {t('activities.add')}
         </button>
       </div>
 
@@ -372,11 +460,13 @@ export default function ExamsPage() {
               <span className="material-symbols-outlined text-4xl" style={{ color: 'var(--color-primary)' }}>event_upcoming</span>
             </div>
           </div>
-          <p className="font-semibold mb-1" style={{ color: 'var(--on-surface)' }}>{t('exams.noExams')}</p>
-          <p className="text-sm mb-6" style={{ color: 'var(--color-outline)' }}>Registra tu primer examen para empezar a prepararte</p>
+          <p className="font-semibold mb-1" style={{ color: 'var(--on-surface)' }}>{t('activities.noActivities')}</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--color-outline)' }}>
+            {language === 'es' ? 'Registra tu primera actividad para empezar a prepararte' : 'Add your first activity to get started'}
+          </p>
           <button onClick={() => setModalOpen(true)} className="btn-primary">
             <span className="material-symbols-outlined text-[18px]">add</span>
-            {t('exams.add')}
+            {t('activities.add')}
           </button>
         </div>
       )}
@@ -384,9 +474,9 @@ export default function ExamsPage() {
       {!loading && (
         <div className="space-y-4">
           {/* Featured */}
-          {featured && <ExamCard exam={featured} isFeatured />}
+          {featured && <ActivityCard exam={featured} isFeatured />}
 
-          {/* Only exam + no past — calm state */}
+          {/* Only one + no past */}
           {featured && upcoming.length === 1 && past.length === 0 && (
             <div className="rounded-2xl p-5 flex items-center gap-4"
               style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
@@ -397,9 +487,11 @@ export default function ExamsPage() {
                 </span>
               </div>
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>Sin más exámenes programados</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>
+                  {language === 'es' ? 'Sin más actividades programadas' : 'No more activities scheduled'}
+                </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--color-outline)' }}>
-                  Concentra tu preparación en el examen próximo.
+                  {language === 'es' ? 'Concentra tu preparación en la próxima actividad.' : 'Focus on the upcoming one.'}
                 </p>
               </div>
             </div>
@@ -416,8 +508,12 @@ export default function ExamsPage() {
                 </span>
               </div>
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>Sin exámenes próximos</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--color-outline)' }}>Todos tus exámenes registrados ya pasaron. ¡Buen trabajo!</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>
+                  {language === 'es' ? 'Sin actividades próximas' : 'No upcoming activities'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--color-outline)' }}>
+                  {language === 'es' ? '¡Todas tus actividades registradas ya pasaron!' : 'All your registered activities are done!'}
+                </p>
               </div>
             </div>
           )}
@@ -425,7 +521,7 @@ export default function ExamsPage() {
           {/* Rest of upcoming */}
           {upcoming.length > 1 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {upcoming.slice(1).map(e => <ExamCard key={e.id} exam={e} />)}
+              {upcoming.slice(1).map(e => <ActivityCard key={e.id} exam={e} />)}
             </div>
           )}
 
@@ -435,10 +531,10 @@ export default function ExamsPage() {
               <summary className="mono text-[10px] uppercase tracking-widest cursor-pointer mb-4 flex items-center gap-2 select-none"
                 style={{ color: 'var(--color-outline)' }}>
                 <span className="material-symbols-outlined text-[13px]">history</span>
-                {t('exams.past')} ({past.length})
+                {t('activities.past')} ({past.length})
               </summary>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 opacity-55">
-                {past.slice(0, 6).map(e => <ExamCard key={e.id} exam={e} />)}
+                {past.slice(0, 6).map(e => <ActivityCard key={e.id} exam={e} />)}
               </div>
             </details>
           )}
@@ -446,7 +542,7 @@ export default function ExamsPage() {
       )}
 
       {modalOpen && (
-        <ExamForm exam={editingExam} subjects={subjects} onClose={() => setModalOpen(false)} onSaved={fetchData} />
+        <ActivityForm exam={editingExam} subjects={subjects} onClose={() => setModalOpen(false)} onSaved={fetchData} />
       )}
 
       {deleteConfirm && (

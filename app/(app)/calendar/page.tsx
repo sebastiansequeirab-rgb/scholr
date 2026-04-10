@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import type { Subject, Schedule, Exam, Task } from '@/types'
+import { ACTIVITY_TYPES } from '@/types'
 
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -22,6 +23,8 @@ interface ClickedEvent {
   priority?: string
   subjectName?: string
   taskStatus?: string
+  activityType?: string
+  percentage?: number | null
 }
 
 const SANCTUARY_CALENDAR_CSS = `
@@ -370,17 +373,22 @@ export default function CalendarPage() {
   })
 
   exams.forEach((e) => {
-    const subject = subjects.find(s => s.id === e.subject_id)
+    const subject   = subjects.find(s => s.id === e.subject_id)
+    const typeCfg   = ACTIVITY_TYPES[e.activity_type || 'exam']
+    const typeColor = typeCfg.color
     events.push({
       id:              `exam-${e.id}`,
       title:           e.title,
       start:           e.exam_time ? `${e.exam_date}T${e.exam_time}` : e.exam_date,
       allDay:          !e.exam_time,
-      backgroundColor: 'color-mix(in srgb, #f87171 18%, var(--s-base))',
-      borderColor:     '#f87171',
-      textColor:       '#f87171',
+      backgroundColor: `color-mix(in srgb, ${typeColor} 14%, var(--s-base))`,
+      borderColor:     typeColor,
+      textColor:       typeColor,
       classNames:      ['fc-ev-exam'],
-      extendedProps:   { type: 'exam', subjectName: subject?.name, location: e.location, notes: e.notes },
+      extendedProps:   {
+        type: 'exam', subjectName: subject?.name, location: e.location, notes: e.notes,
+        activityType: e.activity_type || 'exam', percentage: e.percentage,
+      },
     })
   })
 
@@ -406,16 +414,18 @@ export default function CalendarPage() {
   const handleEventClick = (info: EventClickArg) => {
     const p = info.event.extendedProps
     setClickedEvent({
-      type:        p.type,
-      title:       info.event.title,
-      date:        info.event.startStr,
-      location:    p.location,
-      notes:       p.notes,
-      color:       info.event.borderColor,
-      professor:   p.professor,
-      priority:    p.priority,
-      subjectName: p.subjectName,
-      taskStatus:  p.taskStatus,
+      type:         p.type,
+      title:        info.event.title,
+      date:         info.event.startStr,
+      location:     p.location,
+      notes:        p.notes,
+      color:        info.event.borderColor,
+      professor:    p.professor,
+      priority:     p.priority,
+      subjectName:  p.subjectName,
+      taskStatus:   p.taskStatus,
+      activityType: p.activityType,
+      percentage:   p.percentage,
     })
   }
 
@@ -471,10 +481,16 @@ export default function CalendarPage() {
           </div>
         ))}
         {exams.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: 'var(--danger)' }} />
-            <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>Exámenes</span>
-          </div>
+          <>
+            {(Object.keys(ACTIVITY_TYPES) as Array<keyof typeof ACTIVITY_TYPES>).filter(k =>
+              exams.some(e => (e.activity_type || 'exam') === k)
+            ).map(k => (
+              <div key={k} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: ACTIVITY_TYPES[k].color }} />
+                <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>{ACTIVITY_TYPES[k].label_es}</span>
+              </div>
+            ))}
+          </>
         )}
         {tasks.some(t => !t.is_done && t.due_date) && (
           <div className="flex items-center gap-1.5">
@@ -538,12 +554,15 @@ export default function CalendarPage() {
                 </div>
               )
             }
-            // Exam: label + title
-            if (type === 'exam' && !arg.event.allDay) {
+            // Activity/Exam: type label + title
+            if (type === 'exam') {
+              const actType = (arg.event.extendedProps.activityType || 'exam') as keyof typeof ACTIVITY_TYPES
+              const cfg = ACTIVITY_TYPES[actType]
               return (
                 <div style={{ padding: '2px 4px', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '8px', fontWeight: 800, opacity: 0.7, letterSpacing: '0.06em', textTransform: 'uppercase', lineHeight: 1.2, display: 'block' }}>
-                    examen
+                  <span style={{ fontSize: '8px', fontWeight: 800, opacity: 0.75, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '9px', fontVariationSettings: "'FILL' 1" }}>{cfg.icon}</span>
+                    {cfg.label_es}
                   </span>
                   <span style={{ fontSize: '10.5px', fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                     {arg.event.title}
@@ -589,7 +608,9 @@ export default function CalendarPage() {
                 <div>
                   <span className="mono text-[9px] uppercase tracking-widest block"
                     style={{ color: 'var(--color-outline)' }}>
-                    {clickedEvent.type === 'exam' ? 'Examen' : clickedEvent.type === 'task' ? 'Tarea' : 'Clase'}
+                    {clickedEvent.type === 'exam'
+                      ? (clickedEvent.activityType ? ACTIVITY_TYPES[clickedEvent.activityType as keyof typeof ACTIVITY_TYPES]?.label_es : 'Actividad')
+                      : clickedEvent.type === 'task' ? 'Tarea' : 'Clase'}
                   </span>
                   <h2 className="font-bold text-base" style={{ color: 'var(--on-surface)' }}>
                     {clickedEvent.title}
@@ -619,6 +640,14 @@ export default function CalendarPage() {
                 <div className="flex items-center gap-2.5" style={{ color: 'var(--on-surface-variant)' }}>
                   <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>person</span>
                   {clickedEvent.professor}
+                </div>
+              )}
+              {clickedEvent.percentage != null && (
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>percent</span>
+                  <span className="mono text-sm font-bold" style={{ color: clickedEvent.color || 'var(--on-surface)' }}>
+                    {clickedEvent.percentage}%
+                  </span>
                 </div>
               )}
               {clickedEvent.priority && (

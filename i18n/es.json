@@ -10,7 +10,7 @@
     "subjects": "Materias",
     "tasks": "Tareas",
     "notes": "Notas",
-    "exams": "Exámenes",
+    "exams": "Actividades",
     "settings": "Ajustes",
     "ai": "Asistente IA",
     "logout": "Cerrar sesión"
@@ -86,6 +86,8 @@
     "title": "Tareas",
     "all": "Todas",
     "pending": "Pendientes",
+    "not_started": "Sin empezar",
+    "in_progress": "En progreso",
     "completed": "Completadas",
     "urgent": "Urgentes",
     "add": "Agregar tarea",
@@ -124,13 +126,13 @@
     "noSubjectNotes": "Sin materia"
   },
   "exams": {
-    "title": "Exámenes",
-    "add": "Nuevo examen",
+    "title": "Actividades",
+    "add": "Nueva actividad",
     "edit": "Editar",
     "delete": "Eliminar",
-    "past": "Exámenes pasados",
-    "noExams": "No hay exámenes",
-    "examTitle": "Título del examen",
+    "past": "Actividades pasadas",
+    "noExams": "No hay actividades",
+    "examTitle": "Título",
     "date": "Fecha",
     "time": "Hora",
     "location": "Salón / Lugar",
@@ -140,13 +142,39 @@
     "tomorrow": "Mañana",
     "past_label": "Pasado"
   },
+  "activities": {
+    "title": "Actividades",
+    "add": "Nueva actividad",
+    "edit": "Editar actividad",
+    "past": "Actividades pasadas",
+    "noActivities": "Aún no tienes actividades",
+    "activityTitle": "Título",
+    "type": "Tipo de actividad",
+    "date": "Fecha",
+    "time": "Hora",
+    "location": "Salón / Lugar",
+    "notes": "Notas",
+    "percentage": "Porcentaje de nota",
+    "daysLeft": "días",
+    "today": "Hoy",
+    "tomorrow": "Mañana",
+    "past_label": "Pasado",
+    "autoFilled": "Hora y salón completados automáticamente desde el horario",
+    "types": {
+      "exam": "Examen",
+      "workshop": "Taller",
+      "activity": "Actividad",
+      "task": "Tarea",
+      "study_session": "Sesión de estudio"
+    }
+  },
   "calendar": {
     "title": "Calendario",
     "month": "Mes",
     "week": "Semana",
     "day": "Día",
     "today": "Hoy",
-    "addExam": "Agregar examen"
+    "addExam": "Agregar actividad"
   },
   "settings": {
     "title": "Ajustes",
