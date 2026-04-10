@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { daysUntil } from '@/lib/utils'
-import type { Exam, Subject } from '@/types'
+import type { Exam, Subject, Schedule } from '@/types'
 
 interface ExamFormProps {
   exam?: Exam | null
@@ -17,14 +17,35 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
   const { t } = useTranslation()
   const isEditing = !!exam
 
-  const [title,     setTitle]     = useState(exam?.title || '')
-  const [subjectId, setSubjectId] = useState(exam?.subject_id || '')
-  const [examDate,  setExamDate]  = useState(exam?.exam_date || '')
-  const [examTime,  setExamTime]  = useState(exam?.exam_time || '')
-  const [location,  setLocation]  = useState(exam?.location || '')
-  const [notes,     setNotes]     = useState(exam?.notes || '')
-  const [error,     setError]     = useState('')
-  const [loading,   setLoading]   = useState(false)
+  const [title,           setTitle]           = useState(exam?.title || '')
+  const [subjectId,       setSubjectId]       = useState(exam?.subject_id || '')
+  const [examDate,        setExamDate]        = useState(exam?.exam_date || '')
+  const [examTime,        setExamTime]        = useState(exam?.exam_time || '')
+  const [location,        setLocation]        = useState(exam?.location || '')
+  const [notes,           setNotes]           = useState(exam?.notes || '')
+  const [error,           setError]           = useState('')
+  const [loading,         setLoading]         = useState(false)
+  const [autoFilled,      setAutoFilled]      = useState(false)
+
+  // Auto-fill time + room from schedule when subject is selected
+  useEffect(() => {
+    if (!subjectId || isEditing) return
+    const fetchSchedule = async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .limit(1)
+        .single()
+      if (data) {
+        setExamTime(data.start_time?.slice(0, 5) || '')
+        setLocation(data.room || '')
+        setAutoFilled(true)
+      }
+    }
+    fetchSchedule()
+  }, [subjectId, isEditing])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,6 +85,13 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
               {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
+          {autoFilled && (
+            <div className="flex items-center gap-1.5 text-[11px] px-3 py-2 rounded-xl"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', color: 'var(--color-primary)' }}>
+              <span className="material-symbols-outlined text-[13px]">auto_awesome</span>
+              Hora y salón auto-completados desde el horario de la materia
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="examDate" className="label">{t('exams.date')} *</label>
@@ -71,12 +99,12 @@ function ExamForm({ exam, subjects, onClose, onSaved }: ExamFormProps) {
             </div>
             <div>
               <label htmlFor="examTime" className="label">{t('exams.time')}</label>
-              <input id="examTime" type="time" className="input" value={examTime} onChange={e => setExamTime(e.target.value)} />
+              <input id="examTime" type="time" className="input" value={examTime} onChange={e => { setExamTime(e.target.value); setAutoFilled(false) }} />
             </div>
           </div>
           <div>
             <label htmlFor="location" className="label">{t('exams.location')}</label>
-            <input id="location" className="input" value={location} onChange={e => setLocation(e.target.value)} />
+            <input id="location" className="input" value={location} onChange={e => { setLocation(e.target.value); setAutoFilled(false) }} placeholder="Se completa automáticamente" />
           </div>
           <div>
             <label htmlFor="examNotes" className="label">{t('exams.notes')}</label>

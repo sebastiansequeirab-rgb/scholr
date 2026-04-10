@@ -6,6 +6,8 @@ import { useTranslation } from '@/hooks/useTranslation'
 import { debounce, timeAgo } from '@/lib/utils'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 import { Node, mergeAttributes } from '@tiptap/core'
 import type { Note, Subject } from '@/types'
 
@@ -62,7 +64,7 @@ function NoteEditor({
   ).current
 
   const editor = useEditor({
-    extensions: [StarterKit, ImageNode],
+    extensions: [StarterKit, ImageNode, TaskList, TaskItem.configure({ nested: true })],
     content: note.content,
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
@@ -112,14 +114,18 @@ function NoteEditor({
 
   const currentSubject = subjects.find(s => s.id === note.subject_id)
 
-  const TOOLBAR = [
-    { label: 'B',       action: () => editor?.chain().focus().toggleBold().run(),                           active: editor?.isActive('bold')                 ?? false },
-    { label: 'I',       action: () => editor?.chain().focus().toggleItalic().run(),                         active: editor?.isActive('italic')               ?? false },
-    { label: 'code',    action: () => editor?.chain().focus().toggleCode().run(),                           active: editor?.isActive('code')                 ?? false },
-    { label: 'H1',      action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),            active: editor?.isActive('heading', { level: 1 }) ?? false },
-    { label: 'H2',      action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),            active: editor?.isActive('heading', { level: 2 }) ?? false },
-    { label: '• List',  action: () => editor?.chain().focus().toggleBulletList().run(),                     active: editor?.isActive('bulletList')            ?? false },
-    { label: '1. List', action: () => editor?.chain().focus().toggleOrderedList().run(),                    active: editor?.isActive('orderedList')           ?? false },
+  const TOOLBAR: { icon: string; title: string; action: () => void; active: boolean; isText?: boolean }[] = [
+    { icon: 'H1',          title: 'Encabezado 1',  isText: true,  action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(), active: editor?.isActive('heading', { level: 1 }) ?? false },
+    { icon: 'H2',          title: 'Encabezado 2',  isText: true,  action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(), active: editor?.isActive('heading', { level: 2 }) ?? false },
+    { icon: 'H3',          title: 'Encabezado 3',  isText: true,  action: () => editor?.chain().focus().toggleHeading({ level: 3 }).run(), active: editor?.isActive('heading', { level: 3 }) ?? false },
+    { icon: 'format_bold',           title: 'Negrita',       action: () => editor?.chain().focus().toggleBold().run(),           active: editor?.isActive('bold')        ?? false },
+    { icon: 'format_italic',         title: 'Cursiva',       action: () => editor?.chain().focus().toggleItalic().run(),         active: editor?.isActive('italic')      ?? false },
+    { icon: 'format_strikethrough',  title: 'Tachado',       action: () => editor?.chain().focus().toggleStrike().run(),         active: editor?.isActive('strike')      ?? false },
+    { icon: 'code',                  title: 'Código',        action: () => editor?.chain().focus().toggleCode().run(),           active: editor?.isActive('code')        ?? false },
+    { icon: 'format_list_bulleted',  title: 'Lista',         action: () => editor?.chain().focus().toggleBulletList().run(),     active: editor?.isActive('bulletList')  ?? false },
+    { icon: 'format_list_numbered',  title: 'Lista numerada',action: () => editor?.chain().focus().toggleOrderedList().run(),    active: editor?.isActive('orderedList') ?? false },
+    { icon: 'checklist',             title: 'Checklist',     action: () => editor?.chain().focus().toggleTaskList().run(),       active: editor?.isActive('taskList')    ?? false },
+    { icon: 'format_quote',          title: 'Cita',          action: () => editor?.chain().focus().toggleBlockquote().run(),     active: editor?.isActive('blockquote')  ?? false },
   ]
 
   return (
@@ -127,17 +133,31 @@ function NoteEditor({
       {/* Toolbar */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 gap-3 glass"
         style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <div className="flex items-center gap-1 flex-wrap flex-1">
-          {editor && TOOLBAR.map(({ label, action, active }) => (
-            <button key={label} onClick={action} type="button"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={{
-                backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
-                color:           active ? 'var(--color-primary)' : 'var(--color-outline)',
-              }}
-              aria-pressed={active}>
-              {label}
-            </button>
+        <div className="flex items-center gap-0.5 flex-wrap flex-1">
+          {editor && TOOLBAR.map(({ icon, title, action, active, isText }, i) => (
+            <>
+              {/* Divider before inline formatting group */}
+              {i === 3 && (
+                <span key="div1" className="w-px h-4 mx-1 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: 'var(--border-default)' }} />
+              )}
+              {i === 7 && (
+                <span key="div2" className="w-px h-4 mx-1 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: 'var(--border-default)' }} />
+              )}
+              <button key={icon} onClick={action} type="button" title={title}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:brightness-110"
+                style={{
+                  backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                  color:           active ? 'var(--color-primary)' : 'var(--color-outline)',
+                }}
+                aria-pressed={active}>
+                {isText
+                  ? <span className="text-[10px] font-extrabold">{icon}</span>
+                  : <span className="material-symbols-outlined text-[17px]">{icon}</span>
+                }
+              </button>
+            </>
           ))}
 
           {/* Image upload button */}

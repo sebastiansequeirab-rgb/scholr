@@ -227,7 +227,6 @@ export default function TasksPage() {
   const [priority,     setPriority]     = useState<'high' | 'mid' | 'low'>('mid')
   const [dueDate,      setDueDate]      = useState('')
   const [subjectId,    setSubjectId]    = useState<string>('')
-  const [inputFocused, setInputFocused] = useState(false)
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -357,7 +356,6 @@ export default function TasksPage() {
             id="new-task-input"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onFocus={() => setInputFocused(true)}
             placeholder={t('tasks.placeholder')}
             className="input flex-1 pl-12"
             aria-label={t('tasks.add')}
@@ -367,23 +365,26 @@ export default function TasksPage() {
           </button>
         </div>
 
-        {inputFocused && (
-          <div className="flex flex-wrap gap-3 mt-4 animate-slide-up">
-            <select value={priority} onChange={(e) => setPriority(e.target.value as 'high' | 'mid' | 'low')}
-              className="input w-auto text-xs py-1.5" aria-label={t('tasks.priority')}>
-              <option value="high">● {t('tasks.high')}</option>
-              <option value="mid">● {t('tasks.mid')}</option>
-              <option value="low">● {t('tasks.low')}</option>
-            </select>
-            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
-              className="input w-auto text-xs py-1.5" aria-label={t('tasks.subject')}>
-              <option value="">{t('tasks.noSubject')}</option>
-              {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+        <div className="flex flex-wrap gap-3 mt-4">
+          <select value={priority} onChange={(e) => setPriority(e.target.value as 'high' | 'mid' | 'low')}
+            className="input w-auto text-xs py-1.5" aria-label={t('tasks.priority')}>
+            <option value="high">● {t('tasks.high')}</option>
+            <option value="mid">● {t('tasks.mid')}</option>
+            <option value="low">● {t('tasks.low')}</option>
+          </select>
+          <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
+            className="input w-auto text-xs py-1.5" aria-label={t('tasks.subject')}>
+            <option value="">{t('tasks.noSubject')}</option>
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <div className="flex items-center gap-1.5 input w-auto py-0 pr-2" style={{ backgroundColor: 'var(--s-base)' }}>
+            <span className="material-symbols-outlined text-[14px] flex-shrink-0" style={{ color: dueDate ? 'var(--color-primary)' : 'var(--color-outline)' }}>event</span>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-              className="input w-auto text-xs py-1.5" aria-label={t('tasks.dueDate')} />
+              className="bg-transparent outline-none text-xs py-1.5 w-[120px]"
+              style={{ color: dueDate ? 'var(--on-surface)' : 'var(--color-outline)' }}
+              aria-label={t('tasks.dueDate')} />
           </div>
-        )}
+        </div>
       </form>
 
       {/* Subject chips */}
