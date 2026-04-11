@@ -9,11 +9,11 @@ import type { Task, Subtask, Subject } from '@/types'
 
 type Filter = 'all' | 'not_started' | 'in_progress' | 'completed' | 'urgent'
 
-// Status config
-const STATUS_CONFIG = {
-  not_started: { label: 'Sin empezar', icon: 'radio_button_unchecked', color: 'var(--color-outline)',  bg: 'transparent' },
-  in_progress: { label: 'En progreso', icon: 'pending',                color: 'var(--warning)',        bg: 'var(--priority-mid-bg)' },
-  done:        { label: 'Completado',  icon: 'check_circle',           color: 'var(--success)',        bg: 'color-mix(in srgb, var(--success) 12%, transparent)' },
+// Status config — labels resolved at render time using t()
+const STATUS_ICONS = {
+  not_started: { icon: 'radio_button_unchecked', color: 'var(--color-outline)',  bg: 'transparent' },
+  in_progress: { icon: 'pending',                color: 'var(--warning)',        bg: 'var(--priority-mid-bg)' },
+  done:        { icon: 'check_circle',           color: 'var(--success)',        bg: 'color-mix(in srgb, var(--success) 12%, transparent)' },
 } as const
 
 function TaskItem({
@@ -93,14 +93,14 @@ function TaskItem({
     onRefresh()
   }
 
-  const statusCfg = STATUS_CONFIG[taskStatus]
+  const statusCfg = STATUS_ICONS[taskStatus]
   const isDone = taskStatus === 'done'
 
   const dueBadge = () => {
     if (!task.due_date) return null
     const days = daysUntil(task.due_date)
-    if (isToday(task.due_date))    return { label: t('exams.today'),    color: 'var(--danger)',  bg: 'var(--priority-high-bg)' }
-    if (isTomorrow(task.due_date)) return { label: t('exams.tomorrow'), color: 'var(--warning)', bg: 'var(--priority-mid-bg)'  }
+    if (isToday(task.due_date))    return { label: t('activities.today'),    color: 'var(--danger)',  bg: 'var(--priority-high-bg)' }
+    if (isTomorrow(task.due_date)) return { label: t('activities.tomorrow'), color: 'var(--warning)', bg: 'var(--priority-mid-bg)'  }
     if (days <= 7)                 return { label: `${days}d`,          color: 'var(--warning)', bg: 'var(--priority-mid-bg)'  }
     return                                { label: `${days}d`,          color: 'var(--color-primary)', bg: 'color-mix(in srgb, var(--color-primary) 10%, transparent)' }
   }
@@ -120,10 +120,10 @@ function TaskItem({
         {/* Status cycle button */}
         <button
           onClick={cycleStatus}
-          title={statusCfg.label}
+          title={taskStatus}
           className="w-6 h-6 flex-shrink-0 mt-0.5 transition-all duration-200 flex items-center justify-center hover:scale-110 rounded-full"
           style={{ color: statusCfg.color }}
-          aria-label={`Estado: ${statusCfg.label}`}
+          aria-label={`Estado: ${taskStatus}`}
         >
           <span className="material-symbols-outlined text-[22px]"
             style={{ fontVariationSettings: taskStatus === 'done' ? "'FILL' 1" : "'FILL' 0" }}>
@@ -144,7 +144,7 @@ function TaskItem({
               <span className="mono text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase flex items-center gap-1"
                 style={{ backgroundColor: statusCfg.bg, color: statusCfg.color }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--warning)' }} />
-                En progreso
+                {t('tasks.in_progress')}
               </span>
             )}
 

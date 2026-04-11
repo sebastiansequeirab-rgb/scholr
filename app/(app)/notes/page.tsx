@@ -11,7 +11,7 @@ import TaskItem from '@tiptap/extension-task-item'
 import { Node, mergeAttributes } from '@tiptap/core'
 import type { Note, Subject } from '@/types'
 
-// ── Custom inline image node (no extra package needed) ──────────────
+// ── Custom inline image node ─────────────────────────────────────────
 const ImageNode = Node.create({
   name: 'image',
   group: 'block',
@@ -34,16 +34,18 @@ function NoteEditor({
   subjects,
   onUpdated,
   onSubjectChanged,
+  onBack,
 }: {
   note: Note
   subjects: Subject[]
   onUpdated: (id: string, title: string, content: string) => void
   onSubjectChanged: (noteId: string, subjectId: string | null) => void
+  onBack?: () => void
 }) {
   const { t } = useTranslation()
-  const [title,          setTitle]          = useState(note.title)
-  const [saveStatus,     setSaveStatus]     = useState<'saved' | 'saving' | null>('saved')
-  const [lastSaved,      setLastSaved]      = useState(note.updated_at)
+  const [title,           setTitle]           = useState(note.title)
+  const [saveStatus,      setSaveStatus]      = useState<'saved' | 'saving' | null>('saved')
+  const [lastSaved,       setLastSaved]       = useState(note.updated_at)
   const [subjectDropdown, setSubjectDropdown] = useState(false)
   const [uploadingImage,  setUploadingImage]  = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -102,7 +104,6 @@ function NoteEditor({
       }
     }
     setUploadingImage(false)
-    // Reset input so same file can be re-uploaded
     if (imageInputRef.current) imageInputRef.current.value = ''
   }
 
@@ -115,25 +116,36 @@ function NoteEditor({
   const currentSubject = subjects.find(s => s.id === note.subject_id)
 
   const TOOLBAR: { icon: string; title: string; action: () => void; active: boolean; isText?: boolean }[] = [
-    { icon: 'H1',          title: 'Encabezado 1',  isText: true,  action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(), active: editor?.isActive('heading', { level: 1 }) ?? false },
-    { icon: 'H2',          title: 'Encabezado 2',  isText: true,  action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(), active: editor?.isActive('heading', { level: 2 }) ?? false },
-    { icon: 'H3',          title: 'Encabezado 3',  isText: true,  action: () => editor?.chain().focus().toggleHeading({ level: 3 }).run(), active: editor?.isActive('heading', { level: 3 }) ?? false },
-    { icon: 'format_bold',           title: 'Negrita',       action: () => editor?.chain().focus().toggleBold().run(),           active: editor?.isActive('bold')        ?? false },
-    { icon: 'format_italic',         title: 'Cursiva',       action: () => editor?.chain().focus().toggleItalic().run(),         active: editor?.isActive('italic')      ?? false },
-    { icon: 'format_strikethrough',  title: 'Tachado',       action: () => editor?.chain().focus().toggleStrike().run(),         active: editor?.isActive('strike')      ?? false },
-    { icon: 'code',                  title: 'Código',        action: () => editor?.chain().focus().toggleCode().run(),           active: editor?.isActive('code')        ?? false },
-    { icon: 'format_list_bulleted',  title: 'Lista',         action: () => editor?.chain().focus().toggleBulletList().run(),     active: editor?.isActive('bulletList')  ?? false },
-    { icon: 'format_list_numbered',  title: 'Lista numerada',action: () => editor?.chain().focus().toggleOrderedList().run(),    active: editor?.isActive('orderedList') ?? false },
+    { icon: 'H1', title: 'Heading 1', isText: true, action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(), active: editor?.isActive('heading', { level: 1 }) ?? false },
+    { icon: 'H2', title: 'Heading 2', isText: true, action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(), active: editor?.isActive('heading', { level: 2 }) ?? false },
+    { icon: 'H3', title: 'Heading 3', isText: true, action: () => editor?.chain().focus().toggleHeading({ level: 3 }).run(), active: editor?.isActive('heading', { level: 3 }) ?? false },
+    { icon: 'format_bold',           title: 'Bold',          action: () => editor?.chain().focus().toggleBold().run(),           active: editor?.isActive('bold')        ?? false },
+    { icon: 'format_italic',         title: 'Italic',        action: () => editor?.chain().focus().toggleItalic().run(),         active: editor?.isActive('italic')      ?? false },
+    { icon: 'format_strikethrough',  title: 'Strikethrough', action: () => editor?.chain().focus().toggleStrike().run(),         active: editor?.isActive('strike')      ?? false },
+    { icon: 'code',                  title: 'Code',          action: () => editor?.chain().focus().toggleCode().run(),           active: editor?.isActive('code')        ?? false },
+    { icon: 'format_list_bulleted',  title: 'Bullet list',   action: () => editor?.chain().focus().toggleBulletList().run(),     active: editor?.isActive('bulletList')  ?? false },
+    { icon: 'format_list_numbered',  title: 'Numbered list', action: () => editor?.chain().focus().toggleOrderedList().run(),    active: editor?.isActive('orderedList') ?? false },
     { icon: 'checklist',             title: 'Checklist',     action: () => editor?.chain().focus().toggleTaskList().run(),       active: editor?.isActive('taskList')    ?? false },
-    { icon: 'format_quote',          title: 'Cita',          action: () => editor?.chain().focus().toggleBlockquote().run(),     active: editor?.isActive('blockquote')  ?? false },
+    { icon: 'format_quote',          title: 'Quote',         action: () => editor?.chain().focus().toggleBlockquote().run(),     active: editor?.isActive('blockquote')  ?? false },
   ]
 
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 gap-3 glass"
-        style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <div className="flex items-center gap-0.5 flex-wrap flex-1">
+      <div className="sticky top-0 z-10 flex items-center px-4 py-2 gap-2 glass flex-wrap"
+        style={{ borderBottom: '1px solid var(--border-subtle)', minHeight: '48px' }}>
+
+        {/* Back button (mobile only) */}
+        {onBack && (
+          <button onClick={onBack} type="button"
+            className="lg:hidden flex items-center gap-1 mr-1 px-2 py-1.5 rounded-lg transition-all"
+            style={{ color: 'var(--color-primary)' }}>
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          </button>
+        )}
+
+        {/* Format tools */}
+        <div className="flex items-center gap-0.5 flex-1 flex-wrap">
           {editor && TOOLBAR.map(({ icon, title, action, active, isText }, i) => (
             <React.Fragment key={icon}>
               {i === 3 && (
@@ -145,7 +157,7 @@ function NoteEditor({
                   style={{ backgroundColor: 'var(--border-default)' }} />
               )}
               <button onClick={action} type="button" title={title}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:brightness-110"
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
                 style={{
                   backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
                   color:           active ? 'var(--color-primary)' : 'var(--color-outline)',
@@ -153,34 +165,27 @@ function NoteEditor({
                 aria-pressed={active}>
                 {isText
                   ? <span className="text-[10px] font-extrabold">{icon}</span>
-                  : <span className="material-symbols-outlined text-[17px]">{icon}</span>
+                  : <span className="material-symbols-outlined text-[16px]">{icon}</span>
                 }
               </button>
             </React.Fragment>
           ))}
 
-          {/* Image upload button */}
+          {/* Image upload */}
           <button
             onClick={() => imageInputRef.current?.click()}
             type="button"
             disabled={uploadingImage}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1"
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
             style={{ color: 'var(--color-outline)' }}
-            title={t('notes.insertImage') || 'Insertar imagen'}
+            title={t('notes.insertImage')}
           >
-            <span className="material-symbols-outlined text-[14px]">image</span>
-            {uploadingImage && <span className="text-[10px]">{t('notes.uploadingImage') || '...'}</span>}
+            <span className="material-symbols-outlined text-[16px]">image</span>
           </button>
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageUpload}
-          />
+          <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Subject selector */}
           <div className="relative">
             <button
@@ -195,7 +200,9 @@ function NoteEditor({
               }}
             >
               <span className="material-symbols-outlined text-[13px]">category</span>
-              <span className="max-w-[80px] truncate">{currentSubject?.name || (t('notes.noSubject') || 'Sin materia')}</span>
+              <span className="max-w-[80px] truncate hidden sm:inline">
+                {currentSubject?.name || t('notes.noSubject')}
+              </span>
               <span className="material-symbols-outlined text-[11px]">expand_more</span>
             </button>
             {subjectDropdown && (
@@ -205,17 +212,17 @@ function NoteEditor({
                   style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-default)', boxShadow: '0 8px 32px var(--overlay-bg)' }}>
                   <button
                     onClick={() => handleSubjectChange(null)}
-                    className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:brightness-110 transition-all"
+                    className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-all hover:brightness-110"
                     style={{ color: 'var(--color-outline)' }}
                   >
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-outline)' }} />
-                    {t('notes.noSubject') || 'Sin materia'}
+                    {t('notes.noSubject')}
                   </button>
                   {subjects.map(s => (
                     <button
                       key={s.id}
                       onClick={() => handleSubjectChange(s.id)}
-                      className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:brightness-110 transition-all"
+                      className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-all hover:brightness-110"
                       style={{ color: s.color }}
                     >
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
@@ -228,12 +235,12 @@ function NoteEditor({
           </div>
 
           {/* Save status */}
-          <span className="mono text-[10px]" style={{ color: 'var(--color-outline)' }}>
+          <span className="mono text-[10px] hidden sm:flex items-center gap-1" style={{ color: 'var(--color-outline)' }}>
             {saveStatus === 'saving' ? (
-              <span className="flex items-center gap-1">
+              <>
                 <span className="material-symbols-outlined text-[13px] animate-pulse-slow">sync</span>
                 {t('notes.saving')}
-              </span>
+              </>
             ) : (
               `${t('notes.saved')} · ${timeAgo(lastSaved, t)}`
             )}
@@ -242,34 +249,36 @@ function NoteEditor({
       </div>
 
       {/* Editor canvas */}
-      <div className="flex-1 overflow-y-auto px-8 py-8">
-        <input
-          value={title}
-          onChange={handleTitleChange}
-          placeholder={t('notes.untitled')}
-          className="text-3xl font-extrabold tracking-tight bg-transparent border-none outline-none mb-6 w-full"
-          style={{ color: 'var(--on-surface)' }}
-          aria-label="Note title"
-        />
-        <div
-          className="prose prose-sm max-w-none min-h-[300px] focus-within:ring-0"
-          style={{ '--tw-prose-body': 'var(--on-surface-variant)', '--tw-prose-headings': 'var(--on-surface)' } as React.CSSProperties}
-        >
-          <EditorContent editor={editor} />
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-6 py-8 lg:px-12 lg:py-10">
+          <input
+            value={title}
+            onChange={handleTitleChange}
+            placeholder={t('notes.untitled')}
+            className="text-3xl font-extrabold tracking-tight bg-transparent border-none outline-none mb-6 w-full"
+            style={{ color: 'var(--on-surface)' }}
+            aria-label="Note title"
+          />
+          <div
+            className="prose prose-sm max-w-none min-h-[200px] focus-within:ring-0"
+            style={{ '--tw-prose-body': 'var(--on-surface-variant)', '--tw-prose-headings': 'var(--on-surface)' } as React.CSSProperties}
+          >
+            <EditorContent editor={editor} />
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────
 function getPreview(html: string): string {
   if (!html) return ''
   const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-  return text.length > 50 ? text.slice(0, 50) + '…' : text
+  return text.length > 55 ? text.slice(0, 55) + '…' : text
 }
 
-// ── Main page ────────────────────────────────────────────────────────
+// ── Main page ─────────────────────────────────────────────────────────
 export default function NotesPage() {
   const { t } = useTranslation()
   const [notes,         setNotes]         = useState<Note[]>([])
@@ -325,28 +334,28 @@ export default function NotesPage() {
     }, 280)
   }
 
-  // Filter notes by subject
   const subjectFiltered = notes.filter(n => {
     if (activeSubject === 'all')  return true
     if (activeSubject === 'none') return !n.subject_id
     return n.subject_id === activeSubject
   })
 
-  // Sort
   const filteredNotes = [...subjectFiltered].sort((a, b) => {
     if (sortMode === 'alpha') return (a.title || '').localeCompare(b.title || '')
     return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   })
 
-  // Counts per subject for filter panel
-  const countBySubject = (id: string) => notes.filter(n => n.subject_id === id).length
-  const countNoSubject = notes.filter(n => !n.subject_id).length
+  const countBySubject  = (id: string) => notes.filter(n => n.subject_id === id).length
+  const countNoSubject  = notes.filter(n => !n.subject_id).length
+
+  // Mobile: show editor panel if a note is active
+  const mobileShowEditor = !!activeNote
 
   return (
     <div style={{ height: 'calc(100vh - 4rem)' }} className="flex flex-col animate-fade-in -m-4 lg:-m-8">
 
-      {/* Top header bar */}
-      <div className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+      {/* Top header bar — hidden on mobile when editor is open */}
+      <div className={`flex items-center justify-between px-5 py-3.5 flex-shrink-0 ${mobileShowEditor ? 'hidden lg:flex' : 'flex'}`}
         style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div>
           <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-0.5"
@@ -357,25 +366,24 @@ export default function NotesPage() {
         </div>
         <button onClick={createNote} className="btn-primary" id="add-note-btn">
           <span className="material-symbols-outlined text-[18px]">edit_note</span>
-          {t('notes.add')}
+          <span className="hidden sm:inline">{t('notes.add')}</span>
         </button>
       </div>
 
       {/* Two-panel layout */}
       <div className="flex flex-1 min-h-0">
 
-        {/* Left panel: filter + note list */}
-        <div className="w-72 flex-shrink-0 flex flex-col overflow-hidden"
+        {/* Left panel — hidden on mobile when editor is open */}
+        <div className={`flex-shrink-0 flex flex-col overflow-hidden ${mobileShowEditor ? 'hidden lg:flex' : 'flex w-full'} lg:w-64 xl:w-72`}
           style={{ backgroundColor: 'var(--s-low)', borderRight: '1px solid var(--border-subtle)' }}>
 
           {/* Filter header */}
-          <div className="px-4 pt-4 pb-3 flex-shrink-0">
-            <div className="flex items-center justify-between mb-3">
+          <div className="px-3 pt-3 pb-2 flex-shrink-0">
+            <div className="flex items-center justify-between mb-2.5">
               <span className="text-sm font-bold" style={{ color: 'var(--on-surface)' }}>
-                {filteredNotes.length} {filteredNotes.length === 1 ? 'nota' : 'notas'}
+                {filteredNotes.length} {filteredNotes.length === 1 ? t('notes.title').toLowerCase().slice(0, -1) : t('notes.title').toLowerCase()}
               </span>
-              {/* Sort toggle */}
-              <div className="flex gap-1 p-0.5 rounded-lg" style={{ backgroundColor: 'var(--s-base)' }}>
+              <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: 'var(--s-base)' }}>
                 <button
                   onClick={() => setSortMode('recent')}
                   className="text-[10px] font-semibold px-2 py-1 rounded-md transition-all"
@@ -383,7 +391,7 @@ export default function NotesPage() {
                     backgroundColor: sortMode === 'recent' ? 'var(--s-high)' : 'transparent',
                     color: sortMode === 'recent' ? 'var(--on-surface)' : 'var(--color-outline)',
                   }}>
-                  {t('notes.sortRecent') || 'Recientes'}
+                  {t('notes.sortRecent')}
                 </button>
                 <button
                   onClick={() => setSortMode('alpha')}
@@ -392,61 +400,58 @@ export default function NotesPage() {
                     backgroundColor: sortMode === 'alpha' ? 'var(--s-high)' : 'transparent',
                     color: sortMode === 'alpha' ? 'var(--on-surface)' : 'var(--color-outline)',
                   }}>
-                  {t('notes.sortAlpha') || 'A-Z'}
+                  {t('notes.sortAlpha')}
                 </button>
               </div>
             </div>
 
-            {/* Subject filter chips */}
-            <div className="space-y-1">
-              {/* All */}
+            {/* Subject filter */}
+            <div className="space-y-0.5">
               <button
                 onClick={() => setActiveSubject('all')}
-                className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
+                className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
                 style={{
-                  backgroundColor: activeSubject === 'all' ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : 'var(--s-base)',
+                  backgroundColor: activeSubject === 'all' ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : 'transparent',
                   color:           activeSubject === 'all' ? 'var(--color-primary)' : 'var(--color-outline)',
-                  borderLeft: activeSubject === 'all' ? `2px solid var(--color-primary)` : '2px solid transparent',
+                  borderLeft: `2px solid ${activeSubject === 'all' ? 'var(--color-primary)' : 'transparent'}`,
                 }}>
-                <span>{t('notes.allSubjects') || 'Todas las materias'}</span>
+                <span>{t('notes.allSubjects')}</span>
                 <span className="mono text-[10px] px-1.5 py-0.5 rounded-full"
-                  style={{ backgroundColor: 'var(--s-highest, var(--s-high))', color: 'var(--color-outline)' }}>
+                  style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
                   {notes.length}
                 </span>
               </button>
 
-              {/* Subject chips */}
               {subjects.filter(s => countBySubject(s.id) > 0).map(s => (
                 <button
                   key={s.id}
                   onClick={() => setActiveSubject(s.id)}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
                   style={{
-                    backgroundColor: activeSubject === s.id ? `color-mix(in srgb, ${s.color} 10%, transparent)` : 'var(--s-base)',
+                    backgroundColor: activeSubject === s.id ? `color-mix(in srgb, ${s.color} 10%, transparent)` : 'transparent',
                     color:           activeSubject === s.id ? s.color : 'var(--color-outline)',
                     borderLeft: `2px solid ${activeSubject === s.id ? s.color : 'transparent'}`,
                   }}>
                   <span className="truncate">{s.name}</span>
                   <span className="mono text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: 'var(--s-highest, var(--s-high))', color: 'var(--color-outline)' }}>
+                    style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
                     {countBySubject(s.id)}
                   </span>
                 </button>
               ))}
 
-              {/* No subject chip */}
               {countNoSubject > 0 && (
                 <button
                   onClick={() => setActiveSubject('none')}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
                   style={{
-                    backgroundColor: activeSubject === 'none' ? 'color-mix(in srgb, var(--color-outline) 10%, transparent)' : 'var(--s-base)',
+                    backgroundColor: activeSubject === 'none' ? 'color-mix(in srgb, var(--color-outline) 10%, transparent)' : 'transparent',
                     color:           activeSubject === 'none' ? 'var(--on-surface)' : 'var(--color-outline)',
                     borderLeft: activeSubject === 'none' ? '2px solid var(--color-outline)' : '2px solid transparent',
                   }}>
-                  <span>{t('notes.noSubjectNotes') || 'Sin materia'}</span>
+                  <span>{t('notes.noSubjectNotes')}</span>
                   <span className="mono text-[10px] px-1.5 py-0.5 rounded-full"
-                    style={{ backgroundColor: 'var(--s-highest, var(--s-high))', color: 'var(--color-outline)' }}>
+                    style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
                     {countNoSubject}
                   </span>
                 </button>
@@ -455,7 +460,7 @@ export default function NotesPage() {
           </div>
 
           {/* Notes list */}
-          <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
+          <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
             {loading && [1,2,3].map(i => <div key={i} className="skeleton h-16 rounded-xl" />)}
 
             {!loading && filteredNotes.length === 0 && (
@@ -464,6 +469,9 @@ export default function NotesPage() {
                   description
                 </span>
                 <p className="text-xs" style={{ color: 'var(--color-outline)' }}>{t('notes.noNotes')}</p>
+                <button onClick={createNote} className="mt-3 btn-secondary text-xs py-1.5 px-3">
+                  {t('notes.add')}
+                </button>
               </div>
             )}
 
@@ -477,7 +485,9 @@ export default function NotesPage() {
                 <div key={note.id}
                   className={`group/note relative rounded-xl transition-all duration-200 ${isDeleting ? 'opacity-0 scale-95' : ''}`}
                   style={{
-                    backgroundColor: isActive ? `color-mix(in srgb, ${accentColor} 8%, var(--s-base))` : 'transparent',
+                    backgroundColor: isActive
+                      ? `color-mix(in srgb, ${accentColor} 8%, var(--s-base))`
+                      : 'transparent',
                     border: isActive
                       ? `1px solid color-mix(in srgb, ${accentColor} 22%, transparent)`
                       : '1px solid transparent',
@@ -488,12 +498,10 @@ export default function NotesPage() {
                   <button onClick={() => setActiveNote(note)}
                     className="w-full text-left px-3 py-2.5 rounded-xl group-hover/note:bg-[var(--s-base)] transition-colors"
                     style={{ backgroundColor: isActive ? 'transparent' : undefined }}>
-                    <div className="flex items-start gap-2.5 pr-5">
-                      {/* Color dot */}
+                    <div className="flex items-start gap-2.5 pr-6">
                       <div className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: subj?.color || 'var(--color-outline)' }} />
                       <div className="flex-1 min-w-0">
-                        {/* Title row */}
                         <div className="flex items-baseline justify-between gap-1">
                           <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
                             {note.title || t('notes.untitled')}
@@ -502,13 +510,11 @@ export default function NotesPage() {
                             {new Date(note.updated_at).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}
                           </span>
                         </div>
-                        {/* Preview line */}
                         {preview && (
                           <p className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--color-outline)' }}>
                             {preview}
                           </p>
                         )}
-                        {/* Subject label */}
                         {subj && (
                           <span className="text-[10px] font-medium mt-0.5 block" style={{ color: subj.color }}>
                             {subj.name}
@@ -530,8 +536,10 @@ export default function NotesPage() {
           </div>
         </div>
 
-        {/* Right panel: editor */}
-        <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--s-dim)' }}>
+        {/* Right panel: editor — full screen on mobile when note is active */}
+        <div
+          className={`flex-col overflow-hidden ${mobileShowEditor ? 'flex w-full' : 'hidden lg:flex lg:flex-1'} lg:flex-1`}
+          style={{ backgroundColor: 'var(--s-dim)' }}>
           {activeNote ? (
             <NoteEditor
               key={activeNote.id}
@@ -539,23 +547,25 @@ export default function NotesPage() {
               subjects={subjects}
               onUpdated={handleNoteUpdated}
               onSubjectChanged={handleSubjectChanged}
+              onBack={() => setActiveNote(null)}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <div className="relative inline-block mb-6">
+              <div className="text-center px-6">
+                <div className="relative inline-block mb-5">
                   <div className="absolute inset-0 rounded-full blur-[50px] opacity-15"
                     style={{ backgroundColor: 'var(--color-primary)' }} />
-                  <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center"
+                  <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center"
                     style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-default)' }}>
-                    <span className="material-symbols-outlined text-3xl" style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>edit_note</span>
+                    <span className="material-symbols-outlined text-3xl"
+                      style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>edit_note</span>
                   </div>
                 </div>
-                <h2 className="text-lg font-bold tracking-tight mb-1.5" style={{ color: 'var(--on-surface)' }}>
+                <h2 className="text-base font-bold tracking-tight mb-1" style={{ color: 'var(--on-surface)' }}>
                   Elige una nota
                 </h2>
-                <p className="text-sm mb-6 max-w-[220px]" style={{ color: 'var(--color-outline)' }}>
-                  Selecciónala en la lista o crea una nueva ahora.
+                <p className="text-sm mb-5 max-w-[200px]" style={{ color: 'var(--color-outline)' }}>
+                  Selecciónala en la lista o crea una nueva.
                 </p>
                 <button onClick={createNote} className="btn-primary">
                   <span className="material-symbols-outlined text-[18px]">edit_note</span>

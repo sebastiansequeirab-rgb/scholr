@@ -2,6 +2,7 @@
 
 import { ThemeProvider } from 'next-themes'
 import { useEffect } from 'react'
+import { LanguageProvider } from '@/contexts/LanguageContext'
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -29,7 +30,9 @@ export function Providers({ children, theme, colorMode }: ProvidersProps) {
       disableTransitionOnChange={false}
     >
       <ThemeApplier theme={theme} />
-      {children}
+      <LanguageProvider>
+        {children}
+      </LanguageProvider>
     </ThemeProvider>
   )
 }

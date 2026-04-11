@@ -18,7 +18,6 @@ const NAV_ITEMS = [
   { key: 'exams',     href: '/exams',      icon: 'event_upcoming' },
 ]
 
-// Bottom nav items (mobile only) — keep to 5 for comfortable spacing
 const BOTTOM_NAV = [
   { key: 'dashboard', href: '/dashboard', icon: 'home'           },
   { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
@@ -53,14 +52,15 @@ export function Sidebar({ profile }: SidebarProps) {
     pathname === href || pathname.startsWith(href + '/')
 
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className="flex flex-col h-full py-6 px-3">
+    <div className="flex flex-col h-full py-5 px-3">
 
       {/* Logo */}
-      <div className={`mb-8 ${collapsed && !mobile ? 'px-0 flex justify-center' : 'px-3'}`}>
-        <Link href="/dashboard" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}>
-            <span className="material-symbols-outlined text-lg" style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+      <div className={`mb-6 ${collapsed && !mobile ? 'px-0 flex justify-center' : 'px-2'}`}>
+        <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
+            <span className="material-symbols-outlined text-[18px]"
+              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
               school
             </span>
           </div>
@@ -69,7 +69,8 @@ export function Sidebar({ profile }: SidebarProps) {
               <span className="text-base font-black tracking-tighter" style={{ color: 'var(--color-primary)' }}>
                 Scholr
               </span>
-              <p className="text-[9px] uppercase tracking-[0.2em] font-mono" style={{ color: 'var(--color-outline)' }}>
+              <p className="text-[9px] uppercase tracking-[0.2em] font-mono leading-none mt-0.5"
+                style={{ color: 'var(--color-outline)' }}>
                 Sanctuary
               </p>
             </div>
@@ -86,14 +87,21 @@ export function Sidebar({ profile }: SidebarProps) {
               key={key}
               href={href}
               title={collapsed && !mobile ? t(`nav.${key}`) : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
                 collapsed && !mobile ? 'justify-center' : ''
-              } ${active ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
+              }`}
               style={{
                 color: active ? 'var(--color-primary)' : 'var(--color-outline)',
+                fontWeight: active ? 700 : 500,
                 backgroundColor: active
-                  ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)'
-                  : undefined,
+                  ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
+                  : 'transparent',
+              }}
+              onMouseEnter={e => {
+                if (!active) (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 5%, transparent)'
+              }}
+              onMouseLeave={e => {
+                if (!active) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
               }}
               aria-current={pathname === href ? 'page' : undefined}
             >
@@ -103,7 +111,7 @@ export function Sidebar({ profile }: SidebarProps) {
               >
                 {icon}
               </span>
-              {(!collapsed || mobile) && <span>{t(`nav.${key}`)}</span>}
+              {(!collapsed || mobile) && <span className="leading-none">{t(`nav.${key}`)}</span>}
             </Link>
           )
         })}
@@ -112,14 +120,21 @@ export function Sidebar({ profile }: SidebarProps) {
         <Link
           href="/ai"
           title={collapsed && !mobile ? t('nav.ai') : undefined}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
             collapsed && !mobile ? 'justify-center' : ''
-          } ${isActive('/ai') ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
+          }`}
           style={{
             color: isActive('/ai') ? 'var(--color-tertiary)' : 'var(--color-outline)',
+            fontWeight: isActive('/ai') ? 700 : 500,
             backgroundColor: isActive('/ai')
               ? 'color-mix(in srgb, var(--color-tertiary) 10%, transparent)'
-              : undefined,
+              : 'transparent',
+          }}
+          onMouseEnter={e => {
+            if (!isActive('/ai')) (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 5%, transparent)'
+          }}
+          onMouseLeave={e => {
+            if (!isActive('/ai')) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
           }}
         >
           <span
@@ -130,81 +145,91 @@ export function Sidebar({ profile }: SidebarProps) {
           </span>
           {(!collapsed || mobile) && (
             <>
-              <span>{t('nav.ai')}</span>
+              <span className="leading-none flex-1">{t('nav.ai')}</span>
               {!profile?.is_premium && (
-                <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full font-mono"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 15%, transparent)', color: 'var(--color-tertiary)' }}>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full font-mono"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)',
+                    color: 'var(--color-tertiary)',
+                  }}>
                   PRO
                 </span>
               )}
             </>
           )}
         </Link>
-
-        {/* Collapse toggle (desktop only) */}
-        {!mobile && (
-          <button
-            onClick={toggle}
-            title={collapsed ? 'Expandir barra' : 'Colapsar barra'}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 mt-2 ${
-              collapsed ? 'justify-center' : ''
-            }`}
-            style={{ color: 'var(--color-outline)' }}
-          >
-            <span className="material-symbols-outlined text-[20px] flex-shrink-0">
-              {collapsed ? 'chevron_right' : 'chevron_left'}
-            </span>
-            {!collapsed && <span className="mono text-[10px] uppercase tracking-widest">Colapsar</span>}
-          </button>
-        )}
       </nav>
 
+      {/* Collapse toggle (desktop only) */}
+      {!mobile && (
+        <button
+          onClick={toggle}
+          title={collapsed ? 'Expandir' : 'Colapsar'}
+          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 mt-1 ${
+            collapsed ? 'justify-center' : ''
+          }`}
+          style={{ color: 'var(--color-outline)', opacity: 0.6 }}
+        >
+          <span className="material-symbols-outlined text-[18px] flex-shrink-0">
+            {collapsed ? 'chevron_right' : 'chevron_left'}
+          </span>
+          {!collapsed && <span className="mono text-[9px] uppercase tracking-widest">Colapsar</span>}
+        </button>
+      )}
+
       {/* Footer */}
-      <div className="mt-auto space-y-0.5 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
+      <div className="mt-2 space-y-0.5 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
         <Link
           href="/settings"
           title={collapsed && !mobile ? t('nav.settings') : undefined}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
             collapsed && !mobile ? 'justify-center' : ''
-          } ${isActive('/settings') ? '' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
+          }`}
           style={{
             color: isActive('/settings') ? 'var(--color-primary)' : 'var(--color-outline)',
+            fontWeight: isActive('/settings') ? 700 : 500,
             backgroundColor: isActive('/settings')
-              ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)'
-              : undefined,
+              ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
+              : 'transparent',
           }}
         >
-          <span className="material-symbols-outlined text-[20px] flex-shrink-0">settings</span>
-          {(!collapsed || mobile) && <span>{t('nav.settings')}</span>}
+          <span className="material-symbols-outlined text-[20px] flex-shrink-0"
+            style={{ fontVariationSettings: isActive('/settings') ? "'FILL' 1" : "'FILL' 0" }}>
+            settings
+          </span>
+          {(!collapsed || mobile) && <span className="leading-none">{t('nav.settings')}</span>}
         </Link>
 
         {/* User row */}
         {(!collapsed || mobile) ? (
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
-            style={{ backgroundColor: 'var(--s-low)' }}>
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 6%, transparent)' }}>
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 20%, transparent)', color: 'var(--color-primary)' }}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
+                color: 'var(--color-primary)',
+              }}
             >
               {profile?.full_name ? getInitials(profile.full_name) : 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
+              <p className="text-[12px] font-semibold truncate leading-tight" style={{ color: 'var(--on-surface)' }}>
                 {profile?.full_name || 'Estudiante'}
               </p>
-              <p className="text-[10px] font-mono truncate" style={{ color: 'var(--color-outline)' }}>
-                {profile?.is_premium ? '★ Premium' : 'Free Plan'}
+              <p className="text-[9px] font-mono truncate leading-tight" style={{ color: 'var(--color-outline)' }}>
+                {profile?.is_premium ? '★ Premium' : 'Free'}
               </p>
             </div>
             <button
               onClick={handleLogout}
               disabled={loggingOut}
-              className="p-1.5 rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/5 hover:text-red-400"
-              style={{ color: 'var(--color-outline)' }}
+              className="p-1 rounded-lg transition-all hover:text-red-400 flex-shrink-0"
+              style={{ color: 'var(--color-outline)', opacity: 0.7 }}
               aria-label={t('nav.logout')}
               title={t('nav.logout')}
             >
-              <span className="material-symbols-outlined text-[18px]">
+              <span className="material-symbols-outlined text-[16px]">
                 {loggingOut ? 'hourglass_empty' : 'logout'}
               </span>
             </button>
@@ -212,8 +237,11 @@ export function Sidebar({ profile }: SidebarProps) {
         ) : (
           <div className="flex justify-center py-1">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold cursor-pointer"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 20%, transparent)', color: 'var(--color-primary)' }}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold cursor-pointer"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
+                color: 'var(--color-primary)',
+              }}
               title={profile?.full_name || 'Estudiante'}
             >
               {profile?.full_name ? getInitials(profile.full_name) : 'U'}
@@ -237,7 +265,7 @@ export function Sidebar({ profile }: SidebarProps) {
         </Link>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="p-2 rounded-full transition-all hover:bg-black/5 dark:hover:bg-white/5"
+          className="p-2 rounded-full transition-all"
           style={{ color: 'var(--color-outline)' }}
           aria-label="Toggle menu"
           aria-expanded={mobileOpen}
@@ -250,55 +278,74 @@ export function Sidebar({ profile }: SidebarProps) {
 
       {/* Mobile bottom navigation bar */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center glass safe-bottom"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass safe-bottom"
         style={{ borderTop: '1px solid var(--border-subtle)', height: '56px' }}
         aria-label="Mobile navigation"
       >
-        {BOTTOM_NAV.map(({ key, href, icon }) => {
-          const active = isActive(href)
-          return (
-            <Link
-              key={key}
-              href={href}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-all duration-150 active:scale-95"
-              aria-current={pathname === href ? 'page' : undefined}
-            >
-              <span
-                className="material-symbols-outlined text-[22px] transition-all duration-150"
-                style={{
-                  color: active ? 'var(--color-primary)' : 'var(--color-outline)',
-                  fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
-                }}
+        <div className="flex items-center h-full px-1">
+          {BOTTOM_NAV.map(({ key, href, icon }) => {
+            const active = isActive(href)
+            return (
+              <Link
+                key={key}
+                href={href}
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all duration-150 active:scale-95"
+                aria-current={pathname === href ? 'page' : undefined}
               >
-                {icon}
-              </span>
-              <span className="text-[9px] font-semibold leading-none transition-colors duration-150"
-                style={{ color: active ? 'var(--color-primary)' : 'var(--color-outline)' }}>
-                {t(`nav.${key}`)}
-              </span>
-            </Link>
-          )
-        })}
-        {/* Profile/settings icon */}
-        <Link
-          href="/settings"
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-all duration-150 active:scale-95"
-          aria-current={pathname === '/settings' ? 'page' : undefined}
-        >
-          <span
-            className="material-symbols-outlined text-[22px] transition-all duration-150"
-            style={{
-              color: pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-outline)',
-              fontVariationSettings: pathname === '/settings' ? "'FILL' 1" : "'FILL' 0",
-            }}
+                {/* Active pill indicator */}
+                {active && (
+                  <div className="absolute top-2 rounded-full"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)',
+                      width: '44px',
+                      height: '26px',
+                    }} />
+                )}
+                <span
+                  className="material-symbols-outlined text-[22px] relative transition-all duration-150"
+                  style={{
+                    color: active ? 'var(--color-primary)' : 'var(--color-outline)',
+                    fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
+                  }}
+                >
+                  {icon}
+                </span>
+                <span className="text-[9px] font-semibold leading-none relative transition-colors duration-150"
+                  style={{ color: active ? 'var(--color-primary)' : 'var(--color-outline)' }}>
+                  {t(`nav.${key}`)}
+                </span>
+              </Link>
+            )
+          })}
+          {/* Settings */}
+          <Link
+            href="/settings"
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all duration-150 active:scale-95"
+            aria-current={pathname === '/settings' ? 'page' : undefined}
           >
-            person
-          </span>
-          <span className="text-[9px] font-semibold leading-none"
-            style={{ color: pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-outline)' }}>
-            {t('nav.settings')}
-          </span>
-        </Link>
+            {pathname === '/settings' && (
+              <div className="absolute top-2 rounded-full"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)',
+                  width: '44px',
+                  height: '26px',
+                }} />
+            )}
+            <span
+              className="material-symbols-outlined text-[22px] relative transition-all duration-150"
+              style={{
+                color: pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-outline)',
+                fontVariationSettings: pathname === '/settings' ? "'FILL' 1" : "'FILL' 0",
+              }}
+            >
+              person
+            </span>
+            <span className="text-[9px] font-semibold leading-none relative"
+              style={{ color: pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-outline)' }}>
+              {t('nav.settings')}
+            </span>
+          </Link>
+        </div>
       </nav>
 
       {/* Mobile overlay */}
@@ -311,7 +358,7 @@ export function Sidebar({ profile }: SidebarProps) {
         />
       )}
 
-      {/* Mobile drawer (for subjects + AI only now) */}
+      {/* Mobile drawer */}
       <aside
         className={`lg:hidden fixed top-0 left-0 z-40 h-full w-72 transform transition-transform duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -326,7 +373,7 @@ export function Sidebar({ profile }: SidebarProps) {
       {/* Desktop sidebar */}
       <aside
         className={`hidden lg:flex flex-col fixed top-0 left-0 h-full z-30 transition-all duration-300 ${
-          collapsed ? 'w-16' : 'w-64'
+          collapsed ? 'w-16' : 'w-60'
         }`}
         style={{ backgroundColor: 'var(--s-bg)', borderRight: '1px solid var(--border-subtle)' }}
       >

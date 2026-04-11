@@ -8,7 +8,7 @@
     "dashboard": "Inicio",
     "calendar": "Calendario",
     "subjects": "Materias",
-    "tasks": "Tareas",
+    "tasks": "Pendientes",
     "notes": "Notas",
     "exams": "Actividades",
     "settings": "Ajustes",
@@ -83,7 +83,7 @@
     "scheduleRoom": "Salón"
   },
   "tasks": {
-    "title": "Tareas",
+    "title": "Pendientes",
     "all": "Todas",
     "pending": "Pendientes",
     "not_started": "Sin empezar",

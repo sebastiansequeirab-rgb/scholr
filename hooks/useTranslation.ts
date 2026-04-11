@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useLanguage } from '@/contexts/LanguageContext'
 import esTranslations from '@/i18n/es.json'
 import enTranslations from '@/i18n/en.json'
 
@@ -20,27 +20,11 @@ function getNestedValue(obj: TranslationObject, path: string): string {
 }
 
 export function useTranslation() {
-  const [language, setLanguage] = useState<'es' | 'en'>('es')
-
-  useEffect(() => {
-    const saved = localStorage.getItem('scholr_language') as 'es' | 'en' | null
-    if (saved) {
-      setLanguage(saved)
-    } else {
-      const browserLang = navigator.language.startsWith('es') ? 'es' : 'en'
-      setLanguage(browserLang)
-    }
-  }, [])
-
+  const { language, changeLanguage } = useLanguage()
   const translations = language === 'es' ? esTranslations : enTranslations
 
   const t = (key: string): string => {
     return getNestedValue(translations as TranslationObject, key)
-  }
-
-  const changeLanguage = (lang: 'es' | 'en') => {
-    setLanguage(lang)
-    localStorage.setItem('scholr_language', lang)
   }
 
   return { t, language, changeLanguage }
