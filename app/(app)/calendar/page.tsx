@@ -435,7 +435,7 @@ export default function CalendarPage() {
   const [tasks,         setTasks]         = useState<Task[]>([])
   const [loading,       setLoading]       = useState(true)
   const [clickedEvent,  setClickedEvent]  = useState<ClickedEvent | null>(null)
-  const [initialView,   setInitialView]   = useState('dayGridMonth')
+  const [initialView,   setInitialView]   = useState('dayGridRolling')
   const [legendOpen,    setLegendOpen]    = useState(false)
   const [isMobile,      setIsMobile]      = useState(false)
   const { use12h } = useTimeFormat()
@@ -654,13 +654,14 @@ export default function CalendarPage() {
           headerToolbar={{
             left:   'prev,next today',
             center: 'title',
-            right:  'dayGridMonth,timeGridWeek,timeGridDay',
+            right:  'dayGridRolling,timeGridWeek,timeGridDay',
           }}
           buttonText={{
-            today: t('calendar.today'),
-            month: t('calendar.month'),
-            week:  t('calendar.week'),
-            day:   t('calendar.day'),
+            today:          t('calendar.today'),
+            month:          t('calendar.month'),
+            week:           t('calendar.week'),
+            day:            t('calendar.day'),
+            dayGridRolling: t('calendar.month'),
           }}
           events={events}
           eventClick={handleEventClick}
@@ -681,6 +682,20 @@ export default function CalendarPage() {
             : { hour: '2-digit', minute: '2-digit', hour12: false }
           }
           views={{
+            // Rolling month: shows the Sunday 1 week before currentDate → +5 weeks
+            // Today always lands in row 2, never buried below 2+ past weeks
+            dayGridRolling: {
+              type: 'dayGrid',
+              visibleRange: (currentDate: Date) => {
+                const start = new Date(currentDate)
+                start.setDate(start.getDate() - 7)            // go back 7 days
+                start.setDate(start.getDate() - start.getDay()) // snap to Sunday
+                const end = new Date(start)
+                end.setDate(end.getDate() + 35)               // 5 full weeks
+                return { start, end }
+              },
+              titleFormat: { year: 'numeric', month: 'long' },
+            },
             timeGridWeek: {
               dayHeaderFormat: isMobile
                 ? { weekday: 'narrow' }
@@ -696,7 +711,7 @@ export default function CalendarPage() {
           nowIndicator={true}
           eventContent={(arg) => {
             const type = arg.event.extendedProps.type as string
-            const isMonthView = arg.view.type === 'dayGridMonth'
+            const isMonthView = arg.view.type === 'dayGridMonth' || arg.view.type === 'dayGridRolling'
 
             // Mobile month view: ultra-compact pill — just the title, no time/location
             if (isMonthView && isMobile) {
