@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY
@@ -9,26 +10,18 @@ export async function POST(req: NextRequest) {
     const { imageBase64, mimeType } = await req.json()
     if (!imageBase64) return NextResponse.json({ error: 'No image provided' }, { status: 400 })
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const prompt = `Analiza esta imagen de un horario académico y extrae EXACTAMENTE la información visible.
 
-    const prompt = `Analiza esta imagen de un horario académico universitario y extrae EXACTAMENTE la información visible.
-
-Devuelve ÚNICAMENTE un JSON válido con esta estructura (sin markdown, sin explicaciones, sin texto extra):
+Devuelve ÚNICAMENTE un JSON válido (sin markdown, sin texto extra):
 {
   "subjects": [
     {
-      "name": "nombre exacto de la materia",
-      "professor": "código y sección si aparece, ej: CS101 · Sec 2, o null",
+      "name": "nombre exacto",
+      "professor": "código y sección si aparece o null",
       "color": "#6366f1",
       "icon": "menu_book",
       "schedules": [
-        {
-          "day_of_week": 1,
-          "start_time": "14:00",
-          "end_time": "15:30",
-          "room": "aula si aparece o null"
-        }
+        { "day_of_week": 1, "start_time": "14:00", "end_time": "15:30", "room": "aula o null" }
       ]
     }
   ]
@@ -36,21 +29,35 @@ Devuelve ÚNICAMENTE un JSON válido con esta estructura (sin markdown, sin expl
 
 Reglas:
 - day_of_week: 0=Dom 1=Lun 2=Mar 3=Mié 4=Jue 5=Vie 6=Sáb
-- Horarios en formato 24h HH:MM
-- Colores distintos para cada materia: #6366f1 #ec4899 #f59e0b #10b981 #3b82f6 #8b5cf6 #ef4444 #06b6d4
-- Icons (elige el más apropiado): menu_book bar_chart calculate science history_edu language computer engineering psychology savings campaign receipt_long school
-- Si la misma materia tiene varios bloques (LEC, LAB, DIS), ponlos todos en schedules de esa materia
-- NO inventes datos que no veas en la imagen`
+- Horarios en 24h (HH:MM)
+- Colores distintos: #6366f1 #ec4899 #f59e0b #10b981 #3b82f6 #8b5cf6 #ef4444 #06b6d4
+- Icons: menu_book bar_chart calculate science history_edu language computer engineering psychology savings campaign receipt_long school
+- Bloques LEC/LAB/DIS de la misma materia van en schedules de esa materia
+- No inventes datos`
 
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
-    ])
+    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } },
+          ]
+        }]
+      }),
+    })
 
-    const raw = result.response.text().trim()
+    if (!res.ok) {
+      const err = await res.text()
+      console.error('Gemini vision error:', err)
+      return NextResponse.json({ error: 'Error al analizar la imagen' }, { status: 500 })
+    }
+
+    const data = await res.json()
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     const jsonStr = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
     const parsed = JSON.parse(jsonStr)
-
     return NextResponse.json(parsed)
   } catch (err) {
     console.error('Parse schedule error:', err)
