@@ -144,18 +144,7 @@ export function Sidebar({ profile }: SidebarProps) {
             auto_awesome
           </span>
           {(!collapsed || mobile) && (
-            <>
-              <span className="leading-none flex-1">{t('nav.ai')}</span>
-              {!profile?.is_premium && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full font-mono"
-                  style={{
-                    backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)',
-                    color: 'var(--color-tertiary)',
-                  }}>
-                  PRO
-                </span>
-              )}
-            </>
+            <span className="leading-none flex-1">{t('nav.ai')}</span>
           )}
         </Link>
       </nav>
