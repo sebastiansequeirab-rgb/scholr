@@ -26,27 +26,51 @@ interface ParsedSchedule {
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
+interface UserContext {
+  subjects: { name: string; professor: string | null }[]
+  exams:    { title: string; exam_date: string; percentage: number | null }[]
+  tasks:    { title: string; priority: string; due_date: string | null }[]
+}
+
 export default function AIPage() {
   const { language } = useTranslation()
-  const [messages, setMessages]       = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: language === 'es'
         ? '¡Hola! Soy tu asistente académico. Tengo acceso a tus materias, actividades y tareas. ¿En qué puedo ayudarte?'
-        : 'Hi! I\'m your academic assistant. I have access to your subjects, activities and tasks. How can I help?' }
+        : "Hi! I'm your academic assistant. I have access to your subjects, activities and tasks. How can I help?" }
   ])
-  const [input,    setInput]          = useState('')
-  const [loading,  setLoading]        = useState(false)
+  const [input,       setInput]       = useState('')
+  const [loading,     setLoading]     = useState(false)
+  const [userContext, setUserContext] = useState<UserContext | null>(null)
 
   // Schedule import
-  const [tab,           setTab]           = useState<'chat' | 'import'>('chat')
-  const [imageFile,     setImageFile]     = useState<File | null>(null)
-  const [imagePreview,  setImagePreview]  = useState<string | null>(null)
-  const [parsing,       setParsing]       = useState(false)
-  const [parsed,        setParsed]        = useState<ParsedSchedule | null>(null)
-  const [parseError,    setParseError]    = useState('')
-  const [saving,        setSaving]        = useState(false)
-  const [saveSuccess,   setSaveSuccess]   = useState(false)
+  const [tab,          setTab]          = useState<'chat' | 'import'>('chat')
+  const [imageFile,    setImageFile]    = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [parsing,      setParsing]      = useState(false)
+  const [parsed,       setParsed]       = useState<ParsedSchedule | null>(null)
+  const [parseError,   setParseError]   = useState('')
+  const [saving,       setSaving]       = useState(false)
+  const [saveSuccess,  setSaveSuccess]  = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const bottomRef    = useRef<HTMLDivElement>(null)
+
+  // Load user context once on mount
+  useEffect(() => {
+    const load = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const now = new Date().toISOString().split('T')[0]
+      const [{ data: subjects }, { data: exams }, { data: tasks }] = await Promise.all([
+        supabase.from('subjects').select('name, professor').eq('user_id', user.id),
+        supabase.from('exams').select('title, exam_date, percentage').eq('user_id', user.id).gte('exam_date', now).order('exam_date').limit(10),
+        supabase.from('tasks').select('title, priority, due_date').eq('user_id', user.id).neq('status', 'done').order('due_date').limit(10),
+      ])
+      setUserContext({ subjects: subjects || [], exams: exams || [], tasks: tasks || [] })
+    }
+    load()
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -62,7 +86,7 @@ export default function AIPage() {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ messages: [...messages, userMsg], context: userContext }),
       })
       const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply || data.error || 'Error al obtener respuesta.' }])
@@ -71,7 +95,7 @@ export default function AIPage() {
     } finally {
       setLoading(false)
     }
-  }, [loading, messages])
+  }, [loading, messages, userContext])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
