@@ -1,53 +1,65 @@
-// ─── Gemini provider abstraction ─────────────────────────────────────────────
+// ─── Groq provider (OpenAI-compatible) ────────────────────────────────────────
 // Swap this file to change AI provider without touching business logic.
 
-const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
-const MODEL    = 'gemini-2.0-flash-lite'
+const BASE_URL    = 'https://api.groq.com/openai/v1/chat/completions'
+export const CHAT_MODEL   = 'llama-3.3-70b-versatile'
+export const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'
 
-export type GeminiRole = 'user' | 'model' | 'function'
-
-export interface GeminiPart {
-  text?: string
-  functionCall?:     { name: string; args: Record<string, unknown> }
-  functionResponse?: { name: string; response: unknown }
+export interface GroqMessage {
+  role:         'system' | 'user' | 'assistant' | 'tool'
+  content:      string | null
+  tool_calls?:  GroqToolCall[]
+  tool_call_id?: string
+  name?:        string
 }
 
-export interface GeminiMessage {
-  role:  GeminiRole
-  parts: GeminiPart[]
+export interface GroqToolCall {
+  id:       string
+  type:     'function'
+  function: { name: string; arguments: string }
 }
 
-export interface FunctionDeclaration {
-  name:        string
-  description: string
-  parameters:  Record<string, unknown>
+export interface ToolDefinition {
+  type: 'function'
+  function: {
+    name:        string
+    description: string
+    parameters:  Record<string, unknown>
+  }
 }
 
-interface GeminiRequest {
-  system_instruction?: { parts: [{ text: string }] }
-  contents:            GeminiMessage[]
-  tools?:              [{ function_declarations: FunctionDeclaration[] }]
-  generationConfig?:   Record<string, unknown>
+interface GroqRequest {
+  model:        string
+  messages:     GroqMessage[]
+  tools?:       ToolDefinition[]
+  tool_choice?: 'auto' | 'none'
+  temperature?: number
+  max_tokens?:  number
 }
 
-export interface GeminiCandidate {
-  content: { parts: GeminiPart[]; role: string }
-  finishReason: string
+export interface GroqResponse {
+  choices: Array<{
+    message: {
+      role:        string
+      content:     string | null
+      tool_calls?: GroqToolCall[]
+    }
+    finish_reason: string
+  }>
 }
 
-export interface GeminiResponse {
-  candidates: GeminiCandidate[]
-}
+/** Single call to Groq. Throws on non-200. */
+export async function callGroq(payload: GroqRequest): Promise<GroqResponse> {
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) throw new Error('GROQ_API_KEY not configured')
 
-/** Single call to Gemini. Throws on non-200. */
-export async function callGemini(payload: GeminiRequest): Promise<GeminiResponse> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) throw new Error('GEMINI_API_KEY not configured')
-
-  const res = await fetch(`${BASE_URL}/${MODEL}:generateContent?key=${apiKey}`, {
+  const res = await fetch(BASE_URL, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload),
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
   })
 
   if (!res.ok) {
@@ -58,15 +70,15 @@ export async function callGemini(payload: GeminiRequest): Promise<GeminiResponse
     throw e
   }
 
-  return res.json() as Promise<GeminiResponse>
+  return res.json() as Promise<GroqResponse>
 }
 
-/** Extract text from a Gemini response */
-export function getText(resp: GeminiResponse): string {
-  return resp.candidates?.[0]?.content?.parts?.find(p => p.text)?.text ?? ''
+/** Extract text from a Groq response */
+export function getText(resp: GroqResponse): string {
+  return resp.choices?.[0]?.message?.content ?? ''
 }
 
-/** Extract a function call from a Gemini response (if any) */
-export function getFunctionCall(resp: GeminiResponse) {
-  return resp.candidates?.[0]?.content?.parts?.find(p => p.functionCall)?.functionCall ?? null
+/** Extract a tool call from a Groq response (first one, if any) */
+export function getToolCall(resp: GroqResponse): GroqToolCall | null {
+  return resp.choices?.[0]?.message?.tool_calls?.[0] ?? null
 }

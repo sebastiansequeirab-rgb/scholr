@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { VISION_MODEL } from '@/lib/ai/provider'
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent'
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 })
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY not configured' }, { status: 500 })
 
   try {
     const { imageBase64, mimeType } = await req.json()
@@ -35,31 +36,43 @@ Reglas:
 - Bloques LEC/LAB/DIS de la misma materia van en schedules de esa materia
 - No inventes datos`
 
-    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    const res = await fetch(GROQ_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } },
-          ]
-        }]
+        model: VISION_MODEL,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`,
+              },
+            },
+          ],
+        }],
+        temperature: 0.1,
+        max_tokens:  2048,
       }),
     })
 
     if (res.status === 429) {
-      return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+      return NextResponse.json({ error: 'Demasiadas solicitudes. Espera un momento.' }, { status: 429 })
     }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      const msg = err?.error?.message || res.statusText
+      const msg = (err as { error?: { message?: string } })?.error?.message || res.statusText
       return NextResponse.json({ error: msg }, { status: 500 })
     }
 
     const data = await res.json()
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const raw = data.choices?.[0]?.message?.content || ''
     const jsonStr = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
     const parsed = JSON.parse(jsonStr)
     return NextResponse.json(parsed)

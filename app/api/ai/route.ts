@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { callGemini, getText, getFunctionCall } from '@/lib/ai/provider'
+import { callGroq, getText, getToolCall, CHAT_MODEL } from '@/lib/ai/provider'
 import { TOOL_DECLARATIONS, executeTool } from '@/lib/ai/tools'
 import type { AIRequest, AIResponse } from '@/lib/ai/types'
-import type { GeminiMessage } from '@/lib/ai/provider'
+import type { GroqMessage } from '@/lib/ai/provider'
 
 const MAX_HISTORY = 8 // last N messages sent to model — keeps cost low
 
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const language = app_context?.language ?? 'es'
   const today    = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
-  // ── 3. Build system prompt (minimal) ─────────────────────────────────────
+  // ── 3. Build system prompt ────────────────────────────────────────────────
   const contextHints = [
-    app_context?.current_page    ? `Página actual: ${app_context.current_page}` : null,
+    app_context?.current_page      ? `Página actual: ${app_context.current_page}` : null,
     app_context?.active_subject_id ? `Materia activa (ID): ${app_context.active_subject_id}` : null,
   ].filter(Boolean).join('\n')
 
@@ -56,76 +56,93 @@ REGLAS:
 - Confirma antes de crear datos: di qué vas a crear y espera confirmación del usuario.
 - Nunca hagas dos acciones en un solo mensaje.`
 
-  // ── 4. Build conversation history ────────────────────────────────────────
+  // ── 4. Build conversation messages ───────────────────────────────────────
   const trimmedHistory = history.slice(-MAX_HISTORY)
 
-  const contents: GeminiMessage[] = [
+  const messages: GroqMessage[] = [
+    { role: 'system', content: systemPrompt },
     ...trimmedHistory.map(m => ({
-      role:  m.role === 'user' ? 'user' as const : 'model' as const,
-      parts: [{ text: m.content }],
+      role:    m.role === 'user' ? 'user' as const : 'assistant' as const,
+      content: m.content,
     })),
-    { role: 'user', parts: [{ text: message }] },
+    { role: 'user', content: message },
   ]
 
   const toolsUsed: string[] = []
 
-  // ── 5. First Gemini call ──────────────────────────────────────────────────
+  // ── 5. First Groq call ────────────────────────────────────────────────────
   console.log(`[AI] user=${userId} page=${app_context?.current_page ?? '-'} msg="${message.slice(0, 80)}"`)
 
-  let geminiResp
+  let groqResp
   try {
-    geminiResp = await callGemini({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents,
-      tools: [{ function_declarations: TOOL_DECLARATIONS }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
+    groqResp = await callGroq({
+      model:       CHAT_MODEL,
+      messages,
+      tools:       TOOL_DECLARATIONS,
+      tool_choice: 'auto',
+      temperature: 0.4,
+      max_tokens:  800,
     })
   } catch (err: unknown) {
     const e = err as Error & { status?: number }
-    console.error('[AI] Gemini call 1 failed:', e.message)
+    console.error('[AI] Groq call 1 failed:', e.message)
     if (e.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
     return NextResponse.json({ error: 'Error del modelo de IA' }, { status: 500 })
   }
 
   // ── 6. Handle tool call (max 1 round) ────────────────────────────────────
-  const fnCall = getFunctionCall(geminiResp)
+  const toolCall = getToolCall(groqResp)
 
-  if (fnCall) {
-    const { name, args } = fnCall
+  if (toolCall) {
+    const { id, function: { name, arguments: argsStr } } = toolCall
+
+    let args: Record<string, unknown> = {}
+    try { args = JSON.parse(argsStr) } catch { /* use empty args */ }
+
     console.log(`[AI] tool call: ${name}`, JSON.stringify(args))
     toolsUsed.push(name)
 
-    const result = await executeTool(name, args ?? {}, access_token, userId)
+    const result = await executeTool(name, args, access_token, userId)
     console.log(`[AI] tool result ok=${result.ok}`, result.error ?? '')
 
-    // Feed tool result back to Gemini for final answer
-    const contentsWithTool: GeminiMessage[] = [
-      ...contents,
-      { role: 'model',    parts: [{ functionCall: { name, args: args ?? {} } }] },
-      { role: 'function', parts: [{ functionResponse: { name, response: result.ok ? result.data : { error: result.error } } }] },
+    // Feed tool result back for the final answer
+    const messagesWithTool: GroqMessage[] = [
+      ...messages,
+      {
+        role:       'assistant',
+        content:    null,
+        tool_calls: [toolCall],
+      },
+      {
+        role:         'tool',
+        content:      JSON.stringify(result.ok ? result.data : { error: result.error }),
+        tool_call_id: id,
+        name,
+      },
     ]
 
-    let geminiResp2
+    let groqResp2
     try {
-      geminiResp2 = await callGemini({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: contentsWithTool,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
+      groqResp2 = await callGroq({
+        model:       CHAT_MODEL,
+        messages:    messagesWithTool,
+        temperature: 0.4,
+        max_tokens:  800,
       })
     } catch (err: unknown) {
       const e = err as Error & { status?: number }
-      console.error('[AI] Gemini call 2 failed:', e.message)
+      console.error('[AI] Groq call 2 failed:', e.message)
       if (e.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
       return NextResponse.json({ error: 'Error del modelo de IA' }, { status: 500 })
     }
 
-    const reply = getText(geminiResp2)
+    const reply = getText(groqResp2)
     console.log(`[AI] reply (${reply.length} chars) tools=[${toolsUsed.join(',')}]`)
     return NextResponse.json({ reply, tools_used: toolsUsed } satisfies AIResponse)
   }
 
   // ── 7. Direct answer (no tool call) ──────────────────────────────────────
-  const reply = getText(geminiResp)
+  const reply = getText(groqResp)
   console.log(`[AI] reply (${reply.length} chars) no tools`)
   return NextResponse.json({ reply, tools_used: [] } satisfies AIResponse)
 }

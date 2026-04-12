@@ -1,9 +1,9 @@
 // ─── Tool definitions + handlers ─────────────────────────────────────────────
-// Each tool: a Gemini function_declaration + an execute() that queries Supabase.
+// Each tool: an OpenAI-compatible function definition + an execute() that queries Supabase.
 // The model never touches the DB directly — it only calls these.
 
 import { createClient } from '@supabase/supabase-js'
-import type { FunctionDeclaration } from './provider'
+import type { ToolDefinition } from './provider'
 import type { ToolResult } from './types'
 
 // Build an authenticated Supabase client from the user's JWT
@@ -15,85 +15,109 @@ function supabaseAs(accessToken: string) {
   )
 }
 
-// ─── Function declarations (sent to Gemini) ──────────────────────────────────
+// ─── Function declarations (sent to Groq) ────────────────────────────────────
 
-export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
+export const TOOL_DECLARATIONS: ToolDefinition[] = [
   {
-    name: 'get_subjects',
-    description: 'Get the list of subjects/courses the student is enrolled in.',
-    parameters: { type: 'object', properties: {} },
+    type: 'function',
+    function: {
+      name: 'get_subjects',
+      description: 'Get the list of subjects/courses the student is enrolled in.',
+      parameters: { type: 'object', properties: {} },
+    },
   },
   {
-    name: 'get_today_schedule',
-    description: 'Get the class schedule for today.',
-    parameters: { type: 'object', properties: {} },
+    type: 'function',
+    function: {
+      name: 'get_today_schedule',
+      description: 'Get the class schedule for today.',
+      parameters: { type: 'object', properties: {} },
+    },
   },
   {
-    name: 'get_upcoming_exams',
-    description: 'Get upcoming exams and academic activities.',
-    parameters: {
-      type: 'object',
-      properties: {
-        limit: { type: 'number', description: 'Max results (default 5)' },
+    type: 'function',
+    function: {
+      name: 'get_upcoming_exams',
+      description: 'Get upcoming exams and academic activities.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Max results (default 5)' },
+        },
       },
     },
   },
   {
-    name: 'get_week_tasks',
-    description: 'Get pending tasks for this week.',
-    parameters: { type: 'object', properties: {} },
-  },
-  {
-    name: 'get_notes_by_subject',
-    description: 'Get notes for a specific subject.',
-    parameters: {
-      type: 'object',
-      properties: {
-        subject_id: { type: 'string', description: 'UUID of the subject' },
-      },
-      required: ['subject_id'],
+    type: 'function',
+    function: {
+      name: 'get_week_tasks',
+      description: 'Get pending tasks for this week.',
+      parameters: { type: 'object', properties: {} },
     },
   },
   {
-    name: 'get_subject_progress',
-    description: 'Get academic progress (grades, weights) for a subject.',
-    parameters: {
-      type: 'object',
-      properties: {
-        subject_id: { type: 'string', description: 'UUID of the subject' },
+    type: 'function',
+    function: {
+      name: 'get_notes_by_subject',
+      description: 'Get notes for a specific subject.',
+      parameters: {
+        type: 'object',
+        properties: {
+          subject_id: { type: 'string', description: 'UUID of the subject' },
+        },
+        required: ['subject_id'],
       },
-      required: ['subject_id'],
     },
   },
   {
-    name: 'create_task',
-    description: 'Create a new pending task for the student.',
-    parameters: {
-      type: 'object',
-      properties: {
-        title:      { type: 'string',  description: 'Task title' },
-        due_date:   { type: 'string',  description: 'Due date YYYY-MM-DD (optional)' },
-        priority:   { type: 'string',  description: 'high | mid | low (default: mid)' },
-        subject_id: { type: 'string',  description: 'UUID of related subject (optional)' },
+    type: 'function',
+    function: {
+      name: 'get_subject_progress',
+      description: 'Get academic progress (grades, weights) for a subject.',
+      parameters: {
+        type: 'object',
+        properties: {
+          subject_id: { type: 'string', description: 'UUID of the subject' },
+        },
+        required: ['subject_id'],
       },
-      required: ['title'],
     },
   },
   {
-    name: 'create_exam',
-    description: 'Create a new exam or academic activity.',
-    parameters: {
-      type: 'object',
-      properties: {
-        title:         { type: 'string', description: 'Title of the activity' },
-        exam_date:     { type: 'string', description: 'Date YYYY-MM-DD' },
-        activity_type: { type: 'string', description: 'exam | workshop | activity | task | study_session' },
-        subject_id:    { type: 'string', description: 'UUID of related subject (optional)' },
-        percentage:    { type: 'number', description: 'Weight % of final grade (optional)' },
-        exam_time:     { type: 'string', description: 'Time HH:MM (optional)' },
-        location:      { type: 'string', description: 'Room or location (optional)' },
+    type: 'function',
+    function: {
+      name: 'create_task',
+      description: 'Create a new pending task for the student.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title:      { type: 'string', description: 'Task title' },
+          due_date:   { type: 'string', description: 'Due date YYYY-MM-DD (optional)' },
+          priority:   { type: 'string', description: 'high | mid | low (default: mid)' },
+          subject_id: { type: 'string', description: 'UUID of related subject (optional)' },
+        },
+        required: ['title'],
       },
-      required: ['title', 'exam_date', 'activity_type'],
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_exam',
+      description: 'Create a new exam or academic activity.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title:         { type: 'string', description: 'Title of the activity' },
+          exam_date:     { type: 'string', description: 'Date YYYY-MM-DD' },
+          activity_type: { type: 'string', description: 'exam | workshop | activity | task | study_session' },
+          subject_id:    { type: 'string', description: 'UUID of related subject (optional)' },
+          percentage:    { type: 'number', description: 'Weight % of final grade (optional)' },
+          exam_time:     { type: 'string', description: 'Time HH:MM (optional)' },
+          location:      { type: 'string', description: 'Room or location (optional)' },
+        },
+        required: ['title', 'exam_date', 'activity_type'],
+      },
     },
   },
 ]
