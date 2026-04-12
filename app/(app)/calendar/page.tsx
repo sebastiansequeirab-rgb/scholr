@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
+import { uniqueById } from '@/lib/utils'
 import type { Subject, Schedule, Exam, Task } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
@@ -309,16 +310,53 @@ const SANCTUARY_CALENDAR_CSS = `
   .fc ::-webkit-scrollbar { width: 4px; }
   .fc ::-webkit-scrollbar-track { background: transparent; }
   .fc ::-webkit-scrollbar-thumb { background: var(--s-highest); border-radius: 4px; }
+
+  /* ─── Mobile overrides ───────────────────────── */
+  @media (max-width: 768px) {
+    .fc .fc-toolbar {
+      padding: 10px 12px 8px !important;
+      gap: 6px !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+    }
+    .fc .fc-toolbar-chunk { display: flex; align-items: center; gap: 3px; }
+    .fc .fc-toolbar-title {
+      font-size: 13px !important;
+      letter-spacing: -0.02em !important;
+    }
+    .fc .fc-button,
+    .fc .fc-button-primary {
+      font-size: 9px !important;
+      padding: 3px 7px !important;
+    }
+    .fc .fc-prev-button,
+    .fc .fc-next-button { padding: 3px 5px !important; }
+
+    .fc .fc-daygrid-day-frame { min-height: 52px !important; }
+    .fc .fc-daygrid-day-top { padding: 2px 4px !important; }
+    .fc .fc-daygrid-day-number { font-size: 10px !important; padding: 2px 4px !important; }
+    .fc .fc-day-today .fc-daygrid-day-number { width: 20px !important; height: 20px !important; font-size: 10px !important; }
+    .fc .fc-col-header-cell-cushion { font-size: 9px !important; letter-spacing: 0.06em !important; }
+    .fc .fc-daygrid-event { font-size: 9px !important; padding: 1px 3px !important; border-radius: 3px !important; margin-bottom: 1px !important; }
+
+    .fc .fc-timegrid-slot-lane { height: 24px !important; }
+    .fc .fc-timegrid-slot-label { height: 24px !important; }
+    .fc .fc-timegrid-slot-label-cushion { font-size: 9px !important; padding-right: 4px !important; }
+    .fc .fc-timegrid-axis { width: 38px !important; }
+    .fc .fc-timegrid-event { font-size: 9px !important; padding: 2px 3px !important; border-radius: 4px !important; }
+    .fc .fc-timegrid-event .fc-event-title { font-size: 9px !important; line-height: 1.2 !important; }
+  }
 `
 
 export default function CalendarPage() {
-  const { t } = useTranslation()
-  const [subjects,     setSubjects]     = useState<Subject[]>([])
-  const [schedules,    setSchedules]    = useState<Schedule[]>([])
-  const [exams,        setExams]        = useState<Exam[]>([])
-  const [tasks,        setTasks]        = useState<Task[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [clickedEvent, setClickedEvent] = useState<ClickedEvent | null>(null)
+  const { t, language } = useTranslation()
+  const [subjects,      setSubjects]      = useState<Subject[]>([])
+  const [schedules,     setSchedules]     = useState<Schedule[]>([])
+  const [exams,         setExams]         = useState<Exam[]>([])
+  const [tasks,         setTasks]         = useState<Task[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [clickedEvent,  setClickedEvent]  = useState<ClickedEvent | null>(null)
+  const [legendOpen,    setLegendOpen]    = useState(false)
   const { use12h } = useTimeFormat()
   const [addExamDate,  setAddExamDate]  = useState<string | null>(null)
 
@@ -335,7 +373,7 @@ export default function CalendarPage() {
       supabase.from('exams').select('*'),
       supabase.from('tasks').select('*').not('due_date', 'is', null),
     ])
-    setSubjects(ss || [])
+    setSubjects(uniqueById(ss || []))
     setSchedules(sc || [])
     setExams(es || [])
     setTasks(ts || [])
@@ -466,16 +504,32 @@ export default function CalendarPage() {
     <div className="max-w-6xl mx-auto animate-fade-in">
 
       {/* Page header */}
-      <div className="mb-4">
-        <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-1"
-          style={{ color: 'var(--color-primary)' }}>Academic Timeline</span>
-        <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-          {t('calendar.title')}
-        </h1>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-0.5"
+            style={{ color: 'var(--color-primary)' }}>Academic Timeline</span>
+          <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
+            {t('calendar.title')}
+          </h1>
+        </div>
+        {/* Legend toggle — mobile only */}
+        <button
+          onClick={() => setLegendOpen(!legendOpen)}
+          className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+          style={{
+            backgroundColor: legendOpen ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : 'var(--s-low)',
+            color: legendOpen ? 'var(--color-primary)' : 'var(--color-outline)',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
+          <span className="material-symbols-outlined text-[14px]">legend_toggle</span>
+          {legendOpen ? t('common.close') : 'Leyenda'}
+        </button>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-x-5 gap-y-2 mb-5">
+      {/* Legend — always visible on desktop, collapsible on mobile */}
+      <div className={`mb-4 rounded-xl p-3 ${legendOpen ? 'flex' : 'hidden lg:flex'} flex-wrap gap-x-4 gap-y-2`}
+        style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
         {subjects.map(s => (
           <div key={s.id} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color }} />
@@ -483,21 +537,21 @@ export default function CalendarPage() {
           </div>
         ))}
         {exams.length > 0 && (
-          <>
-            {(Object.keys(ACTIVITY_TYPES) as Array<keyof typeof ACTIVITY_TYPES>).filter(k =>
-              exams.some(e => (e.activity_type || 'exam') === k)
-            ).map(k => (
-              <div key={k} className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: ACTIVITY_TYPES[k].color }} />
-                <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>{ACTIVITY_TYPES[k].label_es}</span>
-              </div>
-            ))}
-          </>
+          (Object.keys(ACTIVITY_TYPES) as Array<keyof typeof ACTIVITY_TYPES>).filter(k =>
+            exams.some(e => (e.activity_type || 'exam') === k)
+          ).map(k => (
+            <div key={k} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: ACTIVITY_TYPES[k].color }} />
+              <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>
+                {language === 'en' ? ACTIVITY_TYPES[k].label_en : ACTIVITY_TYPES[k].label_es}
+              </span>
+            </div>
+          ))
         )}
-        {tasks.some(t => !t.is_done && t.due_date) && (
+        {tasks.some(tk => !tk.is_done && tk.due_date) && (
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: 'var(--warning)' }} />
-            <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>Tareas</span>
+            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0 border border-dashed" style={{ borderColor: 'var(--warning)' }} />
+            <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>{t('nav.tasks')}</span>
           </div>
         )}
       </div>
@@ -524,12 +578,12 @@ export default function CalendarPage() {
           eventClick={handleEventClick}
           selectable={true}
           select={handleDateSelect}
-          height={700}
+          height="auto"
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
           scrollTime="07:00:00"
           slotLabelInterval="01:00:00"
-          locale="es"
+          locale={language === 'en' ? 'en' : 'es'}
           eventTimeFormat={use12h
             ? { hour: 'numeric', minute: '2-digit', meridiem: 'lowercase' }
             : { hour: '2-digit', minute: '2-digit', meridiem: false }
@@ -619,8 +673,12 @@ export default function CalendarPage() {
                   <span className="mono text-[9px] uppercase tracking-widest block"
                     style={{ color: 'var(--color-outline)' }}>
                     {clickedEvent.type === 'exam'
-                      ? (clickedEvent.activityType ? ACTIVITY_TYPES[clickedEvent.activityType as keyof typeof ACTIVITY_TYPES]?.label_es : 'Actividad')
-                      : clickedEvent.type === 'task' ? 'Tarea' : 'Clase'}
+                      ? (clickedEvent.activityType
+                          ? (language === 'en'
+                              ? ACTIVITY_TYPES[clickedEvent.activityType as keyof typeof ACTIVITY_TYPES]?.label_en
+                              : ACTIVITY_TYPES[clickedEvent.activityType as keyof typeof ACTIVITY_TYPES]?.label_es)
+                          : t('nav.exams'))
+                      : clickedEvent.type === 'task' ? t('nav.tasks') : t('subjects.schedules')}
                   </span>
                   <h2 className="font-bold text-base" style={{ color: 'var(--on-surface)' }}>
                     {clickedEvent.title}
@@ -668,7 +726,7 @@ export default function CalendarPage() {
                       backgroundColor: clickedEvent.priority === 'high' ? 'var(--priority-high-bg)' : clickedEvent.priority === 'mid' ? 'var(--priority-mid-bg)' : 'var(--priority-low-bg)',
                       color: clickedEvent.priority === 'high' ? 'var(--priority-high)' : clickedEvent.priority === 'mid' ? 'var(--priority-mid)' : 'var(--priority-low)',
                     }}>
-                    {clickedEvent.priority === 'high' ? 'Alta' : clickedEvent.priority === 'mid' ? 'Media' : 'Baja'}
+                    {clickedEvent.priority === 'high' ? t('tasks.high') : clickedEvent.priority === 'mid' ? t('tasks.mid') : t('tasks.low')}
                   </span>
                 </div>
               )}

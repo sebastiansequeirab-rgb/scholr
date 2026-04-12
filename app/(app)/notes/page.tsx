@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { debounce, timeAgo } from '@/lib/utils'
+import { debounce, timeAgo, uniqueById } from '@/lib/utils'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TaskList from '@tiptap/extension-task-list'
@@ -79,6 +79,13 @@ function NoteEditor({
     setTitle(e.target.value)
     setSaveStatus('saving')
     saveNote(note.id, e.target.value, editor?.getHTML() || '')
+  }
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      editor?.commands.focus('end')
+    }
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -254,6 +261,7 @@ function NoteEditor({
           <input
             value={title}
             onChange={handleTitleChange}
+            onKeyDown={handleTitleKeyDown}
             placeholder={t('notes.untitled')}
             className="text-3xl font-extrabold tracking-tight bg-transparent border-none outline-none mb-6 w-full"
             style={{ color: 'var(--on-surface)' }}
@@ -280,7 +288,7 @@ function getPreview(html: string): string {
 
 // ── Main page ─────────────────────────────────────────────────────────
 export default function NotesPage() {
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [notes,         setNotes]         = useState<Note[]>([])
   const [subjects,      setSubjects]      = useState<Subject[]>([])
   const [activeSubject, setActiveSubject] = useState<string>('all')
@@ -296,7 +304,7 @@ export default function NotesPage() {
       supabase.from('subjects').select('*').order('name'),
     ])
     setNotes(ns || [])
-    setSubjects(ss || [])
+    setSubjects(uniqueById(ss || []))
     setLoading(false)
   }, [])
 
@@ -483,7 +491,7 @@ export default function NotesPage() {
               const accentColor = subj?.color || 'var(--color-primary)'
               return (
                 <div key={note.id}
-                  className={`group/note relative rounded-xl transition-all duration-200 ${isDeleting ? 'opacity-0 scale-95' : ''}`}
+                  className={`group/note rounded-xl transition-all duration-200 ${isDeleting ? 'opacity-0 scale-95' : ''}`}
                   style={{
                     backgroundColor: isActive
                       ? `color-mix(in srgb, ${accentColor} 8%, var(--s-base))`
@@ -495,41 +503,44 @@ export default function NotesPage() {
                       ? `3px solid color-mix(in srgb, ${accentColor} 60%, transparent)`
                       : '3px solid transparent',
                   }}>
-                  <button onClick={() => setActiveNote(note)}
-                    className="w-full text-left px-3 py-2.5 rounded-xl group-hover/note:bg-[var(--s-base)] transition-colors"
-                    style={{ backgroundColor: isActive ? 'transparent' : undefined }}>
-                    <div className="flex items-start gap-2.5 pr-6">
-                      <div className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: subj?.color || 'var(--color-outline)' }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between gap-1">
-                          <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
-                            {note.title || t('notes.untitled')}
-                          </p>
-                          <span className="mono text-[9px] flex-shrink-0" style={{ color: 'var(--color-outline)' }}>
-                            {new Date(note.updated_at).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}
-                          </span>
+                  <div className="flex items-stretch">
+                    <button onClick={() => setActiveNote(note)}
+                      className="flex-1 text-left px-3 py-2.5 rounded-l-xl min-w-0 group-hover/note:bg-[var(--s-base)] transition-colors"
+                      style={{ backgroundColor: isActive ? 'transparent' : undefined }}>
+                      <div className="flex items-start gap-2">
+                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: subj?.color || 'var(--color-outline)' }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
+                              {note.title || t('notes.untitled')}
+                            </p>
+                            <span className="mono text-[9px] flex-shrink-0" style={{ color: 'var(--color-outline)' }}>
+                              {new Date(note.updated_at).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                          {preview && (
+                            <p className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--color-outline)' }}>
+                              {preview}
+                            </p>
+                          )}
+                          {subj && (
+                            <span className="text-[10px] font-medium mt-0.5 block" style={{ color: subj.color }}>
+                              {subj.name}
+                            </span>
+                          )}
                         </div>
-                        {preview && (
-                          <p className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--color-outline)' }}>
-                            {preview}
-                          </p>
-                        )}
-                        {subj && (
-                          <span className="text-[10px] font-medium mt-0.5 block" style={{ color: subj.color }}>
-                            {subj.name}
-                          </span>
-                        )}
                       </div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => deleteNote(note.id)}
-                    className="absolute top-2 right-2 p-1 rounded-lg opacity-0 group-hover/note:opacity-100 transition-opacity hover:bg-red-400/10"
-                    style={{ color: 'var(--danger)' }}
-                    aria-label="Eliminar nota">
-                    <span className="material-symbols-outlined text-[13px]">delete</span>
-                  </button>
+                    </button>
+                    {/* Delete — separate column, no overlap */}
+                    <button
+                      onClick={() => deleteNote(note.id)}
+                      className="flex-shrink-0 w-8 flex items-center justify-center opacity-0 group-hover/note:opacity-100 transition-opacity hover:bg-red-400/10 rounded-r-xl"
+                      style={{ color: 'var(--danger)' }}
+                      aria-label="Eliminar nota">
+                      <span className="material-symbols-outlined text-[13px]">delete</span>
+                    </button>
+                  </div>
                 </div>
               )
             })}

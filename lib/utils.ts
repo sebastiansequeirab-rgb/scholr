@@ -71,6 +71,13 @@ export function formatTime(timeStr: string, use12h: boolean): string {
   return `${h12}:${minutes} ${period}`
 }
 
+/** Deduplicate an array of objects by their `id` field */
+export function uniqueById<T extends { id: string }>(arr: T[]): T[] {
+  const seen = new Map<string, T>()
+  for (const item of arr) seen.set(item.id, item)
+  return Array.from(seen.values())
+}
+
 export function timeAgo(dateStr: string, t: (key: string) => string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
   if (diff < 60) return t('justNow')

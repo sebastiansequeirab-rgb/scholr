@@ -370,8 +370,12 @@
 @media (min-width: 1024px) {
   body[data-sidebar="collapsed"] .sidebar-offset { padding-left: 4rem; }
   body[data-sidebar="expanded"]  .sidebar-offset,
-  body:not([data-sidebar])       .sidebar-offset { padding-left: 16rem; }
+  body:not([data-sidebar])       .sidebar-offset { padding-left: 15rem; }
 }
+
+/* ── Scrollbar hide utility ── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ── TipTap task list (checklist) ── */
 ul[data-type="taskList"] {
@@ -422,3 +426,70 @@ ul[data-type="taskList"] li[data-checked="true"] > div > p {
   text-decoration: line-through;
   opacity: 0.5;
 }
+
+/* ── TipTap ProseMirror editor content styles ── */
+.ProseMirror {
+  outline: none;
+  line-height: 1.7;
+  color: var(--on-surface-variant);
+  min-height: 200px;
+}
+.ProseMirror p { margin: 0.5em 0; }
+.ProseMirror h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--on-surface);
+  margin: 1.2em 0 0.4em;
+}
+.ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--on-surface);
+  margin: 1em 0 0.35em;
+}
+.ProseMirror h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--on-surface);
+  margin: 0.8em 0 0.3em;
+}
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.4em 0;
+}
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.4em 0;
+}
+.ProseMirror li { margin: 0.2em 0; }
+.ProseMirror strong { font-weight: 700; color: var(--on-surface); }
+.ProseMirror em { font-style: italic; }
+.ProseMirror s { text-decoration: line-through; opacity: 0.6; }
+.ProseMirror code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  background-color: var(--s-high);
+  color: var(--color-tertiary);
+}
+.ProseMirror blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 1rem;
+  margin: 0.6em 0;
+  opacity: 0.75;
+  font-style: italic;
+}
+.ProseMirror .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-outline);
+  pointer-events: none;
+  height: 0;
+}
+

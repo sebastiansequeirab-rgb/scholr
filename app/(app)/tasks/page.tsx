@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { isToday, isTomorrow, daysUntil } from '@/lib/utils'
+import { isToday, isTomorrow, daysUntil, uniqueById } from '@/lib/utils'
 import { TaskNotes } from '@/components/tasks/TaskNotes'
 import type { Task, Subtask, Subject } from '@/types'
 
@@ -267,7 +267,7 @@ export default function TasksPage() {
       supabase.from('subjects').select('*').order('name'),
     ])
     setTasks(ts || [])
-    setSubjects(ss || [])
+    setSubjects(uniqueById(ss || []))
     setLoading(false)
   }, [])
 

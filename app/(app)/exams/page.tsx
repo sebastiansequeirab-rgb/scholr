@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { daysUntil, formatTime } from '@/lib/utils'
+import { daysUntil, formatTime, uniqueById } from '@/lib/utils'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import type { Exam, Subject, ActivityType } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
@@ -220,7 +220,7 @@ export default function ExamsPage() {
       supabase.from('subjects').select('*').order('name'),
     ])
     setExams(es || [])
-    setSubjects(ss || [])
+    setSubjects(uniqueById(ss || []))
     setLoading(false)
   }, [])
 
