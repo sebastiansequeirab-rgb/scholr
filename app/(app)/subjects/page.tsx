@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { SubjectModal, ScheduleManager } from '@/components/subjects/SubjectModal'
 import { IconPicker } from '@/components/subjects/IconPicker'
+import { SubjectDetail } from '@/components/subjects/SubjectDetail'
 import type { Subject, Schedule } from '@/types'
 
 const SUBJECT_ICON_MAP: [RegExp, string][] = [
@@ -47,6 +48,7 @@ export default function SubjectsPage() {
   const [expandedSubject,  setExpandedSubject]  = useState<string | null>(null)
   const [deleteConfirm,    setDeleteConfirm]    = useState<string | null>(null)
   const [iconPickerOpen,   setIconPickerOpen]   = useState<string | null>(null)
+  const [detailSubject,    setDetailSubject]    = useState<Subject | null>(null)
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -138,12 +140,13 @@ export default function SubjectsPage() {
             const subjectSchedules = schedulesBySubject(subject.id)
             return (
               <div key={subject.id}
-                className="group relative rounded-2xl p-6 flex flex-col transition-all duration-300 hover:-translate-y-0.5"
+                className="group relative rounded-2xl p-6 flex flex-col transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
                 style={{
                   backgroundColor: `color-mix(in srgb, ${subject.color} 6%, var(--s-low))`,
                   border: '1px solid var(--border-subtle)',
                   borderTop: `2px solid color-mix(in srgb, ${subject.color} 30%, transparent)`,
-                }}>
+                }}
+                onClick={() => setDetailSubject(subject)}>
 
                 {/* Hover gradient */}
                 <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
@@ -154,7 +157,7 @@ export default function SubjectsPage() {
                   <div className="flex justify-between items-start mb-5">
                     <div className="relative">
                       <button
-                        onClick={() => setIconPickerOpen(iconPickerOpen === subject.id ? null : subject.id)}
+                        onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === subject.id ? null : subject.id) }}
                         className="w-12 h-12 rounded-xl flex items-center justify-center transition-all hover:brightness-125 hover:scale-105"
                         style={{ backgroundColor: `color-mix(in srgb, ${subject.color} 12%, transparent)` }}
                         title="Cambiar ícono"
@@ -223,7 +226,8 @@ export default function SubjectsPage() {
                   )}
 
                   {/* Actions */}
-                  <div className="mt-auto pt-4 flex gap-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                  <div className="mt-auto pt-4 flex gap-2" style={{ borderTop: '1px solid var(--border-subtle)' }}
+                    onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => setExpandedSubject(expandedSubject === subject.id ? null : subject.id)}
                       className="flex-1 text-xs font-semibold py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all hover:brightness-110"
@@ -297,6 +301,14 @@ export default function SubjectsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Subject Detail — academic progress */}
+      {detailSubject && (
+        <SubjectDetail
+          subject={detailSubject}
+          onClose={() => setDetailSubject(null)}
+        />
       )}
     </div>
   )

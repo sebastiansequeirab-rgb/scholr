@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { daysUntil, formatTime, uniqueById } from '@/lib/utils'
+import { daysUntil, formatTime, uniqueById, uniqueByName } from '@/lib/utils'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import type { Exam, Subject, ActivityType } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
@@ -25,6 +25,7 @@ function ActivityForm({ exam, subjects, onClose, onSaved }: ActivityFormProps) {
   const [examDate,     setExamDate]     = useState(exam?.exam_date || '')
   const [examTime,     setExamTime]     = useState(exam?.exam_time || '')
   const [percentage,   setPercentage]   = useState<string>(exam?.percentage != null ? String(exam.percentage) : '')
+  const [grade,        setGrade]        = useState<string>(exam?.grade != null ? String(exam.grade) : '')
   const [location,     setLocation]     = useState(exam?.location || '')
   const [notes,        setNotes]        = useState(exam?.notes || '')
   const [error,        setError]        = useState('')
@@ -68,7 +69,8 @@ function ActivityForm({ exam, subjects, onClose, onSaved }: ActivityFormProps) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const pctNum = percentage !== '' ? parseFloat(percentage) : null
+    const pctNum   = percentage !== '' ? parseFloat(percentage) : null
+    const gradeNum = grade !== '' ? parseFloat(grade) : null
     const payload = {
       user_id: user.id, title: title.trim(),
       subject_id: subjectId || null, exam_date: examDate,
@@ -76,6 +78,7 @@ function ActivityForm({ exam, subjects, onClose, onSaved }: ActivityFormProps) {
       notes: notes.trim() || null,
       activity_type: activityType,
       percentage: pctNum,
+      grade: gradeNum,
     }
     const { error: dbError } = isEditing
       ? await supabase.from('exams').update(payload).eq('id', exam!.id)
@@ -156,22 +159,42 @@ function ActivityForm({ exam, subjects, onClose, onSaved }: ActivityFormProps) {
             </div>
           </div>
 
-          {/* Percentage — only for types that require it */}
+          {/* Percentage + Grade — only for types that require it */}
           {typeCfg.requiresPercentage && (
-            <div>
-              <label htmlFor="actPct" className="label">{t('activities.percentage')}</label>
-              <div className="relative">
-                <input
-                  id="actPct"
-                  type="number"
-                  min="0" max="100" step="0.5"
-                  className="input pr-8"
-                  placeholder="0 – 100"
-                  value={percentage}
-                  onChange={e => setPercentage(e.target.value)}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
-                  style={{ color: 'var(--color-outline)' }}>%</span>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="actPct" className="label">{t('activities.percentage')}</label>
+                <div className="relative">
+                  <input
+                    id="actPct"
+                    type="number"
+                    min="0" max="100" step="0.5"
+                    className="input pr-8"
+                    placeholder="0 – 100"
+                    value={percentage}
+                    onChange={e => setPercentage(e.target.value)}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
+                    style={{ color: 'var(--color-outline)' }}>%</span>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="actGrade" className="label">
+                  {language === 'es' ? 'Nota obtenida' : 'Grade obtained'}
+                </label>
+                <div className="relative">
+                  <input
+                    id="actGrade"
+                    type="number"
+                    min="0" max="20" step="0.1"
+                    className="input pr-10"
+                    placeholder="0 – 20"
+                    value={grade}
+                    onChange={e => setGrade(e.target.value)}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold"
+                    style={{ color: 'var(--color-outline)' }}>/20</span>
+                </div>
               </div>
             </div>
           )}
@@ -220,7 +243,7 @@ export default function ExamsPage() {
       supabase.from('subjects').select('*').order('name'),
     ])
     setExams(es || [])
-    setSubjects(uniqueById(ss || []))
+    setSubjects(uniqueByName(uniqueById(ss || [])))
     setLoading(false)
   }, [])
 

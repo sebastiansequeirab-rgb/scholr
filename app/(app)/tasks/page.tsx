@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { isToday, isTomorrow, daysUntil, uniqueById } from '@/lib/utils'
+import { isToday, isTomorrow, daysUntil, uniqueById, uniqueByName } from '@/lib/utils'
 import { TaskNotes } from '@/components/tasks/TaskNotes'
 import type { Task, Subtask, Subject } from '@/types'
 
@@ -267,7 +267,7 @@ export default function TasksPage() {
       supabase.from('subjects').select('*').order('name'),
     ])
     setTasks(ts || [])
-    setSubjects(uniqueById(ss || []))
+    setSubjects(uniqueByName(uniqueById(ss || [])))
     setLoading(false)
   }, [])
 
@@ -390,12 +390,28 @@ export default function TasksPage() {
         </div>
 
         <div className="flex flex-wrap gap-3 mt-4">
-          <select value={priority} onChange={(e) => setPriority(e.target.value as 'high' | 'mid' | 'low')}
-            className="input w-auto text-xs py-1.5" aria-label={t('tasks.priority')}>
-            <option value="high">● {t('tasks.high')}</option>
-            <option value="mid">● {t('tasks.mid')}</option>
-            <option value="low">● {t('tasks.low')}</option>
-          </select>
+          <div className="flex gap-1.5" role="group" aria-label={t('tasks.priority')}>
+            {([
+              { value: 'high', label: t('tasks.high'), color: 'var(--priority-high)', bg: 'var(--priority-high-bg)' },
+              { value: 'mid',  label: t('tasks.mid'),  color: 'var(--priority-mid)',  bg: 'var(--priority-mid-bg)'  },
+              { value: 'low',  label: t('tasks.low'),  color: 'var(--priority-low)',  bg: 'var(--priority-low-bg)'  },
+            ] as const).map(p => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setPriority(p.value)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all border flex items-center gap-1.5"
+                style={{
+                  color:           priority === p.value ? p.color : 'var(--color-outline)',
+                  backgroundColor: priority === p.value ? p.bg   : 'transparent',
+                  borderColor:     priority === p.value ? p.color : 'var(--border-default)',
+                }}
+              >
+                <span style={{ fontSize: '7px', lineHeight: 1 }}>●</span>
+                {p.label}
+              </button>
+            ))}
+          </div>
           <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
             className="input w-auto text-xs py-1.5" aria-label={t('tasks.subject')}>
             <option value="">{t('tasks.noSubject')}</option>

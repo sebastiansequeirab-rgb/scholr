@@ -306,7 +306,7 @@ const SANCTUARY_CALENDAR_CSS = `
     font-weight: 600 !important;
   }
 
-  /* ─── Week view: allow horizontal scroll to show all days ── */
+  /* ─── Week view: allow horizontal scroll to show all days (desktop) ── */
   .fc-timeGridWeek-view .fc-scrollgrid { overflow-x: auto !important; }
   .fc-timeGridWeek-view .fc-scrollgrid-sync-table { min-width: 560px !important; }
   .fc-timeGridWeek-view .fc-col-header { min-width: 560px !important; }
@@ -344,19 +344,27 @@ const SANCTUARY_CALENDAR_CSS = `
     .fc .fc-prev-button,
     .fc .fc-next-button { padding: 3px 5px !important; }
 
-    .fc .fc-daygrid-day-frame { min-height: 52px !important; }
-    .fc .fc-daygrid-day-top { padding: 2px 4px !important; }
-    .fc .fc-daygrid-day-number { font-size: 10px !important; padding: 2px 4px !important; }
-    .fc .fc-day-today .fc-daygrid-day-number { width: 20px !important; height: 20px !important; font-size: 10px !important; }
-    .fc .fc-col-header-cell-cushion { font-size: 9px !important; letter-spacing: 0.06em !important; }
-    .fc .fc-daygrid-event { font-size: 9px !important; padding: 1px 3px !important; border-radius: 3px !important; margin-bottom: 1px !important; }
+    /* Fix 3: compact month rows — show full month without vertical scroll */
+    .fc .fc-daygrid-day-frame { min-height: 38px !important; }
+    .fc .fc-daygrid-day-top { padding: 1px 3px !important; }
+    .fc .fc-daygrid-day-number { font-size: 9px !important; padding: 1px 3px !important; }
+    .fc .fc-day-today .fc-daygrid-day-number { width: 18px !important; height: 18px !important; font-size: 9px !important; }
+    .fc .fc-col-header-cell-cushion { font-size: 9px !important; letter-spacing: 0 !important; }
+    .fc .fc-daygrid-event { font-size: 8px !important; padding: 1px 2px !important; border-radius: 3px !important; margin-bottom: 1px !important; }
 
-    .fc .fc-timegrid-slot-lane { height: 24px !important; }
-    .fc .fc-timegrid-slot-label { height: 24px !important; }
-    .fc .fc-timegrid-slot-label-cushion { font-size: 9px !important; padding-right: 4px !important; }
-    .fc .fc-timegrid-axis { width: 38px !important; }
-    .fc .fc-timegrid-event { font-size: 9px !important; padding: 2px 3px !important; border-radius: 4px !important; }
-    .fc .fc-timegrid-event .fc-event-title { font-size: 9px !important; line-height: 1.2 !important; }
+    /* Fix 4: week view — remove forced min-width so columns fit on screen */
+    .fc-timeGridWeek-view .fc-scrollgrid { overflow-x: visible !important; }
+    .fc-timeGridWeek-view .fc-scrollgrid-sync-table { min-width: 0 !important; }
+    .fc-timeGridWeek-view .fc-col-header { min-width: 0 !important; }
+    .fc-timeGridWeek-view .fc-timegrid-body { min-width: 0 !important; }
+
+    /* Fix 4: week event readability on mobile */
+    .fc .fc-timegrid-slot-lane { height: 28px !important; }
+    .fc .fc-timegrid-slot-label { height: 28px !important; }
+    .fc .fc-timegrid-slot-label-cushion { font-size: 9px !important; padding-right: 3px !important; }
+    .fc .fc-timegrid-axis { width: 34px !important; }
+    .fc .fc-timegrid-event { font-size: 10px !important; padding: 2px 3px !important; border-radius: 4px !important; }
+    .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; line-height: 1.2 !important; white-space: normal !important; word-break: break-word !important; }
   }
 `
 
@@ -370,6 +378,7 @@ export default function CalendarPage() {
   const [clickedEvent,  setClickedEvent]  = useState<ClickedEvent | null>(null)
   const [initialView,   setInitialView]   = useState('dayGridMonth')
   const [legendOpen,    setLegendOpen]    = useState(false)
+  const [isMobile,      setIsMobile]      = useState(false)
   const { use12h } = useTimeFormat()
   const [addExamDate,  setAddExamDate]  = useState<string | null>(null)
 
@@ -379,7 +388,10 @@ export default function CalendarPage() {
   const [addingExam,     setAddingExam]     = useState(false)
 
   useEffect(() => {
-    if (window.innerWidth < 768) setInitialView('timeGridDay')
+    if (window.innerWidth < 768) {
+      setInitialView('timeGridDay')
+      setIsMobile(true)
+    }
   }, [])
 
   const fetchData = useCallback(async () => {
@@ -611,7 +623,9 @@ export default function CalendarPage() {
           }
           views={{
             timeGridWeek: {
-              dayHeaderFormat: { weekday: 'short', day: 'numeric' },
+              dayHeaderFormat: isMobile
+                ? { weekday: 'narrow' }
+                : { weekday: 'short', day: 'numeric' },
               slotDuration: '01:00:00',
             },
             timeGridDay: {

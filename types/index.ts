@@ -68,6 +68,7 @@ export type Exam = {
   created_at: string
   activity_type: ActivityType
   percentage: number | null
+  grade: number | null
 }
 
 export const ACTIVITY_TYPES: Record<ActivityType, { label_es: string; label_en: string; icon: string; color: string; requiresPercentage: boolean }> = {
@@ -97,7 +98,6 @@ export const SUBJECT_COLORS = [
 ]
 
 export const THEME_COLORS = {
-  indigo: { primary: '#185FA5', secondary: '#1D9E75', accent: '#534AB7' },
-  purple: { primary: '#534AB7', secondary: '#EF9F27', accent: '#3C3489' },
-  green: { primary: '#0F6E56', secondary: '#3B6D11', accent: '#085041' },
+  indigo: { primary: '#3b82f6', secondary: '#94a3b8', accent: '#c084fc' },
+  purple: { primary: '#a855f7', secondary: '#c4b5fd', accent: '#fbbf24' },
 }

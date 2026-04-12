@@ -78,6 +78,17 @@ export function uniqueById<T extends { id: string }>(arr: T[]): T[] {
   return Array.from(seen.values())
 }
 
+/** Deduplicate an array of objects by their `name` field (case-insensitive trim) */
+export function uniqueByName<T extends { name: string }>(arr: T[]): T[] {
+  const seen = new Set<string>()
+  return arr.filter(item => {
+    const key = item.name.toLowerCase().trim()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 export function timeAgo(dateStr: string, t: (key: string) => string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
   if (diff < 60) return t('justNow')
