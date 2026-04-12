@@ -368,6 +368,7 @@ export default function CalendarPage() {
   const [tasks,         setTasks]         = useState<Task[]>([])
   const [loading,       setLoading]       = useState(true)
   const [clickedEvent,  setClickedEvent]  = useState<ClickedEvent | null>(null)
+  const [initialView,   setInitialView]   = useState('dayGridMonth')
   const [legendOpen,    setLegendOpen]    = useState(false)
   const { use12h } = useTimeFormat()
   const [addExamDate,  setAddExamDate]  = useState<string | null>(null)
@@ -376,6 +377,10 @@ export default function CalendarPage() {
   const [newExamSubject, setNewExamSubject] = useState('')
   const [newExamTime,    setNewExamTime]    = useState('')
   const [addingExam,     setAddingExam]     = useState(false)
+
+  useEffect(() => {
+    if (window.innerWidth < 768) setInitialView('timeGridDay')
+  }, [])
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -574,7 +579,7 @@ export default function CalendarPage() {
         <style>{SANCTUARY_CALENDAR_CSS}</style>
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView={typeof window !== 'undefined' && window.innerWidth < 768 ? 'timeGridDay' : 'dayGridMonth'}
+          initialView={initialView}
           headerToolbar={{
             left:   'prev,next today',
             center: 'title',
@@ -607,7 +612,6 @@ export default function CalendarPage() {
           views={{
             timeGridWeek: {
               dayHeaderFormat: { weekday: 'short', day: 'numeric' },
-              dayMinWidth: 80,
               slotDuration: '01:00:00',
             },
             timeGridDay: {
