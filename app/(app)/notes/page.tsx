@@ -325,6 +325,9 @@ export default function NotesPage() {
   const [loading,       setLoading]       = useState(true)
   const [sortMode,      setSortMode]      = useState<'recent' | 'alpha'>('recent')
   const [deletingId,    setDeletingId]    = useState<string | null>(null)
+  const [swipeId,       setSwipeId]       = useState<string | null>(null)
+  const [swipeOffset,   setSwipeOffset]   = useState(0)
+  const [touchStartX,   setTouchStartX]   = useState(0)
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -513,62 +516,98 @@ export default function NotesPage() {
             )}
 
             {filteredNotes.map(note => {
-              const subj       = subjects.find(s => s.id === note.subject_id)
-              const isActive   = activeNote?.id === note.id
-              const isDeleting = deletingId === note.id
-              const preview    = getPreview(note.content)
+              const subj        = subjects.find(s => s.id === note.subject_id)
+              const isActive    = activeNote?.id === note.id
+              const isDeleting  = deletingId === note.id
+              const preview     = getPreview(note.content)
               const accentColor = subj?.color || 'var(--color-primary)'
+              const isSwiping   = swipeId === note.id
+              const offset      = isSwiping ? swipeOffset : 0
+              const THRESHOLD   = 72
+
               return (
                 <div key={note.id}
-                  className={`group/note rounded-xl transition-all duration-200 ${isDeleting ? 'opacity-0 scale-95' : ''}`}
-                  style={{
-                    backgroundColor: isActive
-                      ? `color-mix(in srgb, ${accentColor} 8%, var(--s-base))`
-                      : 'transparent',
-                    border: isActive
-                      ? `1px solid color-mix(in srgb, ${accentColor} 22%, transparent)`
-                      : '1px solid transparent',
-                    borderLeft: isActive
-                      ? `3px solid color-mix(in srgb, ${accentColor} 60%, transparent)`
-                      : '3px solid transparent',
-                  }}>
-                  <div className="flex items-stretch">
-                    <button onClick={() => setActiveNote(note)}
-                      className="flex-1 text-left px-3 py-2.5 rounded-l-xl min-w-0 group-hover/note:bg-[var(--s-base)] transition-colors"
-                      style={{ backgroundColor: isActive ? 'transparent' : undefined }}>
-                      <div className="flex items-start gap-2">
-                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: subj?.color || 'var(--color-outline)' }} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline justify-between gap-2">
-                            <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
-                              {note.title || t('notes.untitled')}
-                            </p>
-                            <span className="mono text-[9px] flex-shrink-0" style={{ color: 'var(--color-outline)' }}>
-                              {new Date(note.updated_at).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' })}
-                            </span>
+                  className={`relative rounded-xl overflow-hidden transition-all duration-200 ${isDeleting ? 'opacity-0 scale-95' : ''}`}>
+                  {/* Delete zone revealed on swipe */}
+                  <div className="absolute inset-0 flex items-center justify-end pr-4 rounded-xl"
+                    style={{
+                      backgroundColor: 'var(--danger)',
+                      opacity: Math.min(Math.abs(offset) / THRESHOLD, 1),
+                    }}>
+                    <span className="material-symbols-outlined text-white text-[18px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}>delete</span>
+                  </div>
+
+                  {/* Swipeable note content */}
+                  <div
+                    className="group/note relative"
+                    style={{
+                      transform: `translateX(${offset}px)`,
+                      transition: isSwiping ? 'none' : 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
+                      backgroundColor: isActive
+                        ? `color-mix(in srgb, ${accentColor} 8%, var(--s-base))`
+                        : 'var(--s-dim)',
+                      borderLeft: isActive
+                        ? `3px solid color-mix(in srgb, ${accentColor} 60%, transparent)`
+                        : '3px solid transparent',
+                    }}
+                    onTouchStart={e => {
+                      setSwipeId(note.id)
+                      setTouchStartX(e.touches[0].clientX)
+                      setSwipeOffset(0)
+                    }}
+                    onTouchMove={e => {
+                      if (swipeId !== note.id) return
+                      const dx = e.touches[0].clientX - touchStartX
+                      if (dx < 0) setSwipeOffset(Math.max(dx, -THRESHOLD * 1.2))
+                    }}
+                    onTouchEnd={() => {
+                      if (swipeOffset < -THRESHOLD) {
+                        deleteNote(note.id)
+                      } else {
+                        setSwipeOffset(0)
+                      }
+                      setSwipeId(null)
+                    }}
+                  >
+                    <div className="flex items-stretch">
+                      <button onClick={() => setActiveNote(note)}
+                        className="flex-1 text-left px-3 py-2.5 rounded-l-xl min-w-0 group-hover/note:bg-[var(--s-base)] transition-colors"
+                        style={{ backgroundColor: isActive ? 'transparent' : undefined }}>
+                        <div className="flex items-start gap-2">
+                          <div className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: subj?.color || 'var(--color-outline)' }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
+                                {note.title || t('notes.untitled')}
+                              </p>
+                              <span className="mono text-[9px] flex-shrink-0" style={{ color: 'var(--color-outline)' }}>
+                                {new Date(note.updated_at).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES', { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                            {preview && (
+                              <p className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--color-outline)' }}>
+                                {preview}
+                              </p>
+                            )}
+                            {subj && (
+                              <span className="text-[10px] font-medium mt-0.5 block" style={{ color: subj.color }}>
+                                {subj.name}
+                              </span>
+                            )}
                           </div>
-                          {preview && (
-                            <p className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--color-outline)' }}>
-                              {preview}
-                            </p>
-                          )}
-                          {subj && (
-                            <span className="text-[10px] font-medium mt-0.5 block" style={{ color: subj.color }}>
-                              {subj.name}
-                            </span>
-                          )}
                         </div>
-                      </div>
-                    </button>
-                    {/* Delete — separate column, no overlap */}
-                    <button
-                      onClick={() => deleteNote(note.id)}
-                      className="flex-shrink-0 w-8 flex items-center justify-center opacity-0 group-hover/note:opacity-100 transition-opacity hover:bg-red-400/10 rounded-r-xl"
-                      style={{ color: 'var(--danger)' }}
-                      aria-label="Eliminar nota">
-                      <span className="material-symbols-outlined text-[13px]">delete</span>
-                    </button>
+                      </button>
+                      {/* Desktop delete button */}
+                      <button
+                        onClick={() => deleteNote(note.id)}
+                        className="flex-shrink-0 w-8 flex items-center justify-center opacity-0 group-hover/note:opacity-100 transition-opacity hover:bg-red-400/10 rounded-r-xl"
+                        style={{ color: 'var(--danger)' }}
+                        aria-label="Eliminar nota">
+                        <span className="material-symbols-outlined text-[13px]">delete</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )

@@ -205,13 +205,16 @@ export function Sidebar({ profile }: SidebarProps) {
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
             style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 6%, transparent)' }}>
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+              className="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold"
               style={{
                 backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
                 color: 'var(--color-primary)',
               }}
             >
-              {profile?.full_name ? getInitials(profile.full_name) : 'U'}
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                : (profile?.full_name ? getInitials(profile.full_name) : 'U')
+              }
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-semibold truncate leading-tight" style={{ color: 'var(--on-surface)' }}>
@@ -237,14 +240,17 @@ export function Sidebar({ profile }: SidebarProps) {
         ) : (
           <div className="flex justify-center py-1">
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold cursor-pointer"
+              className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold cursor-pointer"
               style={{
                 backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
                 color: 'var(--color-primary)',
               }}
               title={profile?.full_name || 'Estudiante'}
             >
-              {profile?.full_name ? getInitials(profile.full_name) : 'U'}
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                : (profile?.full_name ? getInitials(profile.full_name) : 'U')
+              }
             </div>
           </div>
         )}

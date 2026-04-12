@@ -6,6 +6,7 @@ export type Profile = {
   language: 'es' | 'en'
   is_premium: boolean
   updated_at: string
+  avatar_url: string | null
 }
 
 export type Subject = {

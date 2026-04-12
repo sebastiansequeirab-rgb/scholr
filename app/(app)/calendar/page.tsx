@@ -345,12 +345,14 @@ const SANCTUARY_CALENDAR_CSS = `
     .fc .fc-next-button { padding: 3px 5px !important; }
 
     /* Fix 3: compact month rows — show full month without vertical scroll */
-    .fc .fc-daygrid-day-frame { min-height: 38px !important; }
-    .fc .fc-daygrid-day-top { padding: 1px 3px !important; }
-    .fc .fc-daygrid-day-number { font-size: 9px !important; padding: 1px 3px !important; }
-    .fc .fc-day-today .fc-daygrid-day-number { width: 18px !important; height: 18px !important; font-size: 9px !important; }
-    .fc .fc-col-header-cell-cushion { font-size: 9px !important; letter-spacing: 0 !important; }
-    .fc .fc-daygrid-event { font-size: 8px !important; padding: 1px 2px !important; border-radius: 3px !important; margin-bottom: 1px !important; }
+    .fc .fc-daygrid-day-frame { min-height: 30px !important; max-height: 46px !important; }
+    .fc .fc-daygrid-day-top { padding: 1px 2px !important; }
+    .fc .fc-daygrid-day-number { font-size: 8px !important; padding: 1px 2px !important; line-height: 1.4 !important; }
+    .fc .fc-day-today .fc-daygrid-day-number { width: 16px !important; height: 16px !important; font-size: 8px !important; line-height: 16px !important; }
+    .fc .fc-col-header-cell-cushion { font-size: 8px !important; letter-spacing: 0 !important; padding: 3px 2px !important; }
+    .fc .fc-daygrid-event { font-size: 7.5px !important; padding: 0px 2px !important; border-radius: 2px !important; margin-bottom: 1px !important; line-height: 1.5 !important; }
+    .fc .fc-daygrid-more-link { font-size: 7px !important; padding: 0 2px !important; }
+    .fc .fc-daygrid-body-natural .fc-daygrid-day-events { padding-bottom: 1px !important; }
 
     /* Fix 4: week view — remove forced min-width so columns fit on screen */
     .fc-timeGridWeek-view .fc-scrollgrid { overflow-x: visible !important; }
@@ -632,7 +634,7 @@ export default function CalendarPage() {
               dayHeaderFormat: { weekday: 'long', day: 'numeric', month: 'short' },
             },
           }}
-          dayMaxEvents={3}
+          dayMaxEvents={isMobile ? 1 : 3}
           eventDisplay="block"
           nowIndicator={true}
           eventContent={(arg) => {

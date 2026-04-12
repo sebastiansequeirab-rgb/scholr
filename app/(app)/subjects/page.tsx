@@ -42,6 +42,7 @@ export default function SubjectsPage() {
   const { t } = useTranslation()
   const [subjects,         setSubjects]         = useState<Subject[]>([])
   const [schedules,        setSchedules]        = useState<Schedule[]>([])
+  const [examProgress,     setExamProgress]     = useState<Record<string, { earned: number; graded: number; total: number }>>({})
   const [loading,          setLoading]          = useState(true)
   const [modalOpen,        setModalOpen]        = useState(false)
   const [editingSubject,   setEditingSubject]   = useState<Subject | null>(null)
@@ -52,12 +53,25 @@ export default function SubjectsPage() {
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
-    const [{ data: subs }, { data: scheds }] = await Promise.all([
+    const [{ data: subs }, { data: scheds }, { data: examData }] = await Promise.all([
       supabase.from('subjects').select('*').order('created_at', { ascending: true }),
       supabase.from('schedules').select('*'),
+      supabase.from('exams').select('id,subject_id,percentage,grade,activity_type').neq('activity_type', 'study_session'),
     ])
     setSubjects(subs || [])
     setSchedules(scheds || [])
+    // build progress map per subject
+    const progressMap: Record<string, { earned: number; graded: number; total: number }> = {}
+    for (const e of (examData || [])) {
+      if (!e.subject_id || e.percentage == null) continue
+      if (!progressMap[e.subject_id]) progressMap[e.subject_id] = { earned: 0, graded: 0, total: 0 }
+      progressMap[e.subject_id].total++
+      if (e.grade != null) {
+        progressMap[e.subject_id].earned += (e.grade * e.percentage) / 100
+        progressMap[e.subject_id].graded++
+      }
+    }
+    setExamProgress(progressMap)
     setLoading(false)
   }, [])
 
@@ -225,8 +239,34 @@ export default function SubjectsPage() {
                     </div>
                   )}
 
+                  {/* Progress preview */}
+                  {(() => {
+                    const prog = examProgress[subject.id]
+                    const isPassing = prog && prog.earned >= 10
+                    const pct = prog ? Math.min((prog.earned / 20) * 100, 100) : 0
+                    return (
+                      <div className="mt-auto mb-3 flex items-center gap-2.5">
+                        <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--s-high)' }}>
+                          <div className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${pct}%`,
+                              backgroundColor: isPassing ? 'var(--success)' : subject.color,
+                            }} />
+                        </div>
+                        <span className="mono text-[9px] font-bold flex-shrink-0"
+                          style={{ color: isPassing ? 'var(--success)' : prog ? 'var(--color-outline)' : 'var(--border-strong)' }}>
+                          {prog ? `${prog.earned.toFixed(1)}/20` : '—'}
+                        </span>
+                        <span className="material-symbols-outlined text-[13px] flex-shrink-0"
+                          style={{ color: 'var(--color-outline)', opacity: 0.5 }}>
+                          chevron_right
+                        </span>
+                      </div>
+                    )
+                  })()}
+
                   {/* Actions */}
-                  <div className="mt-auto pt-4 flex gap-2" style={{ borderTop: '1px solid var(--border-subtle)' }}
+                  <div className="pt-3 flex gap-2" style={{ borderTop: '1px solid var(--border-subtle)' }}
                     onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => setExpandedSubject(expandedSubject === subject.id ? null : subject.id)}

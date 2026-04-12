@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { useTheme } from 'next-themes'
@@ -32,12 +32,15 @@ export default function SettingsPage() {
   const { t, language, changeLanguage } = useTranslation()
   const { theme, setTheme } = useTheme()
   const { use12h, setFormat } = useTimeFormat()
-  const [profile,    setProfile]    = useState<Profile | null>(null)
-  const [fullName,   setFullName]   = useState('')
-  const [colorTheme, setColorTheme] = useState<'indigo' | 'purple'>('indigo')
-  const [saving,     setSaving]     = useState(false)
-  const [saved,      setSaved]      = useState(false)
-  const [loading,    setLoading]    = useState(true)
+  const [profile,      setProfile]      = useState<Profile | null>(null)
+  const [fullName,     setFullName]     = useState('')
+  const [colorTheme,   setColorTheme]   = useState<'indigo' | 'purple'>('indigo')
+  const [saving,       setSaving]       = useState(false)
+  const [saved,        setSaved]        = useState(false)
+  const [loading,      setLoading]      = useState(true)
+  const [avatarUrl,    setAvatarUrl]    = useState<string | null>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchProfile = useCallback(async () => {
     const supabase = createClient()
@@ -47,11 +50,29 @@ export default function SettingsPage() {
     if (data) {
       setProfile(data as Profile)
       setFullName(data.full_name || '')
+      setAvatarUrl(data.avatar_url || null)
       const savedTheme = data.theme as string
       setColorTheme((savedTheme === 'purple' ? 'purple' : 'indigo'))
     }
     setLoading(false)
   }, [])
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setAvatarUploading(false); return }
+    const ext  = file.name.split('.').pop()
+    const path = `${user.id}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (upErr) { setAvatarUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
+    setAvatarUrl(publicUrl)
+    setAvatarUploading(false)
+  }
 
   useEffect(() => { fetchProfile() }, [fetchProfile])
 
@@ -119,6 +140,52 @@ export default function SettingsPage() {
           {/* ── Profile ── */}
           <Section title={t('settings.profile')} icon="person">
             <div className="space-y-4">
+
+              {/* Avatar upload */}
+              <div className="flex items-center gap-4">
+                <div className="relative flex-shrink-0">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)', border: '2px solid var(--border-default)' }}>
+                    {avatarUrl
+                      ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                      : <span className="text-xl font-black" style={{ color: 'var(--color-primary)' }}>
+                          {fullName ? fullName.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase() : 'U'}
+                        </span>
+                    }
+                  </div>
+                  {avatarUploading && (
+                    <div className="absolute inset-0 rounded-2xl flex items-center justify-center"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                      <span className="material-symbols-outlined text-white text-[18px] animate-spin" style={{ animationDuration: '1s' }}>sync</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold mb-1" style={{ color: 'var(--on-surface)' }}>
+                    {language === 'es' ? 'Foto de perfil' : 'Profile photo'}
+                  </p>
+                  <p className="text-xs mb-2" style={{ color: 'var(--color-outline)' }}>
+                    {language === 'es' ? 'JPG, PNG o WebP · máx. 5 MB' : 'JPG, PNG or WebP · max 5 MB'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">upload</span>
+                    {language === 'es' ? 'Cambiar foto' : 'Change photo'}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="settingsName" className="label">{t('settings.fullName')}</label>
                 <input
@@ -245,14 +312,11 @@ export default function SettingsPage() {
                     }}
                     aria-pressed={isActive}
                   >
-                    <span className="text-xl">{lang === 'es' ? '🇪🇸' : '🇬🇧'}</span>
+                    <span className="text-xl">{lang === 'es' ? '🇻🇪' : '🇺🇸'}</span>
                     <div className="text-left">
                       <p className="text-sm font-bold leading-tight"
                         style={{ color: isActive ? 'var(--color-primary)' : 'var(--on-surface)' }}>
-                        {lang === 'es' ? 'Español' : 'English'}
-                      </p>
-                      <p className="text-[10px]" style={{ color: 'var(--color-outline)' }}>
-                        {lang === 'es' ? 'Spanish' : 'British English'}
+                        {lang === 'es' ? 'Español' : 'Inglés'}
                       </p>
                     </div>
                     {isActive && (
