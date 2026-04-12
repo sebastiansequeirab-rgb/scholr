@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent'
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY
@@ -18,26 +18,26 @@ ${context?.exams?.length ? `\nPRÓXIMAS ACTIVIDADES:\n${context.exams.map((e: { 
 ${context?.tasks?.length ? `\nTAREAS PENDIENTES:\n${context.tasks.map((t: { title: string; priority: string; due_date?: string }) => `- ${t.title} | Prioridad: ${t.priority}${t.due_date ? ` | Vence: ${t.due_date}` : ''}`).join('\n')}` : ''}
 Responde en el idioma en que te hablen.`
 
-    // Build contents array: system instruction as first user turn (Gemini 1.5 Flash pattern)
-    const contents = [
-      { role: 'user',  parts: [{ text: systemText }] },
-      { role: 'model', parts: [{ text: 'Entendido, estoy listo para ayudarte.' }] },
-      ...messages.map((m: { role: string; content: string }) => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }],
-      })),
-    ]
+    const contents = messages.map((m: { role: string; content: string }) => ({
+      role: m.role === 'user' ? 'user' : 'model',
+      parts: [{ text: m.content }],
+    }))
+
+    const body = {
+      system_instruction: { parts: [{ text: systemText }] },
+      contents,
+    }
 
     const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents }),
+      body: JSON.stringify(body),
     })
 
     if (!res.ok) {
-      const err = await res.json().catch(() => res.text())
-      const msg = typeof err === 'object' ? (err?.error?.message || JSON.stringify(err)) : err
-      console.error('Gemini API error:', msg)
+      const err = await res.json().catch(() => ({ error: { message: res.statusText } }))
+      const msg = err?.error?.message || JSON.stringify(err)
+      console.error('Gemini error:', msg)
       return NextResponse.json({ error: `Gemini: ${msg}` }, { status: 500 })
     }
 

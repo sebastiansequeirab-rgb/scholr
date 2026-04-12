@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent'
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY
@@ -29,29 +29,32 @@ Devuelve ÚNICAMENTE un JSON válido (sin markdown, sin texto extra):
 
 Reglas:
 - day_of_week: 0=Dom 1=Lun 2=Mar 3=Mié 4=Jue 5=Vie 6=Sáb
-- Horarios en 24h (HH:MM)
+- Horarios en 24h HH:MM
 - Colores distintos: #6366f1 #ec4899 #f59e0b #10b981 #3b82f6 #8b5cf6 #ef4444 #06b6d4
 - Icons: menu_book bar_chart calculate science history_edu language computer engineering psychology savings campaign receipt_long school
 - Bloques LEC/LAB/DIS de la misma materia van en schedules de esa materia
 - No inventes datos`
 
+    const body = {
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } },
+        ]
+      }]
+    }
+
     const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } },
-          ]
-        }]
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!res.ok) {
-      const err = await res.text()
-      console.error('Gemini vision error:', err)
-      return NextResponse.json({ error: 'Error al analizar la imagen' }, { status: 500 })
+      const err = await res.json().catch(() => ({ error: { message: res.statusText } }))
+      const msg = err?.error?.message || JSON.stringify(err)
+      console.error('Gemini vision error:', msg)
+      return NextResponse.json({ error: `Error al analizar: ${msg}` }, { status: 500 })
     }
 
     const data = await res.json()
