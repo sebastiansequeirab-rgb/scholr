@@ -233,6 +233,8 @@ export default function ExamsPage() {
   const [modalOpen,     setModalOpen]     = useState(false)
   const [editingExam,   setEditingExam]   = useState<Exam | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [filterType,    setFilterType]    = useState<ActivityType | 'all'>('all')
+  const [filterSubject, setFilterSubject] = useState<string>('')
 
   const { use12h } = useTimeFormat()
 
@@ -258,7 +260,13 @@ export default function ExamsPage() {
   const now      = new Date().toISOString().split('T')[0]
   const upcoming = exams.filter(e => e.exam_date >= now)
   const past     = exams.filter(e => e.exam_date < now)
-  const featured = upcoming[0] || null
+
+  const filteredUpcoming = upcoming.filter(e => {
+    const typeOk    = filterType === 'all' || e.activity_type === filterType
+    const subjectOk = filterSubject === '' || e.subject_id === filterSubject
+    return typeOk && subjectOk
+  })
+  const featured = filteredUpcoming[0] || null
 
   const ActivityCard = ({ exam, isFeatured = false }: { exam: Exam; isFeatured?: boolean }) => {
     const subject  = subjects.find(s => s.id === exam.subject_id)
@@ -470,6 +478,69 @@ export default function ExamsPage() {
         </button>
       </div>
 
+      {/* Filter chips */}
+      {!loading && upcoming.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {/* Type chips */}
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setFilterType('all')}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+              style={{
+                color: filterType === 'all' ? 'var(--on-surface)' : 'var(--color-outline)',
+                backgroundColor: filterType === 'all' ? 'var(--s-high)' : 'transparent',
+                borderColor: filterType === 'all' ? 'var(--border-strong)' : 'var(--border-default)',
+              }}>
+              {language === 'es' ? 'Todos' : 'All'}
+            </button>
+            {(Object.keys(ACTIVITY_TYPES) as ActivityType[])
+              .filter(k => upcoming.some(e => e.activity_type === k))
+              .map(k => {
+                const cfg = ACTIVITY_TYPES[k]
+                const isActive = filterType === k
+                return (
+                  <button
+                    key={k}
+                    onClick={() => setFilterType(isActive ? 'all' : k)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1"
+                    style={{
+                      color: isActive ? cfg.color : 'var(--color-outline)',
+                      backgroundColor: isActive ? `${cfg.color}15` : 'transparent',
+                      borderColor: isActive ? cfg.color : 'var(--border-default)',
+                    }}>
+                    <span className="material-symbols-outlined text-[11px]"
+                      style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                      {cfg.icon}
+                    </span>
+                    {language === 'es' ? cfg.label_es : cfg.label_en}
+                  </button>
+                )
+              })}
+          </div>
+          {/* Subject chips */}
+          {subjects.filter(s => upcoming.some(e => e.subject_id === s.id)).length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5" style={{ scrollbarWidth: 'none' }}>
+              {subjects.filter(s => upcoming.some(e => e.subject_id === s.id)).map(s => {
+                const isActive = filterSubject === s.id
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setFilterSubject(isActive ? '' : s.id)}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+                    style={{
+                      color: isActive ? s.color : 'var(--color-outline)',
+                      backgroundColor: isActive ? `${s.color}15` : 'transparent',
+                      borderColor: isActive ? s.color : 'var(--border-default)',
+                    }}>
+                    {s.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {loading && (
         <div className="space-y-4">
           {[1,2,3].map(i => <div key={i} className="skeleton h-32" />)}
@@ -497,13 +568,27 @@ export default function ExamsPage() {
         </div>
       )}
 
+      {/* Empty filter state */}
+      {!loading && filteredUpcoming.length === 0 && (filterType !== 'all' || filterSubject !== '') && (
+        <div className="text-center py-12">
+          <p className="text-sm font-medium mb-3" style={{ color: 'var(--color-outline)' }}>
+            {language === 'es' ? 'Sin actividades para este filtro' : 'No activities match this filter'}
+          </p>
+          <button
+            onClick={() => { setFilterType('all'); setFilterSubject('') }}
+            className="btn-secondary text-xs">
+            {language === 'es' ? 'Quitar filtros' : 'Clear filters'}
+          </button>
+        </div>
+      )}
+
       {!loading && (
         <div className="space-y-4">
           {/* Featured */}
           {featured && <ActivityCard exam={featured} isFeatured />}
 
           {/* Only one + no past */}
-          {featured && upcoming.length === 1 && past.length === 0 && (
+          {featured && filteredUpcoming.length === 1 && past.length === 0 && (
             <div className="rounded-2xl p-5 flex items-center gap-4"
               style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
               <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -524,7 +609,7 @@ export default function ExamsPage() {
           )}
 
           {/* No upcoming + has past */}
-          {!featured && past.length > 0 && (
+          {!featured && past.length > 0 && filterType === 'all' && filterSubject === '' && (
             <div className="rounded-2xl p-5 flex items-center gap-4"
               style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
               <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -545,9 +630,9 @@ export default function ExamsPage() {
           )}
 
           {/* Rest of upcoming */}
-          {upcoming.length > 1 && (
+          {filteredUpcoming.length > 1 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {upcoming.slice(1).map(e => <ActivityCard key={e.id} exam={e} />)}
+              {filteredUpcoming.slice(1).map(e => <ActivityCard key={e.id} exam={e} />)}
             </div>
           )}
 
