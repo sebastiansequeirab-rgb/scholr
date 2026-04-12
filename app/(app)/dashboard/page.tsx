@@ -233,7 +233,7 @@ export default async function DashboardPage() {
 
         {/* Left column — pending tasks */}
         <div className="lg:col-span-7">
-          <div className="rounded-2xl p-4 lg:p-5 h-full"
+          <div className="rounded-2xl p-4 lg:p-5"
             style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
 
             <div className="flex items-center justify-between mb-3">

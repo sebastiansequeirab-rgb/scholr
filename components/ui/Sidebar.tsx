@@ -31,6 +31,7 @@ const BOTTOM_NAV = [
 const SIDE_MENU_ITEMS = [
   { key: 'subjects',  href: '/subjects', icon: 'menu_book'      },
   { key: 'exams',     href: '/exams',    icon: 'event_upcoming' },
+  { key: 'ai',        href: '/ai',       icon: 'auto_awesome'   },
   { key: 'settings',  href: '/settings', icon: 'settings'       },
 ]
 
