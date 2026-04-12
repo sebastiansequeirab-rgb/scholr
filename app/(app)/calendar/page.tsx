@@ -127,9 +127,10 @@ const SANCTUARY_CALENDAR_CSS = `
   .fc .fc-day-sat,
   .fc .fc-day-sun { background: color-mix(in srgb, var(--on-surface) 3%, transparent) !important; }
 
-  /* Today highlight */
+  /* Today highlight — stronger prominence */
   .fc .fc-day-today {
-    background: color-mix(in srgb, var(--color-primary) 5%, transparent) !important;
+    background: color-mix(in srgb, var(--color-primary) 9%, transparent) !important;
+    box-shadow: inset 0 2px 0 var(--color-primary) !important;
   }
   .fc .fc-day-today .fc-daygrid-day-number {
     background: var(--color-primary) !important;
@@ -142,6 +143,13 @@ const SANCTUARY_CALENDAR_CSS = `
     justify-content: center !important;
     font-weight: 800 !important;
   }
+
+  /* Past days — attenuated so "what's coming" reads first */
+  .fc .fc-day-past { opacity: 0.42 !important; }
+  .fc .fc-day-past:hover { opacity: 0.68 !important; transition: opacity 0.15s ease !important; }
+
+  /* Future days — full clarity */
+  .fc .fc-day-future { opacity: 1 !important; }
 
   /* Day numbers */
   .fc .fc-daygrid-day-number {
@@ -325,42 +333,91 @@ const SANCTUARY_CALENDAR_CSS = `
 
   /* ─── Mobile overrides ───────────────────────── */
   @media (max-width: 768px) {
+
+    /* ── Toolbar: 2-row layout ── */
     .fc .fc-toolbar {
-      padding: 10px 12px 8px !important;
-      gap: 6px !important;
-      flex-wrap: nowrap !important;
+      display: grid !important;
+      grid-template-columns: auto 1fr auto !important;
+      grid-template-rows: auto auto !important;
+      padding: 8px 10px 6px !important;
+      gap: 5px 6px !important;
+      margin-bottom: 0 !important;
       align-items: center !important;
     }
-    .fc .fc-toolbar-chunk { display: flex; align-items: center; gap: 3px; }
+    /* Row 1: [nav arrows + today] [title] [— empty —] */
+    .fc .fc-toolbar-chunk:first-child {
+      grid-column: 1; grid-row: 1;
+      display: flex; align-items: center; gap: 3px;
+    }
+    .fc .fc-toolbar-chunk:nth-child(2) {
+      grid-column: 2; grid-row: 1;
+      display: flex; justify-content: center;
+    }
+    /* Row 2: view switcher centered across all columns */
+    .fc .fc-toolbar-chunk:last-child {
+      grid-column: 1 / -1; grid-row: 2;
+      display: flex; justify-content: center; gap: 4px;
+    }
     .fc .fc-toolbar-title {
-      font-size: 13px !important;
-      letter-spacing: -0.02em !important;
+      font-size: 12px !important;
+      letter-spacing: -0.01em !important;
     }
     .fc .fc-button,
     .fc .fc-button-primary {
       font-size: 9px !important;
-      padding: 3px 7px !important;
+      padding: 3px 9px !important;
     }
     .fc .fc-prev-button,
-    .fc .fc-next-button { padding: 3px 5px !important; }
+    .fc .fc-next-button { padding: 3px 6px !important; }
 
-    /* Fix 3: compact month rows — show full month without vertical scroll */
-    .fc .fc-daygrid-day-frame { min-height: 30px !important; max-height: 46px !important; }
-    .fc .fc-daygrid-day-top { padding: 1px 2px !important; }
-    .fc .fc-daygrid-day-number { font-size: 8px !important; padding: 1px 2px !important; line-height: 1.4 !important; }
-    .fc .fc-day-today .fc-daygrid-day-number { width: 16px !important; height: 16px !important; font-size: 8px !important; line-height: 16px !important; }
-    .fc .fc-col-header-cell-cushion { font-size: 8px !important; letter-spacing: 0 !important; padding: 3px 2px !important; }
-    .fc .fc-daygrid-event { font-size: 7.5px !important; padding: 0px 2px !important; border-radius: 2px !important; margin-bottom: 1px !important; line-height: 1.5 !important; }
-    .fc .fc-daygrid-more-link { font-size: 7px !important; padding: 0 2px !important; }
-    .fc .fc-daygrid-body-natural .fc-daygrid-day-events { padding-bottom: 1px !important; }
+    /* ── Month view: compact cells ── */
+    .fc .fc-daygrid-day-frame { min-height: 44px !important; }
+    .fc .fc-daygrid-day-top { padding: 2px 3px !important; }
+    .fc .fc-daygrid-day-number {
+      font-size: 9px !important;
+      padding: 2px 3px !important;
+      line-height: 1.3 !important;
+    }
+    .fc .fc-day-today .fc-daygrid-day-number {
+      width: 18px !important;
+      height: 18px !important;
+      font-size: 9px !important;
+    }
+    .fc .fc-col-header-cell-cushion {
+      font-size: 9px !important;
+      letter-spacing: 0.04em !important;
+      padding: 4px 2px !important;
+    }
 
-    /* Fix 4: week view — remove forced min-width so columns fit on screen */
+    /* Month events: single-line pill, title only */
+    .fc .fc-daygrid-event {
+      font-size: 7.5px !important;
+      padding: 1px 3px !important;
+      border-radius: 3px !important;
+      margin-bottom: 1px !important;
+      line-height: 1.4 !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      max-width: 100% !important;
+    }
+    .fc .fc-daygrid-event-dot { display: none !important; }
+    .fc .fc-daygrid-more-link {
+      font-size: 8px !important;
+      font-weight: 700 !important;
+      padding: 0 2px !important;
+    }
+    .fc .fc-daygrid-body-natural .fc-daygrid-day-events { padding-bottom: 2px !important; }
+
+    /* Today box-shadow stays visible but smaller on mobile */
+    .fc .fc-day-today { box-shadow: inset 0 1.5px 0 var(--color-primary) !important; }
+
+    /* ── Week / Day views ── */
     .fc-timeGridWeek-view .fc-scrollgrid { overflow-x: visible !important; }
     .fc-timeGridWeek-view .fc-scrollgrid-sync-table { min-width: 0 !important; }
     .fc-timeGridWeek-view .fc-col-header { min-width: 0 !important; }
     .fc-timeGridWeek-view .fc-timegrid-body { min-width: 0 !important; }
 
-    /* Fix 4: week event readability on mobile */
     .fc .fc-timegrid-slot-lane { height: 28px !important; }
     .fc .fc-timegrid-slot-label { height: 28px !important; }
     .fc .fc-timegrid-slot-label-cushion { font-size: 9px !important; padding-right: 3px !important; }
@@ -634,11 +691,38 @@ export default function CalendarPage() {
               dayHeaderFormat: { weekday: 'long', day: 'numeric', month: 'short' },
             },
           }}
-          dayMaxEvents={isMobile ? 1 : 3}
+          dayMaxEvents={isMobile ? 2 : 4}
           eventDisplay="block"
           nowIndicator={true}
           eventContent={(arg) => {
             const type = arg.event.extendedProps.type as string
+            const isMonthView = arg.view.type === 'dayGridMonth'
+
+            // Mobile month view: ultra-compact pill — just the title, no time/location
+            if (isMonthView && isMobile) {
+              return (
+                <div style={{
+                  padding: '0 3px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  height: '14px',
+                  lineHeight: '14px',
+                }}>
+                  <span style={{
+                    fontSize: '7.5px',
+                    fontWeight: 700,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    flex: 1,
+                  }}>
+                    {arg.event.title}
+                  </span>
+                </div>
+              )
+            }
+
             // Custom render for schedule events: show room below title
             if (type === 'schedule') {
               const loc = arg.event.extendedProps.location as string | undefined
