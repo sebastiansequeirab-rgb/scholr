@@ -76,20 +76,45 @@ export default function AIPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  const sendMessage = useCallback(async (text: string) => {
+  const sendMessage = useCallback(async (text: string, retryAfter = 0) => {
     if (!text.trim() || loading) return
     const userMsg: Message = { role: 'user', content: text }
-    setMessages(prev => [...prev, userMsg])
-    setInput('')
+
+    if (retryAfter === 0) {
+      setMessages(prev => [...prev, userMsg])
+      setInput('')
+    }
     setLoading(true)
+
+    if (retryAfter > 0) {
+      // countdown message
+      for (let s = retryAfter; s > 0; s--) {
+        setMessages(prev => {
+          const copy = [...prev]
+          copy[copy.length - 1] = { role: 'assistant', content: `Demasiadas solicitudes. Reintentando en ${s}s...` }
+          return copy
+        })
+        await new Promise(r => setTimeout(r, 1000))
+      }
+      setMessages(prev => prev.slice(0, -1)) // remove countdown msg
+    }
+
     try {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [...messages, userMsg], context: userContext }),
       })
+
+      if (res.status === 429) {
+        setMessages(prev => [...prev, { role: 'assistant', content: '' }])
+        setLoading(false)
+        sendMessage(text, 30)
+        return
+      }
+
       const data = await res.json()
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply || data.error || 'Error al obtener respuesta.' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply || data.error || 'Sin respuesta.' }])
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Error de conexión. Intenta de nuevo.' }])
     } finally {

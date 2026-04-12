@@ -23,39 +23,28 @@ Responde en el idioma en que te hablen.`
       parts: [{ text: m.content }],
     }))
 
-    const body = {
-      system_instruction: { parts: [{ text: systemText }] },
-      contents,
+    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemText }] },
+        contents,
+      }),
+    })
+
+    if (res.status === 429) {
+      return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
     }
 
-    const tryFetch = async (attempt: number): Promise<NextResponse> => {
-      const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (res.status === 429 && attempt < 3) {
-        const err = await res.json().catch(() => ({}))
-        const retryMatch = JSON.stringify(err).match(/retry in ([\d.]+)s/)
-        const waitMs = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) * 1000 : 5000
-        await new Promise(r => setTimeout(r, waitMs))
-        return tryFetch(attempt + 1)
-      }
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: { message: res.statusText } }))
-        const msg = err?.error?.message || JSON.stringify(err)
-        console.error('Gemini error:', msg)
-        return NextResponse.json({ error: `Gemini: ${msg}` }, { status: 500 })
-      }
-
-      const data = await res.json()
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta'
-      return NextResponse.json({ reply })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      const msg = err?.error?.message || res.statusText
+      return NextResponse.json({ error: msg }, { status: 500 })
     }
 
-    return await tryFetch(0)
+    const data = await res.json()
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta'
+    return NextResponse.json({ reply })
   } catch (err) {
     console.error('AI route error:', err)
     return NextResponse.json({ error: 'Error procesando solicitud' }, { status: 500 })
