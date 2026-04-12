@@ -35,9 +35,10 @@ Responde en el idioma en que te hablen.`
     })
 
     if (!res.ok) {
-      const err = await res.text()
-      console.error('Gemini API error:', err)
-      return NextResponse.json({ error: 'Error en la API de Gemini' }, { status: 500 })
+      const err = await res.json().catch(() => res.text())
+      const msg = typeof err === 'object' ? (err?.error?.message || JSON.stringify(err)) : err
+      console.error('Gemini API error:', msg)
+      return NextResponse.json({ error: `Gemini: ${msg}` }, { status: 500 })
     }
 
     const data = await res.json()
