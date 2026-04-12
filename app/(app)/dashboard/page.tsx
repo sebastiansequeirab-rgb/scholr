@@ -5,6 +5,7 @@ import type { Task, Exam, Subject, Schedule } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
 import { UrgentTasksSection } from '@/components/ui/UrgentTasksSection'
 import { LiveClock } from '@/components/ui/LiveClock'
+import { ClientTime } from '@/components/ui/ClientTime'
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -326,7 +327,7 @@ export default async function DashboardPage() {
                           {subject.name}
                         </p>
                         <p className="mono text-[10px] leading-tight" style={{ color: 'var(--color-outline)' }}>
-                          {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}
+                          <ClientTime time24={s.start_time.slice(0, 5)} />–<ClientTime time24={s.end_time.slice(0, 5)} />
                           {(s.room || subject.room) && ` · ${s.room || subject.room}`}
                         </p>
                       </div>

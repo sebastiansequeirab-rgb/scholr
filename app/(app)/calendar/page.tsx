@@ -306,8 +306,20 @@ const SANCTUARY_CALENDAR_CSS = `
     font-weight: 600 !important;
   }
 
+  /* ─── Week view: allow horizontal scroll to show all days ── */
+  .fc-timeGridWeek-view .fc-scrollgrid { overflow-x: auto !important; }
+  .fc-timeGridWeek-view .fc-scrollgrid-sync-table { min-width: 560px !important; }
+  .fc-timeGridWeek-view .fc-col-header { min-width: 560px !important; }
+  .fc-timeGridWeek-view .fc-timegrid-body { min-width: 560px !important; }
+  /* Week view event titles — allow wrapping so full name shows */
+  .fc-timeGridWeek-view .fc-event-title {
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.2 !important;
+  }
+
   /* ─── Scrollbar ──────────────────────────────── */
-  .fc ::-webkit-scrollbar { width: 4px; }
+  .fc ::-webkit-scrollbar { width: 4px; height: 4px; }
   .fc ::-webkit-scrollbar-track { background: transparent; }
   .fc ::-webkit-scrollbar-thumb { background: var(--s-highest); border-radius: 4px; }
 
@@ -585,13 +597,23 @@ export default function CalendarPage() {
           slotLabelInterval="01:00:00"
           locale={language === 'en' ? 'en' : 'es'}
           eventTimeFormat={use12h
-            ? { hour: 'numeric', minute: '2-digit', meridiem: 'lowercase' }
-            : { hour: '2-digit', minute: '2-digit', meridiem: false }
+            ? { hour: 'numeric', minute: '2-digit', hour12: true }
+            : { hour: '2-digit', minute: '2-digit', hour12: false }
           }
           slotLabelFormat={use12h
-            ? { hour: 'numeric', minute: '2-digit', meridiem: 'lowercase' }
-            : { hour: '2-digit', minute: '2-digit', meridiem: false }
+            ? { hour: 'numeric', minute: '2-digit', hour12: true }
+            : { hour: '2-digit', minute: '2-digit', hour12: false }
           }
+          views={{
+            timeGridWeek: {
+              dayHeaderFormat: { weekday: 'short', day: 'numeric' },
+              dayMinWidth: 80,
+              slotDuration: '01:00:00',
+            },
+            timeGridDay: {
+              dayHeaderFormat: { weekday: 'long', day: 'numeric', month: 'short' },
+            },
+          }}
           dayMaxEvents={3}
           eventDisplay="block"
           nowIndicator={true}
@@ -607,7 +629,7 @@ export default function CalendarPage() {
                       {arg.timeText}
                     </span>
                   )}
-                  <span style={{ fontSize: '10.5px', fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>
                     {arg.event.title}
                   </span>
                   {loc && (
@@ -628,7 +650,7 @@ export default function CalendarPage() {
                     <span className="material-symbols-outlined" style={{ fontSize: '9px', fontVariationSettings: "'FILL' 1" }}>{cfg.icon}</span>
                     {cfg.label_es}
                   </span>
-                  <span style={{ fontSize: '10.5px', fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>
                     {arg.event.title}
                   </span>
                 </div>

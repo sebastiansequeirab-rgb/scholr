@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { isToday, isTomorrow, daysUntil } from '@/lib/utils'
 import type { Task, Subject } from '@/types'
@@ -13,6 +14,7 @@ export function UrgentTasksSection({
   subjects: Subject[]
 }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const router = useRouter()
 
   const toggle = async (task: Task) => {
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_done: !t.is_done } : t))
@@ -89,7 +91,8 @@ export function UrgentTasksSection({
         return (
           <li
             key={task.id}
-            className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-200"
+            onClick={() => router.push('/tasks')}
+            className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-200 cursor-pointer active:scale-[0.98]"
             style={{
               backgroundColor: isToday_
                 ? 'color-mix(in srgb, var(--danger) 5%, var(--s-base))'
@@ -101,7 +104,7 @@ export function UrgentTasksSection({
           >
             {/* Priority checkbox */}
             <button
-              onClick={() => toggle(task)}
+              onClick={(e) => { e.stopPropagation(); toggle(task) }}
               className="w-4.5 h-4.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 hover:scale-110"
               style={{
                 width: '18px',

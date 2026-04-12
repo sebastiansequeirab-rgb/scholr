@@ -122,10 +122,15 @@ function NoteEditor({
 
   const currentSubject = subjects.find(s => s.id === note.subject_id)
 
-  const TOOLBAR: { icon: string; title: string; action: () => void; active: boolean; isText?: boolean }[] = [
-    { icon: 'H1', title: 'Heading 1', isText: true, action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(), active: editor?.isActive('heading', { level: 1 }) ?? false },
-    { icon: 'H2', title: 'Heading 2', isText: true, action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(), active: editor?.isActive('heading', { level: 2 }) ?? false },
-    { icon: 'H3', title: 'Heading 3', isText: true, action: () => editor?.chain().focus().toggleHeading({ level: 3 }).run(), active: editor?.isActive('heading', { level: 3 }) ?? false },
+  // Heading size config for Notion-style size picker
+  const HEADING_SIZES = [
+    { level: 0, label: '¶',  size: '11px', weight: '500', title: 'Normal',   active: !editor?.isActive('heading') },
+    { level: 3, label: 'A',  size: '12px', weight: '700', title: 'Small',    active: editor?.isActive('heading', { level: 3 }) ?? false },
+    { level: 2, label: 'A',  size: '15px', weight: '700', title: 'Medium',   active: editor?.isActive('heading', { level: 2 }) ?? false },
+    { level: 1, label: 'A',  size: '19px', weight: '800', title: 'Title',    active: editor?.isActive('heading', { level: 1 }) ?? false },
+  ]
+
+  const TOOLBAR: { icon: string; title: string; action: () => void; active: boolean }[] = [
     { icon: 'format_bold',           title: 'Bold',          action: () => editor?.chain().focus().toggleBold().run(),           active: editor?.isActive('bold')        ?? false },
     { icon: 'format_italic',         title: 'Italic',        action: () => editor?.chain().focus().toggleItalic().run(),         active: editor?.isActive('italic')      ?? false },
     { icon: 'format_strikethrough',  title: 'Strikethrough', action: () => editor?.chain().focus().toggleStrike().run(),         active: editor?.isActive('strike')      ?? false },
@@ -153,14 +158,41 @@ function NoteEditor({
 
         {/* Format tools */}
         <div className="flex items-center gap-0.5 flex-1 flex-wrap">
-          {editor && TOOLBAR.map(({ icon, title, action, active, isText }, i) => (
+          {/* Notion-style text size selector */}
+          {editor && (
+            <div className="flex items-end gap-px mr-1 rounded-lg overflow-hidden"
+              style={{ border: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-base)' }}>
+              {HEADING_SIZES.map(({ level, label, size, weight, title: t2, active }) => {
+                const handleClick = () => {
+                  if (level === 0) editor.chain().focus().setParagraph().run()
+                  else editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 }).run()
+                }
+                return (
+                  <button key={level} onClick={handleClick} type="button" title={t2}
+                    className="px-1.5 py-1 flex items-end justify-center transition-all min-w-[24px]"
+                    style={{
+                      backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                      color: active ? 'var(--color-primary)' : 'var(--color-outline)',
+                      fontSize: size,
+                      fontWeight: weight,
+                      lineHeight: 1,
+                    }}
+                    aria-pressed={active}>
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Separator */}
+          <span className="w-px h-4 mx-0.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: 'var(--border-default)' }} />
+
+          {editor && TOOLBAR.map(({ icon, title, action, active }, i) => (
             <React.Fragment key={icon}>
-              {i === 3 && (
-                <span className="w-px h-4 mx-1 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: 'var(--border-default)' }} />
-              )}
-              {i === 7 && (
-                <span className="w-px h-4 mx-1 rounded-full flex-shrink-0"
+              {i === 4 && (
+                <span className="w-px h-4 mx-0.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: 'var(--border-default)' }} />
               )}
               <button onClick={action} type="button" title={title}
@@ -170,10 +202,7 @@ function NoteEditor({
                   color:           active ? 'var(--color-primary)' : 'var(--color-outline)',
                 }}
                 aria-pressed={active}>
-                {isText
-                  ? <span className="text-[10px] font-extrabold">{icon}</span>
-                  : <span className="material-symbols-outlined text-[16px]">{icon}</span>
-                }
+                <span className="material-symbols-outlined text-[16px]">{icon}</span>
               </button>
             </React.Fragment>
           ))}

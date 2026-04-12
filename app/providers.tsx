@@ -3,6 +3,7 @@
 import { ThemeProvider } from 'next-themes'
 import { useEffect } from 'react'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { TimeFormatProvider } from '@/contexts/TimeFormatContext'
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -31,7 +32,9 @@ export function Providers({ children, theme, colorMode }: ProvidersProps) {
     >
       <ThemeApplier theme={theme} />
       <LanguageProvider>
-        {children}
+        <TimeFormatProvider>
+          {children}
+        </TimeFormatProvider>
       </LanguageProvider>
     </ThemeProvider>
   )

@@ -258,8 +258,8 @@ export default function ExamsPage() {
           <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-[80px] opacity-10 pointer-events-none"
             style={{ backgroundColor: typeColor }} />
 
-          <div className="relative z-10 p-7">
-            <div className="flex items-center gap-3 mb-5">
+          <div className="relative z-10 p-5">
+            <div className="flex items-center gap-2 mb-4">
               {/* Type badge */}
               <span className="flex items-center gap-1.5 mono text-[10px] px-2.5 py-1 rounded-full font-bold"
                 style={{ backgroundColor: `${typeColor}15`, color: typeColor }}>
@@ -281,7 +281,7 @@ export default function ExamsPage() {
               </span>
             </div>
 
-            <h2 className="text-2xl font-extrabold tracking-tight mb-2" style={{ color: 'var(--on-surface)' }}>
+            <h2 className="text-xl font-extrabold tracking-tight mb-1.5" style={{ color: 'var(--on-surface)' }}>
               {exam.title}
             </h2>
             {subject && (
@@ -295,7 +295,7 @@ export default function ExamsPage() {
             )}
 
             {(exam.exam_time || exam.location || exam.notes) && (
-              <div className="flex flex-wrap gap-5 mt-6 pt-5"
+              <div className="flex flex-wrap gap-4 mt-4 pt-4"
                 style={{ borderTop: '1px solid var(--border-subtle)' }}>
                 {exam.exam_time && (
                   <div className="flex items-center gap-2">
@@ -327,7 +327,7 @@ export default function ExamsPage() {
               </div>
             )}
 
-            <div className="flex gap-2.5 mt-6">
+            <div className="flex gap-2.5 mt-4">
               <button onClick={() => { setEditingExam(exam); setModalOpen(true) }}
                 className="btn-secondary flex items-center gap-1.5 text-sm">
                 <span className="material-symbols-outlined text-[15px]">edit</span>
@@ -348,7 +348,7 @@ export default function ExamsPage() {
     // Regular card
     const urgency = days < 0 ? 'var(--color-outline)' : days < 3 ? 'var(--danger)' : days < 7 ? 'var(--warning)' : 'var(--color-primary)'
     return (
-      <div className="rounded-2xl p-5 flex flex-col gap-3 group transition-all duration-200 hover:-translate-y-0.5"
+      <div className="rounded-xl p-3.5 flex flex-col gap-2 group transition-all duration-200 hover:-translate-y-0.5"
         style={{
           backgroundColor: 'var(--s-low)',
           border: '1px solid var(--border-subtle)',
@@ -390,7 +390,7 @@ export default function ExamsPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-3"
+        <div className="flex items-center justify-between pt-2"
           style={{ borderTop: '1px solid var(--border-subtle)' }}>
           <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--color-outline)' }}>
             {exam.exam_time && (
