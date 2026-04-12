@@ -57,7 +57,6 @@ export default async function DashboardPage() {
 
   const firstName = profile?.full_name?.split(' ')[0] || 'Estudiante'
 
-  // Tu foco ahora — compute state
   const inClassNow = todaySchedules.find(s => currentTimeStr >= s.start_time && currentTimeStr <= s.end_time)
   const nextClass  = todaySchedules.find(s => s.start_time > currentTimeStr)
   const nextExam   = upcomingExams[0]
@@ -123,28 +122,28 @@ export default async function DashboardPage() {
   }
 
   const QUICK_ACTIONS = [
-    { href: '/tasks',    icon: 'add_task',            label: 'Pendiente',  color: 'var(--color-primary)'  },
-    { href: '/exams',    icon: 'event_available',      label: 'Actividad',  color: '#ef4444'               },
-    { href: '/notes',    icon: 'edit_note',            label: 'Nota',       color: 'var(--warning)'        },
-    { href: '/calendar', icon: 'calendar_view_week',   label: 'Agenda',     color: 'var(--color-tertiary)' },
+    { href: '/tasks',    icon: 'add_task',          label: 'Pendiente',  color: 'var(--color-primary)'  },
+    { href: '/exams',    icon: 'event_available',    label: 'Actividad',  color: '#ef4444'               },
+    { href: '/notes',    icon: 'edit_note',          label: 'Nota',       color: 'var(--warning)'        },
+    { href: '/calendar', icon: 'calendar_view_week', label: 'Agenda',     color: 'var(--color-tertiary)' },
   ]
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in">
 
-      {/* ── Header ── */}
-      <header className="mb-4 flex items-start justify-between gap-4">
+      {/* ── Header ───────────────────────────────────────────────────────── */}
+      <header className="mb-3 lg:mb-5 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <p className="mono text-[10px] tracking-[0.18em] uppercase font-medium mb-1.5"
+          <p className="mono text-[10px] tracking-[0.18em] uppercase font-medium mb-1"
             style={{ color: 'var(--color-tertiary)' }}>Scholar Sanctuary</p>
 
-          <h1 className="text-3xl font-extrabold tracking-tight leading-tight"
+          <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight leading-tight"
             style={{ color: 'var(--on-surface)' }}>
             {greet()}, <span style={{ color: 'var(--color-primary)' }}>{firstName}</span>.
           </h1>
 
           {/* Context strip */}
-          <div className="mt-2.5 flex items-center gap-4 flex-wrap">
+          <div className="mt-2 flex items-center gap-3 flex-wrap">
             {todaySchedules.length > 0 && (
               <span className="flex items-center gap-1.5 text-[11px]"
                 style={{ color: 'var(--on-surface-variant)' }}>
@@ -190,15 +189,15 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      {/* ── Tu foco ahora ── */}
-      <div className="mb-4 rounded-2xl p-4 flex items-center gap-3"
+      {/* ── Tu foco ahora ─────────────────────────────────────────────────── */}
+      <div className="mb-3 lg:mb-4 rounded-2xl px-4 py-3 lg:py-4 flex items-center gap-3"
         style={{
           backgroundColor: focus.bg,
           border: `1px solid color-mix(in srgb, ${focus.color} 20%, transparent)`,
         }}>
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+        <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: `color-mix(in srgb, ${focus.color} 16%, transparent)` }}>
-          <span className="material-symbols-outlined text-[20px]"
+          <span className="material-symbols-outlined text-[18px] lg:text-[20px]"
             style={{ color: focus.color, fontVariationSettings: "'FILL' 1" }}>
             {focus.icon}
           </span>
@@ -229,12 +228,12 @@ export default async function DashboardPage() {
         </span>
       </div>
 
-      {/* ── Bento grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      {/* ── Bento grid ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4">
 
         {/* Left column — pending tasks */}
-        <div className="lg:col-span-8">
-          <div className="rounded-2xl p-5"
+        <div className="lg:col-span-7">
+          <div className="rounded-2xl p-4 lg:p-5 h-full"
             style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
 
             <div className="flex items-center justify-between mb-3">
@@ -273,15 +272,15 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Right column */}
-        <aside className="lg:col-span-4 space-y-4">
+        {/* Right column — today + upcoming */}
+        <aside className="lg:col-span-5 grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-4">
 
           {/* Today's schedule */}
-          <div className="rounded-2xl p-4"
+          <div className="rounded-2xl p-3 lg:p-4"
             style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold flex items-center gap-2" style={{ color: 'var(--on-surface)' }}>
-                <span className="material-symbols-outlined text-[18px]"
+            <div className="flex items-center justify-between mb-2.5">
+              <h2 className="font-bold flex items-center gap-1.5 text-sm lg:text-base" style={{ color: 'var(--on-surface)' }}>
+                <span className="material-symbols-outlined text-[16px] lg:text-[18px]"
                   style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>today</span>
                 Hoy
               </h2>
@@ -295,10 +294,10 @@ export default async function DashboardPage() {
             </div>
 
             {todaySchedules.length === 0 ? (
-              <div className="py-5 text-center">
-                <span className="material-symbols-outlined text-2xl block mb-1.5"
+              <div className="py-2 lg:py-4 text-center">
+                <span className="material-symbols-outlined text-xl lg:text-2xl block mb-1"
                   style={{ color: 'var(--color-outline)' }}>weekend</span>
-                <p className="text-xs" style={{ color: 'var(--color-outline)' }}>Sin clases hoy</p>
+                <p className="text-[11px] lg:text-xs" style={{ color: 'var(--color-outline)' }}>Sin clases hoy</p>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -309,7 +308,7 @@ export default async function DashboardPage() {
                   const isDone = currentTimeStr > s.end_time
                   return (
                     <div key={s.id}
-                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-xl"
                       style={{
                         backgroundColor: isNow
                           ? `color-mix(in srgb, ${subject.color} 10%, var(--s-base))`
@@ -319,36 +318,25 @@ export default async function DashboardPage() {
                           : '1px solid transparent',
                         opacity: isDone ? 0.5 : 1,
                       }}>
-                      <div className="w-1 h-7 rounded-full flex-shrink-0"
+                      <div className="w-1 h-6 rounded-full flex-shrink-0"
                         style={{ backgroundColor: subject.color }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-semibold truncate leading-tight"
+                        <p className="text-[11px] lg:text-[12px] font-semibold truncate leading-tight"
                           style={{ color: 'var(--on-surface)' }}>
                           {subject.name}
                         </p>
-                        <p className="mono text-[10px] leading-tight" style={{ color: 'var(--color-outline)' }}>
+                        <p className="mono text-[9px] lg:text-[10px] leading-tight" style={{ color: 'var(--color-outline)' }}>
                           <ClientTime time24={s.start_time.slice(0, 5)} />–<ClientTime time24={s.end_time.slice(0, 5)} />
-                          {(s.room || subject.room) && ` · ${s.room || subject.room}`}
                         </p>
                       </div>
-                      {isNow ? (
-                        <span className="flex items-center gap-1 mono text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
-                          style={{
-                            backgroundColor: `color-mix(in srgb, ${subject.color} 15%, transparent)`,
-                            color: subject.color,
-                          }}>
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                              style={{ backgroundColor: subject.color }} />
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5"
-                              style={{ backgroundColor: subject.color }} />
-                          </span>
-                          Ahora
+                      {isNow && (
+                        <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                            style={{ backgroundColor: subject.color }} />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5"
+                            style={{ backgroundColor: subject.color }} />
                         </span>
-                      ) : isDone ? (
-                        <span className="material-symbols-outlined text-[14px] flex-shrink-0"
-                          style={{ color: 'var(--color-outline)' }}>check</span>
-                      ) : null}
+                      )}
                     </div>
                   )
                 })}
@@ -357,13 +345,13 @@ export default async function DashboardPage() {
           </div>
 
           {/* Upcoming activities */}
-          <div className="rounded-2xl p-4"
+          <div className="rounded-2xl p-3 lg:p-4"
             style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold flex items-center gap-2" style={{ color: 'var(--on-surface)' }}>
-                <span className="material-symbols-outlined text-[18px]"
+            <div className="flex items-center justify-between mb-2.5">
+              <h2 className="font-bold flex items-center gap-1.5 text-sm lg:text-base" style={{ color: 'var(--on-surface)' }}>
+                <span className="material-symbols-outlined text-[16px] lg:text-[18px]"
                   style={{ color: 'var(--color-primary)' }}>event_upcoming</span>
-                Próximas actividades
+                Próximas
               </h2>
               <Link href="/exams"
                 className="mono text-[10px] uppercase tracking-widest transition-opacity hover:opacity-60"
@@ -373,10 +361,10 @@ export default async function DashboardPage() {
             </div>
 
             {upcomingExams.length === 0 ? (
-              <div className="py-5 text-center">
-                <span className="material-symbols-outlined text-2xl block mb-1.5"
+              <div className="py-2 lg:py-4 text-center">
+                <span className="material-symbols-outlined text-xl block mb-1"
                   style={{ color: 'var(--color-outline)' }}>event_available</span>
-                <p className="text-xs" style={{ color: 'var(--color-outline)' }}>Sin actividades próximas ✓</p>
+                <p className="text-[11px] lg:text-xs" style={{ color: 'var(--color-outline)' }}>Sin actividades ✓</p>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -387,45 +375,35 @@ export default async function DashboardPage() {
                   const urgency = days < 3 ? 'var(--danger)' : days < 7 ? 'var(--warning)' : actCfg?.color || 'var(--color-primary)'
                   return (
                     <div key={exam.id}
-                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-xl"
                       style={{
                         backgroundColor: days < 3 ? 'var(--priority-high-bg)' : 'var(--s-base)',
-                        border: '1px solid transparent',
                       }}>
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                         style={{ backgroundColor: `color-mix(in srgb, ${urgency} 14%, transparent)` }}>
-                        <span className="material-symbols-outlined text-[16px]"
+                        <span className="material-symbols-outlined text-[14px]"
                           style={{ color: urgency, fontVariationSettings: "'FILL' 1" }}>
                           {actCfg?.icon || 'event_upcoming'}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-bold truncate leading-tight"
+                        <p className="text-[11px] lg:text-[12px] font-bold truncate leading-tight"
                           style={{ color: 'var(--on-surface)' }}>
                           {exam.title}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {subject && (
-                            <span className="text-[10px] font-medium" style={{ color: subject.color }}>
-                              {subject.name}
-                            </span>
-                          )}
-                          {actCfg && (
-                            <span className="mono text-[9px] px-1 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: `color-mix(in srgb, ${actCfg.color} 12%, transparent)`,
-                                color: actCfg.color,
-                              }}>
-                              {actCfg.label_es}
-                            </span>
-                          )}
-                        </div>
+                        {subject && (
+                          <p className="text-[9px] lg:text-[10px] font-medium truncate leading-tight"
+                            style={{ color: subject.color }}>
+                            {subject.name}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col items-end flex-shrink-0">
-                        <span className="mono text-[12px] font-black leading-tight" style={{ color: urgency }}>
-                          {days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `${days}d`}
+                        <span className="mono text-[11px] lg:text-[12px] font-black leading-tight"
+                          style={{ color: urgency }}>
+                          {days === 0 ? 'Hoy' : days === 1 ? 'Mañ' : `${days}d`}
                         </span>
-                        <span className="mono text-[9px]" style={{ color: 'var(--color-outline)' }}>
+                        <span className="mono text-[8px] lg:text-[9px]" style={{ color: 'var(--color-outline)' }}>
                           {new Date(exam.exam_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                         </span>
                       </div>
@@ -438,22 +416,22 @@ export default async function DashboardPage() {
         </aside>
       </div>
 
-      {/* ── Action Dock ── */}
-      <div className="mt-4 grid grid-cols-4 gap-3">
+      {/* ── Action Dock ───────────────────────────────────────────────────── */}
+      <div className="mt-3 lg:mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3">
         {QUICK_ACTIONS.map(({ href, icon, label, color }) => (
           <Link
             key={href}
             href={href}
-            className="group flex flex-col items-center gap-2 py-3 px-2 rounded-2xl transition-all duration-200 hover:scale-[1.02]"
+            className="group flex items-center lg:flex-col gap-3 lg:gap-2 py-3 px-4 lg:px-2 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
           >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 group-hover:scale-110"
+            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 group-hover:scale-110"
               style={{ backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }}>
-              <span className="material-symbols-outlined text-[18px]" style={{ color }}>
+              <span className="material-symbols-outlined text-[17px] lg:text-[18px]" style={{ color }}>
                 {icon}
               </span>
             </div>
-            <span className="text-[11px] font-semibold text-center leading-tight"
+            <span className="text-[12px] lg:text-[11px] font-semibold lg:text-center leading-tight"
               style={{ color: 'var(--color-outline)' }}>
               {label}
             </span>

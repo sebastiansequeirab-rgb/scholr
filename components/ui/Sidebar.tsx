@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -18,12 +18,20 @@ const NAV_ITEMS = [
   { key: 'exams',     href: '/exams',      icon: 'event_upcoming' },
 ]
 
+// Bottom tab bar (primary mobile nav)
 const BOTTOM_NAV = [
   { key: 'dashboard', href: '/dashboard', icon: 'home'           },
   { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
   { key: 'tasks',     href: '/tasks',     icon: 'check_circle'   },
   { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
   { key: 'exams',     href: '/exams',     icon: 'event_upcoming' },
+]
+
+// Side drawer (secondary mobile nav)
+const SIDE_MENU_ITEMS = [
+  { key: 'subjects',  href: '/subjects', icon: 'menu_book'      },
+  { key: 'exams',     href: '/exams',    icon: 'event_upcoming' },
+  { key: 'settings',  href: '/settings', icon: 'settings'       },
 ]
 
 interface SidebarProps {
@@ -37,6 +45,7 @@ export function Sidebar({ profile }: SidebarProps) {
   const { collapsed, toggle } = useSidebarCollapse()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const touchStartXRef = useRef<number | null>(null)
 
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
@@ -51,11 +60,23 @@ export function Sidebar({ profile }: SidebarProps) {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
 
-  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return
+    const delta = touchStartXRef.current - e.changedTouches[0].clientX
+    if (delta > 60) setMobileOpen(false)
+    touchStartXRef.current = null
+  }
+
+  // ── Desktop sidebar content ───────────────────────────────────────────────
+  const SidebarContent = () => (
     <div className="flex flex-col h-full py-5 px-3">
 
       {/* Logo */}
-      <div className={`mb-6 ${collapsed && !mobile ? 'px-0 flex justify-center' : 'px-2'}`}>
+      <div className={`mb-6 ${collapsed ? 'px-0 flex justify-center' : 'px-2'}`}>
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
@@ -64,7 +85,7 @@ export function Sidebar({ profile }: SidebarProps) {
               school
             </span>
           </div>
-          {(!collapsed || mobile) && (
+          {!collapsed && (
             <div>
               <span className="text-base font-black tracking-tighter" style={{ color: 'var(--color-primary)' }}>
                 Scholr
@@ -86,9 +107,9 @@ export function Sidebar({ profile }: SidebarProps) {
             <Link
               key={key}
               href={href}
-              title={collapsed && !mobile ? t(`nav.${key}`) : undefined}
+              title={collapsed ? t(`nav.${key}`) : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
-                collapsed && !mobile ? 'justify-center' : ''
+                collapsed ? 'justify-center' : ''
               }`}
               style={{
                 color: active ? 'var(--color-primary)' : 'var(--color-outline)',
@@ -111,7 +132,7 @@ export function Sidebar({ profile }: SidebarProps) {
               >
                 {icon}
               </span>
-              {(!collapsed || mobile) && <span className="leading-none">{t(`nav.${key}`)}</span>}
+              {!collapsed && <span className="leading-none">{t(`nav.${key}`)}</span>}
             </Link>
           )
         })}
@@ -119,9 +140,9 @@ export function Sidebar({ profile }: SidebarProps) {
         {/* AI */}
         <Link
           href="/ai"
-          title={collapsed && !mobile ? t('nav.ai') : undefined}
+          title={collapsed ? t('nav.ai') : undefined}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
-            collapsed && !mobile ? 'justify-center' : ''
+            collapsed ? 'justify-center' : ''
           }`}
           style={{
             color: isActive('/ai') ? 'var(--color-tertiary)' : 'var(--color-outline)',
@@ -143,36 +164,34 @@ export function Sidebar({ profile }: SidebarProps) {
           >
             auto_awesome
           </span>
-          {(!collapsed || mobile) && (
+          {!collapsed && (
             <span className="leading-none flex-1">{t('nav.ai')}</span>
           )}
         </Link>
       </nav>
 
-      {/* Collapse toggle (desktop only) */}
-      {!mobile && (
-        <button
-          onClick={toggle}
-          title={collapsed ? 'Expandir' : 'Colapsar'}
-          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 mt-1 ${
-            collapsed ? 'justify-center' : ''
-          }`}
-          style={{ color: 'var(--color-outline)', opacity: 0.6 }}
-        >
-          <span className="material-symbols-outlined text-[18px] flex-shrink-0">
-            {collapsed ? 'chevron_right' : 'chevron_left'}
-          </span>
-          {!collapsed && <span className="mono text-[9px] uppercase tracking-widest">Colapsar</span>}
-        </button>
-      )}
+      {/* Collapse toggle */}
+      <button
+        onClick={toggle}
+        title={collapsed ? 'Expandir' : 'Colapsar'}
+        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 mt-1 ${
+          collapsed ? 'justify-center' : ''
+        }`}
+        style={{ color: 'var(--color-outline)', opacity: 0.6 }}
+      >
+        <span className="material-symbols-outlined text-[18px] flex-shrink-0">
+          {collapsed ? 'chevron_right' : 'chevron_left'}
+        </span>
+        {!collapsed && <span className="mono text-[9px] uppercase tracking-widest">Colapsar</span>}
+      </button>
 
       {/* Footer */}
       <div className="mt-2 space-y-0.5 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
         <Link
           href="/settings"
-          title={collapsed && !mobile ? t('nav.settings') : undefined}
+          title={collapsed ? t('nav.settings') : undefined}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
-            collapsed && !mobile ? 'justify-center' : ''
+            collapsed ? 'justify-center' : ''
           }`}
           style={{
             color: isActive('/settings') ? 'var(--color-primary)' : 'var(--color-outline)',
@@ -186,11 +205,11 @@ export function Sidebar({ profile }: SidebarProps) {
             style={{ fontVariationSettings: isActive('/settings') ? "'FILL' 1" : "'FILL' 0" }}>
             settings
           </span>
-          {(!collapsed || mobile) && <span className="leading-none">{t('nav.settings')}</span>}
+          {!collapsed && <span className="leading-none">{t('nav.settings')}</span>}
         </Link>
 
         {/* User row */}
-        {(!collapsed || mobile) ? (
+        {!collapsed ? (
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
             style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 6%, transparent)' }}>
             <div
@@ -249,31 +268,34 @@ export function Sidebar({ profile }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile glass top bar */}
+      {/* ── Mobile top bar ──────────────────────────────────────────────── */}
       <header
-        className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 h-14 glass"
+        className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 h-14 glass"
         style={{ borderBottom: '1px solid var(--border-subtle)' }}
       >
-        <Link href="/dashboard" className="text-lg font-black tracking-tighter"
-          style={{ color: 'var(--color-primary)' }}>
-          Scholr
+        <Link href="/dashboard" className="flex items-center gap-2 group">
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
+            <span className="material-symbols-outlined text-[14px]"
+              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>school</span>
+          </div>
+          <span className="text-[17px] font-black tracking-tighter" style={{ color: 'var(--color-primary)' }}>
+            Scholr
+          </span>
         </Link>
         <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="p-2 rounded-full transition-all"
+          onClick={() => setMobileOpen(true)}
+          className="w-9 h-9 flex items-center justify-center rounded-full transition-all active:scale-90"
           style={{ color: 'var(--color-outline)' }}
-          aria-label="Toggle menu"
-          aria-expanded={mobileOpen}
+          aria-label="Abrir menú"
         >
-          <span className="material-symbols-outlined text-[22px]">
-            {mobileOpen ? 'close' : 'menu'}
-          </span>
+          <span className="material-symbols-outlined text-[22px]">menu</span>
         </button>
       </header>
 
-      {/* Mobile bottom navigation bar */}
+      {/* ── Mobile bottom tab bar ───────────────────────────────────────── */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass safe-bottom"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 glass safe-bottom"
         style={{ borderTop: '1px solid var(--border-subtle)', height: '56px' }}
         aria-label="Mobile navigation"
       >
@@ -287,7 +309,6 @@ export function Sidebar({ profile }: SidebarProps) {
                 className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all duration-150 active:scale-95"
                 aria-current={pathname === href ? 'page' : undefined}
               >
-                {/* Active pill indicator */}
                 {active && (
                   <div className="absolute top-2 rounded-full"
                     style={{
@@ -343,29 +364,144 @@ export function Sidebar({ profile }: SidebarProps) {
         </div>
       </nav>
 
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-30"
-          style={{ backgroundColor: 'var(--overlay-bg)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setMobileOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* ── Mobile overlay ──────────────────────────────────────────────── */}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 transition-all duration-300 ${
+          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
 
-      {/* Mobile drawer */}
+      {/* ── Mobile side drawer — premium panel ─────────────────────────── */}
       <aside
-        className={`lg:hidden fixed top-0 left-0 z-40 h-full w-72 transform transition-transform duration-300 ${
+        className={`lg:hidden fixed top-0 left-0 z-50 h-full flex flex-col transform transition-transform duration-300 ease-out ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ backgroundColor: 'var(--s-bg)', borderRight: '1px solid var(--border-subtle)' }}
+        style={{
+          width: 'min(85vw, 320px)',
+          backgroundColor: 'var(--s-bg)',
+          borderRight: '1px solid var(--border-subtle)',
+          boxShadow: '20px 0 60px -10px rgba(0,0,0,0.4)',
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
-        <div className="pt-14">
-          <SidebarContent mobile />
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-5 flex-shrink-0"
+          style={{
+            height: '64px',
+            borderBottom: '1px solid var(--border-subtle)',
+          }}>
+          <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
+              <span className="material-symbols-outlined text-[20px]"
+                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>school</span>
+            </div>
+            <div>
+              <span className="text-[17px] font-black tracking-tighter leading-none block"
+                style={{ color: 'var(--color-primary)' }}>Scholr</span>
+              <span className="text-[9px] uppercase tracking-[0.18em] font-mono leading-none"
+                style={{ color: 'var(--color-outline)' }}>Sanctuary</span>
+            </div>
+          </Link>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90"
+            style={{
+              color: 'var(--color-outline)',
+              backgroundColor: 'var(--s-low)',
+              border: '1px solid var(--border-subtle)',
+            }}
+            aria-label="Cerrar menú"
+          >
+            <span className="material-symbols-outlined text-[17px]">close</span>
+          </button>
+        </div>
+
+        {/* Section label */}
+        <div className="px-5 pt-5 pb-2">
+          <span className="mono text-[9px] uppercase tracking-[0.2em] font-medium"
+            style={{ color: 'var(--color-outline)' }}>Navegación</span>
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto" aria-label="Side menu">
+          {SIDE_MENU_ITEMS.map(({ key, href, icon }) => {
+            const active = isActive(href)
+            return (
+              <Link
+                key={key}
+                href={href}
+                className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-150 active:scale-[0.98]"
+                style={{
+                  color: active ? 'var(--color-primary)' : 'var(--on-surface)',
+                  fontWeight: active ? 700 : 500,
+                  fontSize: '15px',
+                  backgroundColor: active
+                    ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
+                    : 'transparent',
+                }}
+              >
+                <span className="material-symbols-outlined text-[22px] flex-shrink-0"
+                  style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
+                  {icon}
+                </span>
+                <span className="flex-1 leading-none">{t(`nav.${key}`)}</span>
+                {active && (
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: 'var(--color-primary)' }} />
+                )}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Profile footer */}
+        <div className="p-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="flex items-center gap-3 px-3 py-3 rounded-2xl"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 7%, transparent)' }}>
+            <div
+              className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-[11px] font-bold"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
+                color: 'var(--color-primary)',
+              }}
+            >
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                : (profile?.full_name ? getInitials(profile.full_name) : 'U')
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold truncate leading-tight"
+                style={{ color: 'var(--on-surface)' }}>
+                {profile?.full_name || 'Estudiante'}
+              </p>
+              <p className="text-[10px] font-mono truncate leading-tight"
+                style={{ color: 'var(--color-outline)' }}>
+                {profile?.is_premium ? '★ Premium' : 'Free'}
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="p-1.5 rounded-xl transition-all active:scale-90"
+              style={{ color: 'var(--color-outline)' }}
+              aria-label={t('nav.logout')}
+              title={t('nav.logout')}
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {loggingOut ? 'hourglass_empty' : 'logout'}
+              </span>
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Desktop sidebar */}
+      {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
       <aside
         className={`hidden lg:flex flex-col fixed top-0 left-0 h-full z-30 transition-all duration-300 ${
           collapsed ? 'w-16' : 'w-60'
