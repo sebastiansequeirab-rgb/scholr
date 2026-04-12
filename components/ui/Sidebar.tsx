@@ -10,21 +10,22 @@ import { useSidebarCollapse } from '@/components/ui/SidebarCollapseContext'
 import type { Profile } from '@/types'
 
 const NAV_ITEMS = [
-  { key: 'dashboard', href: '/dashboard',  icon: 'home'           },
-  { key: 'calendar',  href: '/calendar',   icon: 'calendar_month' },
-  { key: 'subjects',  href: '/subjects',   icon: 'menu_book'      },
-  { key: 'tasks',     href: '/tasks',      icon: 'check_circle'   },
-  { key: 'notes',     href: '/notes',      icon: 'sticky_note_2'  },
-  { key: 'exams',     href: '/exams',      icon: 'event_upcoming' },
-]
-
-// Bottom tab bar (primary mobile nav)
-const BOTTOM_NAV = [
   { key: 'dashboard', href: '/dashboard', icon: 'home'           },
+  { key: 'ai',        href: '/ai',        icon: 'auto_awesome'   },
   { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
+  { key: 'subjects',  href: '/subjects',  icon: 'menu_book'      },
   { key: 'tasks',     href: '/tasks',     icon: 'check_circle'   },
   { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
   { key: 'exams',     href: '/exams',     icon: 'event_upcoming' },
+]
+
+// Bottom tab bar (primary mobile nav) — Settings accessible via hamburger only
+const BOTTOM_NAV = [
+  { key: 'dashboard', href: '/dashboard', icon: 'home'           },
+  { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
+  { key: 'ai',        href: '/ai',        icon: 'auto_awesome',  center: true },
+  { key: 'tasks',     href: '/tasks',     icon: 'check_circle'   },
+  { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
 ]
 
 // Side drawer (secondary mobile nav)
@@ -104,6 +105,8 @@ export function Sidebar({ profile }: SidebarProps) {
       <nav className="flex-1 space-y-0.5" aria-label="Main navigation">
         {NAV_ITEMS.map(({ key, href, icon }) => {
           const active = isActive(href)
+          const isAI = key === 'ai'
+          const accentColor = isAI ? 'var(--color-tertiary)' : 'var(--color-primary)'
           return (
             <Link
               key={key}
@@ -113,14 +116,14 @@ export function Sidebar({ profile }: SidebarProps) {
                 collapsed ? 'justify-center' : ''
               }`}
               style={{
-                color: active ? 'var(--color-primary)' : 'var(--color-outline)',
+                color: active ? accentColor : 'var(--color-outline)',
                 fontWeight: active ? 700 : 500,
                 backgroundColor: active
-                  ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
+                  ? `color-mix(in srgb, ${accentColor} 10%, transparent)`
                   : 'transparent',
               }}
               onMouseEnter={e => {
-                if (!active) (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 5%, transparent)'
+                if (!active) (e.currentTarget as HTMLElement).style.backgroundColor = `color-mix(in srgb, ${accentColor} 5%, transparent)`
               }}
               onMouseLeave={e => {
                 if (!active) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
@@ -137,38 +140,6 @@ export function Sidebar({ profile }: SidebarProps) {
             </Link>
           )
         })}
-
-        {/* AI */}
-        <Link
-          href="/ai"
-          title={collapsed ? t('nav.ai') : undefined}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
-            collapsed ? 'justify-center' : ''
-          }`}
-          style={{
-            color: isActive('/ai') ? 'var(--color-tertiary)' : 'var(--color-outline)',
-            fontWeight: isActive('/ai') ? 700 : 500,
-            backgroundColor: isActive('/ai')
-              ? 'color-mix(in srgb, var(--color-tertiary) 10%, transparent)'
-              : 'transparent',
-          }}
-          onMouseEnter={e => {
-            if (!isActive('/ai')) (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 5%, transparent)'
-          }}
-          onMouseLeave={e => {
-            if (!isActive('/ai')) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
-          }}
-        >
-          <span
-            className="material-symbols-outlined text-[20px] flex-shrink-0"
-            style={{ fontVariationSettings: isActive('/ai') ? "'FILL' 1" : "'FILL' 0" }}
-          >
-            auto_awesome
-          </span>
-          {!collapsed && (
-            <span className="leading-none flex-1">{t('nav.ai')}</span>
-          )}
-        </Link>
       </nav>
 
       {/* Collapse toggle */}
@@ -303,6 +274,39 @@ export function Sidebar({ profile }: SidebarProps) {
         <div className="flex items-center h-full px-1">
           {BOTTOM_NAV.map(({ key, href, icon }) => {
             const active = isActive(href)
+            const isAI = key === 'ai'
+            const accentColor = isAI ? 'var(--color-tertiary)' : 'var(--color-primary)'
+
+            if (isAI) {
+              // Center AI button — visually elevated
+              return (
+                <Link
+                  key={key}
+                  href={href}
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all duration-150 active:scale-90"
+                  aria-current={pathname === href ? 'page' : undefined}
+                >
+                  <div className="flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-150"
+                    style={{
+                      background: active
+                        ? `color-mix(in srgb, var(--color-tertiary) 22%, transparent)`
+                        : `color-mix(in srgb, var(--color-tertiary) 12%, transparent)`,
+                      border: `1px solid color-mix(in srgb, var(--color-tertiary) ${active ? 40 : 20}%, transparent)`,
+                    }}>
+                    <span
+                      className="material-symbols-outlined text-[20px] transition-all duration-150"
+                      style={{
+                        color: 'var(--color-tertiary)',
+                        fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
+                      }}
+                    >
+                      {icon}
+                    </span>
+                  </div>
+                </Link>
+              )
+            }
+
             return (
               <Link
                 key={key}
@@ -313,7 +317,7 @@ export function Sidebar({ profile }: SidebarProps) {
                 {active && (
                   <div className="absolute top-2 rounded-full"
                     style={{
-                      backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)',
+                      backgroundColor: `color-mix(in srgb, ${accentColor} 14%, transparent)`,
                       width: '44px',
                       height: '26px',
                     }} />
@@ -321,47 +325,19 @@ export function Sidebar({ profile }: SidebarProps) {
                 <span
                   className="material-symbols-outlined text-[22px] relative transition-all duration-150"
                   style={{
-                    color: active ? 'var(--color-primary)' : 'var(--color-outline)',
+                    color: active ? accentColor : 'var(--color-outline)',
                     fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
                   }}
                 >
                   {icon}
                 </span>
                 <span className="text-[9px] font-semibold leading-none relative transition-colors duration-150"
-                  style={{ color: active ? 'var(--color-primary)' : 'var(--color-outline)' }}>
+                  style={{ color: active ? accentColor : 'var(--color-outline)' }}>
                   {t(`nav.${key}`)}
                 </span>
               </Link>
             )
           })}
-          {/* Settings */}
-          <Link
-            href="/settings"
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all duration-150 active:scale-95"
-            aria-current={pathname === '/settings' ? 'page' : undefined}
-          >
-            {pathname === '/settings' && (
-              <div className="absolute top-2 rounded-full"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)',
-                  width: '44px',
-                  height: '26px',
-                }} />
-            )}
-            <span
-              className="material-symbols-outlined text-[22px] relative transition-all duration-150"
-              style={{
-                color: pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-outline)',
-                fontVariationSettings: pathname === '/settings' ? "'FILL' 1" : "'FILL' 0",
-              }}
-            >
-              person
-            </span>
-            <span className="text-[9px] font-semibold leading-none relative"
-              style={{ color: pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-outline)' }}>
-              {t('nav.settings')}
-            </span>
-          </Link>
         </div>
       </nav>
 
