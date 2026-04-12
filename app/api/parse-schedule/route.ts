@@ -44,24 +44,36 @@ Reglas:
       }]
     }
 
-    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    const tryFetch = async (attempt: number): Promise<NextResponse> => {
+      const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: { message: res.statusText } }))
-      const msg = err?.error?.message || JSON.stringify(err)
-      console.error('Gemini vision error:', msg)
-      return NextResponse.json({ error: `Error al analizar: ${msg}` }, { status: 500 })
+      if (res.status === 429 && attempt < 3) {
+        const err = await res.json().catch(() => ({}))
+        const retryMatch = JSON.stringify(err).match(/retry in ([\d.]+)s/)
+        const waitMs = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) * 1000 : 5000
+        await new Promise(r => setTimeout(r, waitMs))
+        return tryFetch(attempt + 1)
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: { message: res.statusText } }))
+        const msg = err?.error?.message || JSON.stringify(err)
+        console.error('Gemini vision error:', msg)
+        return NextResponse.json({ error: `Error al analizar: ${msg}` }, { status: 500 })
+      }
+
+      const data = await res.json()
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const jsonStr = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+      const parsed = JSON.parse(jsonStr)
+      return NextResponse.json(parsed)
     }
 
-    const data = await res.json()
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    const jsonStr = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-    const parsed = JSON.parse(jsonStr)
-    return NextResponse.json(parsed)
+    return await tryFetch(0)
   } catch (err) {
     console.error('Parse schedule error:', err)
     return NextResponse.json({ error: 'No se pudo interpretar la imagen. Intenta con una foto más clara.' }, { status: 500 })
