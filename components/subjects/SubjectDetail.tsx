@@ -69,7 +69,7 @@ export function SubjectDetail({
   subject: Subject
   onClose: () => void
 }) {
-  const { t, language } = useTranslation()
+  const { language } = useTranslation()
   const [exams,   setExams]   = useState<Exam[]>([])
   const [loading, setLoading] = useState(true)
 
