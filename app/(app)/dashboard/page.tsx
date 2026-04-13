@@ -444,11 +444,14 @@ export default async function DashboardPage() {
               key={href}
               href={href}
               className="group flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl transition-all duration-200 hover:scale-[1.04] active:scale-[0.97]"
-              style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
+              style={{
+                backgroundColor: `color-mix(in srgb, ${color} 9%, var(--s-low))`,
+                border: `1px solid color-mix(in srgb, ${color} 22%, transparent)`,
+              }}
             >
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 group-hover:scale-110"
-                style={{ backgroundColor: `color-mix(in srgb, ${color} 13%, transparent)` }}
+                style={{ backgroundColor: `color-mix(in srgb, ${color} 20%, transparent)` }}
               >
                 <span className="material-symbols-outlined text-[19px]"
                   style={{ color, fontVariationSettings: "'FILL' 1" }}>
@@ -456,7 +459,7 @@ export default async function DashboardPage() {
                 </span>
               </div>
               <span className="text-[10px] font-semibold text-center leading-tight"
-                style={{ color: 'var(--color-outline)' }}>
+                style={{ color }}>
                 {label}
               </span>
             </Link>

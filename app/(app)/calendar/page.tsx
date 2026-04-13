@@ -283,37 +283,20 @@ const SANCTUARY_CALENDAR_CSS = `
   /* Task in daygrid — slightly dimmer pill */
   .fc-ev-task.fc-daygrid-event { opacity: 0.82 !important; }
 
-  /* ─── Daygrid event dots (month view) ────────── */
+  /* ─── Daygrid events (month view) — compact text pills ────────── */
   .fc .fc-daygrid-event {
-    border: none !important;
-    border-left: none !important;
-    border-radius: 50% !important;
-    padding: 0 !important;
+    border-radius: 4px !important;
+    padding: 1px 4px !important;
     margin: 1px 2px !important;
-    width: 8px !important;
-    height: 8px !important;
-    min-width: 8px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: transparent !important;
-    overflow: visible !important;
-  }
-  .fc .fc-daygrid-event-harness {
-    display: inline-flex !important;
-    width: auto !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
   }
   .fc .fc-daygrid-day-events {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 2px !important;
     padding: 2px 4px !important;
     min-height: 14px !important;
-    align-items: center !important;
-  }
-  .fc-ev-exam.fc-daygrid-event {
-    width: 8px !important;
-    height: 8px !important;
   }
 
   /* ─── Room/location sub-label in timegrid ────── */
@@ -721,26 +704,19 @@ export default function CalendarPage() {
             const type = arg.event.extendedProps.type as string
             const isMonthView = arg.view.type === 'dayGridMonth'
 
-            // Month view: color dot instead of text pill
+            // Month view: compact text pill (title only, no time)
             if (isMonthView) {
-              const dotColor = arg.event.borderColor || 'var(--color-primary)'
               return (
                 <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-                  height: '100%',
-                  padding: '1px 3px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  padding: '0 2px',
+                  lineHeight: 1.4,
                 }}>
-                  <span style={{
-                    display: 'inline-block',
-                    width: isMobile ? '6px' : '8px',
-                    height: isMobile ? '6px' : '8px',
-                    borderRadius: '50%',
-                    backgroundColor: dotColor,
-                    flexShrink: 0,
-                  }} title={arg.event.title} />
+                  {arg.event.title}
                 </div>
               )
             }

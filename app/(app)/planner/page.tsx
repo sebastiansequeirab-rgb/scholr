@@ -691,23 +691,23 @@ export default function PlannerPage() {
   }
 
   if (subjectFilter) {
-    filteredTasks = filteredTasks.filter(t => t.subject_id === subjectFilter)
+    filteredTasks = filteredTasks.filter(task => task.subject_id === subjectFilter)
     filteredExams = filteredExams.filter(e => e.subject_id === subjectFilter)
   }
 
   if (statusFilter === 'not_started') {
-    filteredTasks = filteredTasks.filter(t => !t.is_done && (t.status || 'not_started') === 'not_started')
+    filteredTasks = filteredTasks.filter(task => !task.is_done && (task.status || 'not_started') === 'not_started')
     filteredExams = filteredExams.filter(e => e.exam_date >= todayStr)
   } else if (statusFilter === 'in_progress') {
-    filteredTasks = filteredTasks.filter(t => !t.is_done && t.status === 'in_progress')
+    filteredTasks = filteredTasks.filter(task => !task.is_done && task.status === 'in_progress')
     filteredExams = []
   } else if (statusFilter === 'completed') {
-    filteredTasks = filteredTasks.filter(t => t.is_done)
+    filteredTasks = filteredTasks.filter(task => task.is_done)
     filteredExams = filteredExams.filter(e => e.exam_date < todayStr)
   }
 
-  const pendingTasks   = filteredTasks.filter(t => !t.is_done)
-  const completedTasks = filteredTasks.filter(t => t.is_done)
+  const pendingTasks   = filteredTasks.filter(task => !task.is_done)
+  const completedTasks = filteredTasks.filter(task => task.is_done)
   const upcomingExams  = filteredExams.filter(e => e.exam_date >= todayStr)
   const pastExams      = filteredExams.filter(e => e.exam_date < todayStr)
 

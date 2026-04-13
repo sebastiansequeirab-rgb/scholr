@@ -18,14 +18,15 @@ const NAV_ITEMS = [
   { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
 ]
 
-// Bottom tab bar (6 tabs) — Home | Calendar | AI (center) | Subjects | Planner | Notes
+// Bottom tab bar (7 tabs) — Home | Calendar | Planner | AI (center) | Subjects | Notes | Settings
 const BOTTOM_NAV = [
   { key: 'dashboard', href: '/dashboard', icon: 'home'           },
   { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
+  { key: 'planner',   href: '/planner',   icon: 'check_circle'   },
   { key: 'ai',        href: '/ai',        icon: 'auto_awesome',  center: true },
   { key: 'subjects',  href: '/subjects',  icon: 'menu_book'      },
-  { key: 'planner',   href: '/planner',   icon: 'check_circle'   },
   { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
+  { key: 'settings',  href: '/settings',  icon: 'settings'       },
 ]
 
 // Side drawer — account & utility only (no duplicate of bottom nav main items)
@@ -332,7 +333,7 @@ export function Sidebar({ profile }: SidebarProps) {
                     }} />
                 )}
                 <span
-                  className="material-symbols-outlined text-[22px] relative transition-all duration-150"
+                  className="material-symbols-outlined text-[19px] relative transition-all duration-150"
                   style={{
                     color: active ? accentColor : 'var(--color-outline)',
                     fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
@@ -340,7 +341,7 @@ export function Sidebar({ profile }: SidebarProps) {
                 >
                   {icon}
                 </span>
-                <span className="text-[9px] font-semibold leading-none relative transition-colors duration-150"
+                <span className="text-[8px] font-semibold leading-none relative transition-colors duration-150"
                   style={{ color: active ? accentColor : 'var(--color-outline)' }}>
                   {t(`nav.${key}`)}
                 </span>
