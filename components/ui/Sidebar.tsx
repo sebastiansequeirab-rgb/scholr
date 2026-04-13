@@ -14,26 +14,26 @@ const NAV_ITEMS = [
   { key: 'ai',        href: '/ai',        icon: 'auto_awesome'   },
   { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
   { key: 'subjects',  href: '/subjects',  icon: 'menu_book'      },
-  { key: 'tasks',     href: '/tasks',     icon: 'check_circle'   },
+  { key: 'planner',   href: '/planner',   icon: 'check_circle'   },
   { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
-  { key: 'exams',     href: '/exams',     icon: 'event_upcoming' },
 ]
 
-// Bottom tab bar (primary mobile nav) — Settings accessible via hamburger only
+// Bottom tab bar (6 tabs) — Home | Calendar | AI (center) | Subjects | Planner | Notes
 const BOTTOM_NAV = [
   { key: 'dashboard', href: '/dashboard', icon: 'home'           },
   { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
   { key: 'ai',        href: '/ai',        icon: 'auto_awesome',  center: true },
-  { key: 'tasks',     href: '/tasks',     icon: 'check_circle'   },
+  { key: 'subjects',  href: '/subjects',  icon: 'menu_book'      },
+  { key: 'planner',   href: '/planner',   icon: 'check_circle'   },
   { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
 ]
 
-// Side drawer (secondary mobile nav)
+// Side drawer — account & utility only (no duplicate of bottom nav main items)
 const SIDE_MENU_ITEMS = [
-  { key: 'subjects',  href: '/subjects', icon: 'menu_book'      },
-  { key: 'exams',     href: '/exams',    icon: 'event_upcoming' },
-  { key: 'ai',        href: '/ai',       icon: 'auto_awesome'   },
-  { key: 'settings',  href: '/settings', icon: 'settings'       },
+  { key: 'profile',   href: '/settings', icon: 'person'            },
+  { key: 'settings',  href: '/settings', icon: 'settings'          },
+  { key: 'plan',      href: '/settings', icon: 'workspace_premium' },
+  { key: 'help',      href: '/settings', icon: 'help_outline'      },
 ]
 
 interface SidebarProps {
@@ -278,7 +278,7 @@ export function Sidebar({ profile }: SidebarProps) {
             const accentColor = isAI ? 'var(--color-tertiary)' : 'var(--color-primary)'
 
             if (isAI) {
-              // Center AI button — visually elevated
+              // Center AI button — visually elevated, most prominent tab
               return (
                 <Link
                   key={key}
@@ -286,23 +286,32 @@ export function Sidebar({ profile }: SidebarProps) {
                   className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all duration-150 active:scale-90"
                   aria-current={pathname === href ? 'page' : undefined}
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-150"
+                  <div
+                    className="flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-150"
                     style={{
                       background: active
-                        ? `color-mix(in srgb, var(--color-tertiary) 22%, transparent)`
-                        : `color-mix(in srgb, var(--color-tertiary) 12%, transparent)`,
-                      border: `1px solid color-mix(in srgb, var(--color-tertiary) ${active ? 40 : 20}%, transparent)`,
-                    }}>
+                        ? `color-mix(in srgb, var(--color-tertiary) 28%, transparent)`
+                        : `color-mix(in srgb, var(--color-tertiary) 15%, transparent)`,
+                      border: `1.5px solid color-mix(in srgb, var(--color-tertiary) ${active ? 50 : 28}%, transparent)`,
+                      boxShadow: active ? `0 2px 16px color-mix(in srgb, var(--color-tertiary) 25%, transparent)` : 'none',
+                    }}
+                  >
                     <span
-                      className="material-symbols-outlined text-[20px] transition-all duration-150"
+                      className="material-symbols-outlined text-[22px] transition-all duration-150"
                       style={{
                         color: 'var(--color-tertiary)',
-                        fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
+                        fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0.5",
                       }}
                     >
                       {icon}
                     </span>
                   </div>
+                  <span
+                    className="text-[9px] font-bold leading-none"
+                    style={{ color: 'var(--color-tertiary)' }}
+                  >
+                    {t(`nav.${key}`)}
+                  </span>
                 </Link>
               )
             }

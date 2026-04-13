@@ -11,30 +11,51 @@ export async function POST(req: NextRequest) {
     const { imageBase64, mimeType } = await req.json()
     if (!imageBase64) return NextResponse.json({ error: 'No image provided' }, { status: 400 })
 
-    const prompt = `Analiza esta imagen de un horario académico y extrae EXACTAMENTE la información visible.
+    const prompt = `Eres un extractor preciso de horarios académicos. Analiza la imagen y extrae CADA bloque horario visible.
 
-Devuelve ÚNICAMENTE un JSON válido (sin markdown, sin texto extra):
+PROCESO OBLIGATORIO — sigue estos pasos en orden:
+1. Identifica la estructura de la tabla: ¿las columnas son días o las filas son días?
+2. Lee los encabezados de columnas y filas para mapear días y horas exactas.
+3. Para CADA celda no vacía: determina a qué día (columna) y rango horario (fila) corresponde.
+4. Agrupa los bloques de la misma materia (aunque tengan distintos días/horas).
+5. Verifica que ningún bloque se solape con otro de la misma materia.
+6. Si hay bloques LEC, LAB o DIS de la misma materia, agrúpalos todos bajo esa materia.
+
+REGLAS CRÍTICAS para horarios:
+- Lee hora_inicio y hora_fin directamente de los encabezados de fila, NO los inventes.
+- Si la tabla muestra "7:00 – 8:30", start_time="07:00" end_time="08:30" EXACTAMENTE.
+- Si ves "7:00" como inicio de fila y la siguiente fila es "8:30", ese bloque dura 1h30.
+- NUNCA asumas duraciones estándar; siempre lee los valores reales de la imagen.
+- Si una celda abarca múltiples filas horarias, la duración es desde la primera hasta la última fila.
+- day_of_week: 0=Dom 1=Lun 2=Mar 3=Mié 4=Jue 5=Vie 6=Sáb
+
+VALIDACIÓN antes de responder:
+- ¿Cada bloque tiene un día específico (0-6)?
+- ¿Los horarios tienen formato HH:MM en 24h?
+- ¿start_time < end_time para todos los bloques?
+- ¿No hay duplicados del mismo bloque?
+Si algo es ambiguo, omítelo antes que inventarlo.
+
+Devuelve ÚNICAMENTE este JSON válido (sin markdown, sin texto extra):
 {
   "subjects": [
     {
-      "name": "nombre exacto",
-      "professor": "código y sección si aparece o null",
+      "name": "nombre exacto de la materia",
+      "professor": "código, sección o nombre del profesor si aparece, si no null",
       "color": "#6366f1",
       "icon": "menu_book",
       "schedules": [
-        { "day_of_week": 1, "start_time": "14:00", "end_time": "15:30", "room": "aula o null" }
+        { "day_of_week": 1, "start_time": "14:00", "end_time": "15:30", "room": "aula/salón o null" }
       ]
     }
   ]
 }
 
-Reglas:
-- day_of_week: 0=Dom 1=Lun 2=Mar 3=Mié 4=Jue 5=Vie 6=Sáb
-- Horarios en 24h HH:MM
-- Colores distintos: #6366f1 #ec4899 #f59e0b #10b981 #3b82f6 #8b5cf6 #ef4444 #06b6d4
-- Icons: menu_book bar_chart calculate science history_edu language computer engineering psychology savings campaign receipt_long school
-- Bloques LEC/LAB/DIS de la misma materia van en schedules de esa materia
-- No inventes datos`
+Colores disponibles (asigna uno distinto a cada materia):
+#6366f1 #ec4899 #f59e0b #10b981 #3b82f6 #8b5cf6 #ef4444 #06b6d4 #84cc16 #f97316
+
+Icons disponibles:
+menu_book bar_chart calculate science history_edu language computer engineering psychology savings campaign receipt_long school`
 
     const res = await fetch(GROQ_URL, {
       method: 'POST',
@@ -56,8 +77,8 @@ Reglas:
             },
           ],
         }],
-        temperature: 0.1,
-        max_tokens:  2048,
+        temperature: 0.05,
+        max_tokens:  4096,
       }),
     })
 

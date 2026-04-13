@@ -196,30 +196,22 @@ export default function SettingsPage() {
                 />
               </div>
 
-              {/* Plan row */}
-              <div className="flex items-center justify-between py-3 px-4 rounded-xl"
+              {/* Plan badge — free/premium indicator only, upgrade moved to bottom */}
+              <div className="flex items-center gap-3 py-2.5 px-4 rounded-xl"
                 style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: profile?.is_premium ? 'color-mix(in srgb, var(--warning) 15%, transparent)' : 'var(--s-high)' }}>
-                    <span className="material-symbols-outlined text-[16px]"
-                      style={{ color: profile?.is_premium ? 'var(--warning)' : 'var(--color-outline)', fontVariationSettings: "'FILL' 1" }}>
-                      {profile?.is_premium ? 'star' : 'workspace_premium'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>{t('settings.plan')}</p>
-                    <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
-                      {profile?.is_premium ? t('settings.premium') : t('settings.free')}
-                    </p>
-                  </div>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: profile?.is_premium ? 'color-mix(in srgb, var(--warning) 15%, transparent)' : 'var(--s-high)' }}>
+                  <span className="material-symbols-outlined text-[16px]"
+                    style={{ color: profile?.is_premium ? 'var(--warning)' : 'var(--color-outline)', fontVariationSettings: "'FILL' 1" }}>
+                    {profile?.is_premium ? 'star' : 'workspace_premium'}
+                  </span>
                 </div>
-                {!profile?.is_premium && (
-                  <button className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[14px]" style={{ color: 'var(--color-primary)' }}>upgrade</span>
-                    {t('settings.upgrade')}
-                  </button>
-                )}
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>{t('settings.plan')}</p>
+                  <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
+                    {profile?.is_premium ? t('settings.premium') : t('settings.free')}
+                  </p>
+                </div>
               </div>
             </div>
           </Section>
@@ -415,7 +407,49 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="pb-4" />
+      {/* ── Upgrade to Premium card (bottom, outside columns) ── */}
+      {!profile?.is_premium && (
+        <div
+          className="mt-6 rounded-2xl p-5 overflow-hidden relative"
+          style={{
+            background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 45%, #c084fc 80%, #e879f9 100%)',
+          }}
+        >
+          {/* Decorative glow */}
+          <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-[60px] opacity-30 pointer-events-none"
+            style={{ backgroundColor: '#e879f9' }} />
+
+          <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="material-symbols-outlined text-[20px] text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  workspace_premium
+                </span>
+                <span className="mono text-[10px] uppercase tracking-[0.18em] font-bold text-white/80">
+                  Scholar Premium
+                </span>
+              </div>
+              <h3 className="text-base font-extrabold text-white leading-snug">
+                {language === 'es' ? 'Desbloquea todo tu potencial' : 'Unlock your full potential'}
+              </h3>
+              <p className="text-sm text-white/75 mt-0.5">
+                {language === 'es'
+                  ? 'IA avanzada · Análisis académico · Soporte prioritario'
+                  : 'Advanced AI · Academic analytics · Priority support'}
+              </p>
+            </div>
+            <button
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 hover:scale-105 flex-shrink-0"
+              style={{ backgroundColor: 'white', color: '#7c3aed' }}
+            >
+              <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>upgrade</span>
+              {t('settings.upgrade')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="pb-6" />
     </div>
   )
 }

@@ -194,6 +194,9 @@ const SANCTUARY_CALENDAR_CSS = `
     color: var(--color-outline) !important;
     padding-right: 12px !important;
   }
+
+  /* Week/Day events: enforce minimum 48px height */
+  .fc .fc-timegrid-event { min-height: 48px !important; }
   .fc .fc-timegrid-now-indicator-line {
     border-color: var(--color-primary) !important;
     opacity: 0.6 !important;
@@ -280,17 +283,37 @@ const SANCTUARY_CALENDAR_CSS = `
   /* Task in daygrid — slightly dimmer pill */
   .fc-ev-task.fc-daygrid-event { opacity: 0.82 !important; }
 
-  /* ─── Daygrid event pills (month view) ───────── */
+  /* ─── Daygrid event dots (month view) ────────── */
   .fc .fc-daygrid-event {
-    border-radius: 5px !important;
-    padding: 1px 5px !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    margin-bottom: 1px !important;
+    border: none !important;
+    border-left: none !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    margin: 1px 2px !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+  .fc .fc-daygrid-event-harness {
+    display: inline-flex !important;
+    width: auto !important;
+  }
+  .fc .fc-daygrid-day-events {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+    padding: 2px 4px !important;
+    min-height: 14px !important;
+    align-items: center !important;
   }
   .fc-ev-exam.fc-daygrid-event {
-    border-left-width: 4px !important;
-    font-weight: 700 !important;
+    width: 8px !important;
+    height: 8px !important;
   }
 
   /* ─── Room/location sub-label in timegrid ────── */
@@ -698,27 +721,26 @@ export default function CalendarPage() {
             const type = arg.event.extendedProps.type as string
             const isMonthView = arg.view.type === 'dayGridMonth'
 
-            // Mobile month view: ultra-compact pill — just the title, no time/location
-            if (isMonthView && isMobile) {
+            // Month view: color dot instead of text pill
+            if (isMonthView) {
+              const dotColor = arg.event.borderColor || 'var(--color-primary)'
               return (
                 <div style={{
-                  padding: '0 3px',
-                  overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'center',
-                  height: '14px',
-                  lineHeight: '14px',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  padding: '1px 3px',
                 }}>
                   <span style={{
-                    fontSize: '7.5px',
-                    fontWeight: 700,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    flex: 1,
-                  }}>
-                    {arg.event.title}
-                  </span>
+                    display: 'inline-block',
+                    width: isMobile ? '6px' : '8px',
+                    height: isMobile ? '6px' : '8px',
+                    borderRadius: '50%',
+                    backgroundColor: dotColor,
+                    flexShrink: 0,
+                  }} title={arg.event.title} />
                 </div>
               )
             }

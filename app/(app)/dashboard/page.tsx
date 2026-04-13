@@ -122,11 +122,22 @@ export default async function DashboardPage() {
   }
 
   const QUICK_ACTIONS = [
-    { href: '/tasks',    icon: 'add_task',          label: 'Pendiente',  color: 'var(--color-primary)'  },
-    { href: '/exams',    icon: 'event_available',    label: 'Actividad',  color: '#ef4444'               },
-    { href: '/notes',    icon: 'edit_note',          label: 'Nota',       color: 'var(--warning)'        },
-    { href: '/calendar', icon: 'calendar_view_week', label: 'Agenda',     color: 'var(--color-tertiary)' },
+    { href: '/subjects', icon: 'menu_book',    label: 'Materias',   color: 'var(--color-primary)'  },
+    { href: '/calendar', icon: 'calendar_month', label: 'Calendario', color: 'var(--color-tertiary)' },
+    { href: '/planner',  icon: 'check_circle', label: 'Planner',    color: '#10b981'               },
+    { href: '/notes',    icon: 'sticky_note_2', label: 'Notas',      color: 'var(--warning)'        },
+    { href: '/ai',       icon: 'auto_awesome', label: 'IA',         color: '#c084fc'               },
   ]
+
+  // Motivational messages by hour (for empty "Hoy" widget)
+  const motivationalMsg = (() => {
+    const h = nowDate.getHours()
+    if (h < 7)  return { text: 'Madrugador. Hoy va a ser un buen día.',   icon: 'nights_stay'     }
+    if (h < 12) return { text: 'Empieza con enfoque. Tienes el día libre.', icon: 'wb_sunny'       }
+    if (h < 15) return { text: 'Sin clases. Aprovecha para estudiar.',      icon: 'local_library'  }
+    if (h < 19) return { text: 'Tarde libre. Perfecto para avanzar.',       icon: 'self_improvement'}
+    return              { text: 'Noche tranquila. Descansa o repasa.',       icon: 'bedtime'        }
+  })()
 
   return (
     <div className="max-w-6xl mx-auto animate-fade-in">
@@ -294,10 +305,17 @@ export default async function DashboardPage() {
             </div>
 
             {todaySchedules.length === 0 ? (
-              <div className="py-2 lg:py-4 text-center">
-                <span className="material-symbols-outlined text-xl lg:text-2xl block mb-1"
-                  style={{ color: 'var(--color-outline)' }}>weekend</span>
-                <p className="text-[11px] lg:text-xs" style={{ color: 'var(--color-outline)' }}>Sin clases hoy</p>
+              <div className="py-2 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}>
+                  <span className="material-symbols-outlined text-[16px]"
+                    style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                    {motivationalMsg.icon}
+                  </span>
+                </div>
+                <p className="text-[11px] lg:text-[12px] italic leading-snug" style={{ color: 'var(--on-surface-variant)' }}>
+                  {motivationalMsg.text}
+                </p>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -416,27 +434,34 @@ export default async function DashboardPage() {
         </aside>
       </div>
 
-      {/* ── Action Dock ───────────────────────────────────────────────────── */}
-      <div className="mt-3 lg:mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3">
-        {QUICK_ACTIONS.map(({ href, icon, label, color }) => (
-          <Link
-            key={href}
-            href={href}
-            className="group flex items-center lg:flex-col gap-3 lg:gap-2 py-3 px-4 lg:px-2 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
-          >
-            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 group-hover:scale-110"
-              style={{ backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }}>
-              <span className="material-symbols-outlined text-[17px] lg:text-[18px]" style={{ color }}>
-                {icon}
+      {/* ── Quick Access ─────────────────────────────────────────────────── */}
+      <div className="mt-3 lg:mt-4">
+        <p className="mono text-[9px] uppercase tracking-[0.18em] mb-2 font-medium"
+          style={{ color: 'var(--color-outline)' }}>Acceso rápido</p>
+        <div className="grid grid-cols-5 gap-2">
+          {QUICK_ACTIONS.map(({ href, icon, label, color }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl transition-all duration-200 hover:scale-[1.04] active:scale-[0.97]"
+              style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 group-hover:scale-110"
+                style={{ backgroundColor: `color-mix(in srgb, ${color} 13%, transparent)` }}
+              >
+                <span className="material-symbols-outlined text-[19px]"
+                  style={{ color, fontVariationSettings: "'FILL' 1" }}>
+                  {icon}
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold text-center leading-tight"
+                style={{ color: 'var(--color-outline)' }}>
+                {label}
               </span>
-            </div>
-            <span className="text-[12px] lg:text-[11px] font-semibold lg:text-center leading-tight"
-              style={{ color: 'var(--color-outline)' }}>
-              {label}
-            </span>
-          </Link>
-        ))}
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   )

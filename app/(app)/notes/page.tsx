@@ -466,13 +466,17 @@ export default function NotesPage() {
                 <button
                   key={s.id}
                   onClick={() => setActiveSubject(s.id)}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between gap-2"
                   style={{
                     backgroundColor: activeSubject === s.id ? `color-mix(in srgb, ${s.color} 10%, transparent)` : 'transparent',
                     color:           activeSubject === s.id ? s.color : 'var(--color-outline)',
                     borderLeft: `2px solid ${activeSubject === s.id ? s.color : 'transparent'}`,
-                  }}>
-                  <span className="truncate">{s.name}</span>
+                  }}
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                    <span className="truncate">{s.name}</span>
+                  </span>
                   <span className="mono text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
                     {countBySubject(s.id)}
@@ -504,12 +508,32 @@ export default function NotesPage() {
             {loading && [1,2,3].map(i => <div key={i} className="skeleton h-16 rounded-xl" />)}
 
             {!loading && filteredNotes.length === 0 && (
-              <div className="text-center py-10">
-                <span className="material-symbols-outlined text-3xl block mb-2" style={{ color: 'var(--color-outline)' }}>
-                  description
-                </span>
-                <p className="text-xs" style={{ color: 'var(--color-outline)' }}>{t('notes.noNotes')}</p>
-                <button onClick={createNote} className="mt-3 btn-secondary text-xs py-1.5 px-3">
+              <div className="text-center py-8 px-4">
+                {/* Illustrated empty state */}
+                <div className="relative inline-block mb-4">
+                  <div className="absolute inset-0 rounded-full blur-[30px] opacity-25"
+                    style={{ backgroundColor: 'var(--color-primary)' }} />
+                  <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center mx-auto"
+                    style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-default)' }}>
+                    {/* Layered notebook icon illusion */}
+                    <span className="material-symbols-outlined text-[28px]"
+                      style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                      edit_note
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs font-semibold mb-1" style={{ color: 'var(--on-surface)' }}>
+                  {activeSubject === 'all'
+                    ? (language === 'es' ? 'Aún no tienes notas' : 'No notes yet')
+                    : t('notes.noNotes')}
+                </p>
+                <p className="text-[10px] mb-3" style={{ color: 'var(--color-outline)' }}>
+                  {language === 'es'
+                    ? 'Crea tu primera nota y empieza a capturar ideas.'
+                    : 'Create your first note and start capturing ideas.'}
+                </p>
+                <button onClick={createNote} className="btn-primary text-xs py-1.5 px-4">
+                  <span className="material-symbols-outlined text-[13px]">add</span>
                   {t('notes.add')}
                 </button>
               </div>
