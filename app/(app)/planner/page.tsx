@@ -142,7 +142,7 @@ function CreateSheet({
                 {([
                   { value: 'high', label: t('planner.high'), color: 'var(--priority-high)', bg: 'var(--priority-high-bg)' },
                   { value: 'mid',  label: t('planner.mid'),  color: 'var(--priority-mid)',  bg: 'var(--priority-mid-bg)'  },
-                  { value: 'low',  label: t('planner.low)',  color: 'var(--priority-low)',  bg: 'var(--priority-low-bg)'  },
+                  { value: 'low',  label: t('planner.low'),  color: 'var(--priority-low)',  bg: 'var(--priority-low-bg)'  },
                 ] as const).map(p => (
                   <button
                     key={p.value}
