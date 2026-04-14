@@ -267,31 +267,32 @@ export default async function DashboardPage() {
             </p>
           </div>
         ) : (
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {todaySchedules.slice(0, 6).map(s => {
+          <div className="space-y-1.5">
+            {todaySchedules.map(s => {
               const subject = allSubjects.find(sub => sub.id === s.subject_id)
               if (!subject) return null
               const isNow  = currentTimeStr >= s.start_time && currentTimeStr <= s.end_time
               const isDone = currentTimeStr > s.end_time
               return (
                 <div key={s.id}
-                  className="flex-shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-xl"
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-xl"
                   style={{
                     backgroundColor: isNow
-                      ? `color-mix(in srgb, ${subject.color} 12%, var(--s-base))`
+                      ? `color-mix(in srgb, ${subject.color} 10%, var(--s-base))`
                       : 'var(--s-base)',
                     border: isNow
-                      ? `1px solid color-mix(in srgb, ${subject.color} 28%, transparent)`
+                      ? `1px solid color-mix(in srgb, ${subject.color} 25%, transparent)`
                       : '1px solid var(--border-subtle)',
                     opacity: isDone ? 0.45 : 1,
                   }}>
-                  <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: subject.color }} />
-                  <div>
-                    <p className="text-[11px] font-semibold whitespace-nowrap" style={{ color: 'var(--on-surface)' }}>
+                  <div className="w-1 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: subject.color }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
                       {subject.name}
                     </p>
-                    <p className="mono text-[9px] whitespace-nowrap" style={{ color: 'var(--color-outline)' }}>
+                    <p className="mono text-[10px]" style={{ color: 'var(--color-outline)' }}>
                       <ClientTime time24={s.start_time.slice(0, 5)} />–<ClientTime time24={s.end_time.slice(0, 5)} />
+                      {(s.room || subject.room) ? ` · ${s.room || subject.room}` : ''}
                     </p>
                   </div>
                   {isNow && (

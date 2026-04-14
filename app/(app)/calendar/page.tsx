@@ -428,6 +428,7 @@ const SANCTUARY_CALENDAR_CSS = `
     .fc .fc-timegrid-slot-label-cushion { font-size: 9px !important; padding-right: 3px !important; }
     .fc .fc-timegrid-axis { width: 34px !important; }
     .fc .fc-timegrid-event { min-height: 28px !important; font-size: 10px !important; padding: 2px 3px !important; border-radius: 4px !important; }
+    .fc-timeGridDay-view .fc-timegrid-event { min-height: 48px !important; font-size: 11px !important; }
     .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; line-height: 1.2 !important; white-space: normal !important; word-break: break-word !important; }
   }
 `
@@ -674,7 +675,17 @@ export default function CalendarPage() {
           height="auto"
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
-          scrollTime="07:00:00"
+          scrollTime={(() => {
+            const todayDow = new Date().getDay()
+            const earliest = schedules
+              .filter(s => s.day_of_week === todayDow)
+              .map(s => s.start_time)
+              .sort()[0]
+            if (!earliest) return '07:00:00'
+            const [h, m] = earliest.split(':').map(Number)
+            const mins = Math.max(6 * 60, h * 60 + m - 30)
+            return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}:00`
+          })()}
           slotLabelInterval="01:00:00"
           locale={language === 'en' ? 'en' : 'es'}
           eventTimeFormat={use12h
@@ -726,19 +737,25 @@ export default function CalendarPage() {
             // Custom render for schedule events: show room below title
             if (type === 'schedule') {
               const loc = arg.event.extendedProps.location as string | undefined
-              const titleText = isMobile && arg.event.title.length > 14 ? arg.event.title.slice(0, 13) + '…' : arg.event.title
+              const isWeekView = arg.view.type === 'timeGridWeek'
+              const isDayView  = arg.view.type === 'timeGridDay'
+              // Only truncate in mobile week view (7 narrow columns); day view gets full space
+              const titleText = (isMobile && isWeekView && arg.event.title.length > 14)
+                ? arg.event.title.slice(0, 13) + '…'
+                : arg.event.title
+              const titleSize = isDayView ? '12px' : '10.5px'
               return (
-                <div style={{ padding: '2px 4px', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  {arg.timeText && !isMobile && (
+                <div style={{ padding: isDayView ? '4px 6px' : '2px 4px', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  {arg.timeText && (!isMobile || isDayView) && (
                     <span style={{ fontSize: '8.5px', fontWeight: 500, opacity: 0.7, lineHeight: 1.2, display: 'block', whiteSpace: 'nowrap' }}>
                       {arg.timeText}
                     </span>
                   )}
-                  <span style={{ fontSize: '10.5px', fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>
+                  <span style={{ fontSize: titleSize, fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>
                     {titleText}
                   </span>
-                  {loc && !isMobile && (
-                    <span className="fc-ev-location">
+                  {loc && (!isMobile || isDayView) && (
+                    <span className="fc-ev-location" style={{ fontSize: isDayView ? '10px' : undefined }}>
                       {loc}
                     </span>
                   )}

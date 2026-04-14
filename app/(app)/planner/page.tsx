@@ -6,20 +6,24 @@ import { useTranslation } from '@/hooks/useTranslation'
 import { daysUntil, isToday, isTomorrow, uniqueById, uniqueByName, formatTime } from '@/lib/utils'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { TaskNotes } from '@/components/tasks/TaskNotes'
-import type { Task, Exam, Subject, Subtask, ActivityType } from '@/types'
+import type { Task, Exam, Subject, Schedule, Subtask, ActivityType } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
 
 type TypeFilter   = 'all' | 'tasks' | 'exams' | 'assignments'
 type StatusFilter = 'all' | 'not_started' | 'in_progress' | 'completed'
 
 // ─── Bottom sheet for creating items ─────────────────────────────────────────
+const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
 function CreateSheet({
   subjects,
+  schedules,
   onClose,
   onSaved,
   defaultType = 'task',
 }: {
   subjects: Subject[]
+  schedules: Schedule[]
   onClose: () => void
   defaultType?: 'task' | 'exam' | 'assignment'
   onSaved: () => void
@@ -32,16 +36,39 @@ function CreateSheet({
   const [dueDate,    setDueDate]    = useState('')
   const [examTime,   setExamTime]   = useState('')
   const [location,   setLocation]   = useState('')
-  const [saving,     setSaving]     = useState(false)
-  const [error,      setError]      = useState('')
+  const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState('')
+  const [scheduleDay, setScheduleDay] = useState<number | null>(null)
 
-  // Auto-populate location from subject's room when selecting a subject for exams/assignments
+  const subjectSchedules = schedules.filter(s => s.subject_id === subjectId)
+
+  // Auto-populate time + room based on selected subject's schedule
   useEffect(() => {
-    if (itemType !== 'task' && subjectId) {
-      const subject = subjects.find(s => s.id === subjectId)
-      if (subject?.room) setLocation(prev => prev || subject.room!)
+    setScheduleDay(null)
+    if (itemType === 'task' || !subjectId) return
+    const subject = subjects.find(s => s.id === subjectId)
+    const scheds = schedules.filter(sc => sc.subject_id === subjectId)
+    if (scheds.length === 1) {
+      const sc = scheds[0]
+      setLocation(sc.room || subject?.room || '')
+      setExamTime(sc.start_time.slice(0, 5))
+    } else if (scheds.length === 0 && subject?.room) {
+      setLocation(subject.room)
     }
-  }, [subjectId, itemType, subjects])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectId, itemType])
+
+  // When day is selected in multi-schedule case
+  useEffect(() => {
+    if (scheduleDay === null) return
+    const subject = subjects.find(s => s.id === subjectId)
+    const sc = schedules.find(sc => sc.subject_id === subjectId && sc.day_of_week === scheduleDay)
+    if (sc) {
+      setLocation(sc.room || subject?.room || '')
+      setExamTime(sc.start_time.slice(0, 5))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduleDay])
 
   const handleSave = async () => {
     if (!title.trim()) { setError(t('auth.errors.required')); return }
@@ -181,6 +208,41 @@ function CreateSheet({
               {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
+
+          {/* Day picker for subjects with multiple weekly schedules */}
+          {itemType !== 'task' && subjectSchedules.length > 1 && (
+            <div>
+              <label className="label">
+                {language === 'es' ? 'Día del examen' : 'Exam day'}
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {subjectSchedules.map(sc => {
+                  const isSelected = scheduleDay === sc.day_of_week
+                  return (
+                    <button
+                      key={sc.id}
+                      type="button"
+                      onClick={() => setScheduleDay(sc.day_of_week)}
+                      className="flex flex-col items-center px-3 py-2 rounded-xl text-xs font-semibold border transition-all"
+                      style={{
+                        backgroundColor: isSelected ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                        color:           isSelected ? 'var(--color-primary)' : 'var(--color-outline)',
+                        borderColor:     isSelected ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
+                      }}
+                    >
+                      <span>{DAY_LABELS[sc.day_of_week]}</span>
+                      <span className="mono text-[10px] opacity-70">{sc.start_time.slice(0, 5)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              {scheduleDay === null && (
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--color-outline)' }}>
+                  {language === 'es' ? 'Selecciona el día para completar hora y salón' : 'Select day to fill in time and room'}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Date + Time */}
           <div className={`grid gap-3 ${itemType !== 'task' ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -641,6 +703,7 @@ export default function PlannerPage() {
   const [tasks,         setTasks]         = useState<Task[]>([])
   const [exams,         setExams]         = useState<Exam[]>([])
   const [subjects,      setSubjects]      = useState<Subject[]>([])
+  const [schedules,     setSchedules]     = useState<Schedule[]>([])
   const [loading,       setLoading]       = useState(true)
   const [sheetOpen,     setSheetOpen]     = useState(false)
   const [sheetType,     setSheetType]     = useState<'task' | 'exam' | 'assignment'>('task')
@@ -654,14 +717,16 @@ export default function PlannerPage() {
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
-    const [{ data: ts }, { data: es }, { data: ss }] = await Promise.all([
+    const [{ data: ts }, { data: es }, { data: ss }, { data: sc }] = await Promise.all([
       supabase.from('tasks').select('*').order('position').order('created_at'),
       supabase.from('exams').select('*').order('exam_date'),
       supabase.from('subjects').select('*').order('name'),
+      supabase.from('schedules').select('*'),
     ])
     setTasks(ts || [])
     setExams(es || [])
     setSubjects(uniqueByName(uniqueById(ss || [])))
+    setSchedules(sc || [])
     setLoading(false)
   }, [])
 
@@ -958,7 +1023,7 @@ export default function PlannerPage() {
 
       {/* Create sheet */}
       {sheetOpen && (
-        <CreateSheet subjects={subjects} onClose={() => { setSheetOpen(false); setSheetType('task') }} onSaved={fetchData} defaultType={sheetType} />
+        <CreateSheet subjects={subjects} schedules={schedules} onClose={() => { setSheetOpen(false); setSheetType('task') }} onSaved={fetchData} defaultType={sheetType} />
       )}
 
       {/* Edit exam modal */}
