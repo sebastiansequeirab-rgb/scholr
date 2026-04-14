@@ -36,6 +36,8 @@ function CreateSheet({
   const [dueDate,    setDueDate]    = useState('')
   const [examTime,   setExamTime]   = useState('')
   const [location,   setLocation]   = useState('')
+  const [percentage,  setPercentage]  = useState('')
+  const [grade,       setGrade]       = useState('')
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState('')
   const [scheduleDay, setScheduleDay] = useState<number | null>(null)
@@ -98,6 +100,8 @@ function CreateSheet({
         location:      location.trim() || null,
         subject_id:    subjectId || null,
         activity_type: activityType,
+        percentage:    percentage !== '' ? parseFloat(percentage) : null,
+        grade:         grade !== '' ? parseFloat(grade) : null,
       })
     }
 
@@ -268,6 +272,40 @@ function CreateSheet({
                 onChange={e => setLocation(e.target.value)}
                 placeholder={language === 'es' ? 'Salón, aula...' : 'Room, location...'}
               />
+            </div>
+          )}
+
+          {/* Peso + Nota — exams/assignments only */}
+          {itemType !== 'task' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">{language === 'es' ? 'Peso (%)' : 'Weight (%)'}</label>
+                <div className="relative">
+                  <input
+                    type="number" min="0" max="100" step="0.5"
+                    className="input pr-8"
+                    placeholder="0–100"
+                    value={percentage}
+                    onChange={e => setPercentage(e.target.value)}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
+                    style={{ color: 'var(--color-outline)' }}>%</span>
+                </div>
+              </div>
+              <div>
+                <label className="label">{language === 'es' ? 'Nota (opcional)' : 'Grade (optional)'}</label>
+                <div className="relative">
+                  <input
+                    type="number" min="0" max="20" step="0.5"
+                    className="input pr-10"
+                    placeholder="0–20"
+                    value={grade}
+                    onChange={e => setGrade(e.target.value)}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold"
+                    style={{ color: 'var(--color-outline)' }}>/20</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -609,6 +647,7 @@ function EditExamModal({
   const [examTime,   setExamTime]   = useState(exam.exam_time || '')
   const [location,   setLocation]   = useState(exam.location || '')
   const [percentage, setPercentage] = useState<string>(exam.percentage != null ? String(exam.percentage) : '')
+  const [grade,      setGrade]      = useState<string>(exam.grade != null ? String(exam.grade) : '')
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState('')
 
@@ -619,7 +658,8 @@ function EditExamModal({
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const pctNum = percentage !== '' ? parseFloat(percentage) : null
+    const pctNum   = percentage !== '' ? parseFloat(percentage) : null
+    const gradeNum = grade !== '' ? parseFloat(grade) : null
     const { error: dbErr } = await supabase.from('exams').update({
       user_id:    user.id,
       title:      title.trim(),
@@ -628,6 +668,7 @@ function EditExamModal({
       exam_time:  examTime || null,
       location:   location.trim() || null,
       percentage: pctNum,
+      grade:      gradeNum,
     }).eq('id', exam.id)
     if (dbErr) { setError(dbErr.message); setLoading(false); return }
     onSaved(); onClose()
@@ -665,18 +706,34 @@ function EditExamModal({
             <label className="label">{t('planner.location')}</label>
             <input className="input" value={location} onChange={e => setLocation(e.target.value)} />
           </div>
-          <div>
-            <label className="label">{t('planner.percentage')}</label>
-            <div className="relative">
-              <input
-                type="number" min="0" max="100" step="0.5"
-                className="input pr-8"
-                placeholder="0–100"
-                value={percentage}
-                onChange={e => setPercentage(e.target.value)}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
-                style={{ color: 'var(--color-outline)' }}>%</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">{t('planner.percentage')}</label>
+              <div className="relative">
+                <input
+                  type="number" min="0" max="100" step="0.5"
+                  className="input pr-8"
+                  placeholder="0–100"
+                  value={percentage}
+                  onChange={e => setPercentage(e.target.value)}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
+                  style={{ color: 'var(--color-outline)' }}>%</span>
+              </div>
+            </div>
+            <div>
+              <label className="label">{language === 'es' ? 'Nota' : 'Grade'}</label>
+              <div className="relative">
+                <input
+                  type="number" min="0" max="20" step="0.5"
+                  className="input pr-10"
+                  placeholder="0–20"
+                  value={grade}
+                  onChange={e => setGrade(e.target.value)}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold"
+                  style={{ color: 'var(--color-outline)' }}>/20</span>
+              </div>
             </div>
           </div>
           {error && (
