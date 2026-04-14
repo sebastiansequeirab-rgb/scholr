@@ -280,10 +280,7 @@ const SANCTUARY_CALENDAR_CSS = `
   .fc-ev-task {
     border-left-style: dashed !important;
     border-left-width: 3px !important;
-    opacity: 0.88 !important;
   }
-  /* Task in daygrid — slightly dimmer pill */
-  .fc-ev-task.fc-daygrid-event { opacity: 0.82 !important; }
 
   /* ─── Daygrid events (month view) — compact text pills ────────── */
   .fc .fc-daygrid-event {
@@ -430,7 +427,7 @@ const SANCTUARY_CALENDAR_CSS = `
     .fc .fc-timegrid-slot-label { height: 28px !important; }
     .fc .fc-timegrid-slot-label-cushion { font-size: 9px !important; padding-right: 3px !important; }
     .fc .fc-timegrid-axis { width: 34px !important; }
-    .fc .fc-timegrid-event { font-size: 10px !important; padding: 2px 3px !important; border-radius: 4px !important; }
+    .fc .fc-timegrid-event { min-height: 28px !important; font-size: 10px !important; padding: 2px 3px !important; border-radius: 4px !important; }
     .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; line-height: 1.2 !important; white-space: normal !important; word-break: break-word !important; }
   }
 `
@@ -497,7 +494,7 @@ export default function CalendarPage() {
           title:           subject.name,
           start:           `${dateStr}T${s.start_time}`,
           end:             `${dateStr}T${s.end_time}`,
-          backgroundColor: `color-mix(in srgb, ${subject.color} 22%, var(--s-base))`,
+          backgroundColor: `color-mix(in srgb, ${subject.color} 50%, var(--s-base))`,
           borderColor:     subject.color,
           textColor:       subject.color,
           classNames:      ['fc-ev-schedule'],
@@ -517,7 +514,7 @@ export default function CalendarPage() {
       title:           e.title,
       start:           e.exam_time ? `${e.exam_date}T${e.exam_time}` : e.exam_date,
       allDay:          !e.exam_time,
-      backgroundColor: `color-mix(in srgb, ${typeColor} 14%, var(--s-base))`,
+      backgroundColor: `color-mix(in srgb, ${typeColor} 35%, var(--s-base))`,
       borderColor:     typeColor,
       textColor:       typeColor,
       classNames:      ['fc-ev-exam'],
@@ -539,7 +536,7 @@ export default function CalendarPage() {
       title:           task.text,
       start:           task.due_date,
       allDay:          true,
-      backgroundColor: `color-mix(in srgb, ${color} 12%, var(--s-base))`,
+      backgroundColor: `color-mix(in srgb, ${color} 28%, var(--s-base))`,
       borderColor:     color,
       textColor:       color,
       classNames:      ['fc-ev-task'],
@@ -729,17 +726,18 @@ export default function CalendarPage() {
             // Custom render for schedule events: show room below title
             if (type === 'schedule') {
               const loc = arg.event.extendedProps.location as string | undefined
+              const titleText = isMobile && arg.event.title.length > 14 ? arg.event.title.slice(0, 13) + '…' : arg.event.title
               return (
                 <div style={{ padding: '2px 4px', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  {arg.timeText && (
+                  {arg.timeText && !isMobile && (
                     <span style={{ fontSize: '8.5px', fontWeight: 500, opacity: 0.7, lineHeight: 1.2, display: 'block', whiteSpace: 'nowrap' }}>
                       {arg.timeText}
                     </span>
                   )}
                   <span style={{ fontSize: '10.5px', fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>
-                    {arg.event.title}
+                    {titleText}
                   </span>
-                  {loc && (
+                  {loc && !isMobile && (
                     <span className="fc-ev-location">
                       {loc}
                     </span>

@@ -100,7 +100,7 @@ export function SubjectDetail({
 
   const earned    = gradedExams.reduce((sum, e) => sum + (e.grade! * e.percentage! / 100), 0)
   const potential = ungradedExams.reduce((sum, e) => sum + (e.percentage! / 100 * MAX_SCORE), 0)
-  const totalWeight = exams.filter(e => e.percentage != null).reduce((sum, e) => sum + e.percentage!, 0)
+  const totalWeight = exams.filter(e => e.percentage != null && e.grade != null).reduce((sum, e) => sum + e.percentage!, 0)
   const remaining = Math.max(0, PASS_SCORE - earned)
   const isPassing = earned >= PASS_SCORE
 
@@ -197,7 +197,7 @@ export function SubjectDetail({
                     {[
                       { label: language === 'es' ? 'Evaluadas' : 'Graded', value: gradedExams.length, color: 'var(--success)' },
                       { label: language === 'es' ? 'Pendientes' : 'Pending', value: ungradedExams.length, color: 'var(--warning)' },
-                      { label: language === 'es' ? 'Peso total' : 'Total weight', value: `${totalWeight}%`, color: 'var(--color-primary)' },
+                      { label: language === 'es' ? 'Peso evaluado' : 'Evaluated', value: `${totalWeight}%`, color: 'var(--color-primary)' },
                     ].map(stat => (
                       <div key={stat.label} className="rounded-xl p-3 text-center"
                         style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>

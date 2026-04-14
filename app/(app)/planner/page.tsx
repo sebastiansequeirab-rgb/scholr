@@ -35,6 +35,14 @@ function CreateSheet({
   const [saving,     setSaving]     = useState(false)
   const [error,      setError]      = useState('')
 
+  // Auto-populate location from subject's room when selecting a subject for exams/assignments
+  useEffect(() => {
+    if (itemType !== 'task' && subjectId) {
+      const subject = subjects.find(s => s.id === subjectId)
+      if (subject?.room) setLocation(prev => prev || subject.room!)
+    }
+  }, [subjectId, itemType, subjects])
+
   const handleSave = async () => {
     if (!title.trim()) { setError(t('auth.errors.required')); return }
     setSaving(true)
@@ -799,7 +807,39 @@ export default function PlannerPage() {
         </button>
       </div>
 
-      {/* ── Collapsible filter panel ── */}
+      {/* ── Subject chips (always visible when subjects exist) ── */}
+      {subjects.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-4 -mt-1">
+          <button
+            onClick={() => setSubjectFilter('')}
+            className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap"
+            style={{
+              backgroundColor: !subjectFilter ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+              color:           !subjectFilter ? 'var(--color-primary)' : 'var(--color-outline)',
+              borderColor:     !subjectFilter ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-subtle)',
+            }}
+          >
+            {t('planner.allSubjects')}
+          </button>
+          {subjects.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setSubjectFilter(s.id === subjectFilter ? '' : s.id)}
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap"
+              style={{
+                backgroundColor: subjectFilter === s.id ? `color-mix(in srgb, ${s.color} 15%, transparent)` : 'transparent',
+                color:           subjectFilter === s.id ? s.color : 'var(--color-outline)',
+                borderColor:     subjectFilter === s.id ? `color-mix(in srgb, ${s.color} 40%, transparent)` : 'var(--border-subtle)',
+              }}
+            >
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: s.color, flexShrink: 0, display: 'inline-block' }} />
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Collapsible filter panel (status only) ── */}
       {filterOpen && (
         <div className="mb-4 p-3 rounded-2xl animate-slide-up space-y-3"
           style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
@@ -825,27 +865,10 @@ export default function PlannerPage() {
               ))}
             </div>
           </div>
-          {/* Subject */}
-          {subjects.length > 0 && (
-            <div>
-              <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
-                Materia
-              </p>
-              <select
-                value={subjectFilter}
-                onChange={e => setSubjectFilter(e.target.value)}
-                className="input w-full text-sm py-1.5"
-                style={{ color: subjectFilter ? 'var(--on-surface)' : 'var(--color-outline)' }}
-              >
-                <option value="">{t('planner.allSubjects')}</option>
-                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          )}
           {/* Clear filters */}
-          {(subjectFilter || statusFilter !== 'all') && (
+          {statusFilter !== 'all' && (
             <button
-              onClick={() => { setSubjectFilter(''); setStatusFilter('all') }}
+              onClick={() => setStatusFilter('all')}
               className="text-xs font-semibold"
               style={{ color: 'var(--danger)' }}
             >
