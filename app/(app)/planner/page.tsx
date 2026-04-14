@@ -17,13 +17,15 @@ function CreateSheet({
   subjects,
   onClose,
   onSaved,
+  defaultType = 'task',
 }: {
   subjects: Subject[]
   onClose: () => void
+  defaultType?: 'task' | 'exam' | 'assignment'
   onSaved: () => void
 }) {
   const { t, language } = useTranslation()
-  const [itemType,   setItemType]   = useState<'task' | 'exam' | 'assignment'>('task')
+  const [itemType,   setItemType]   = useState<'task' | 'exam' | 'assignment'>(defaultType)
   const [title,      setTitle]      = useState('')
   const [priority,   setPriority]   = useState<'high' | 'mid' | 'low'>('mid')
   const [subjectId,  setSubjectId]  = useState('')
@@ -633,12 +635,14 @@ export default function PlannerPage() {
   const [subjects,      setSubjects]      = useState<Subject[]>([])
   const [loading,       setLoading]       = useState(true)
   const [sheetOpen,     setSheetOpen]     = useState(false)
+  const [sheetType,     setSheetType]     = useState<'task' | 'exam' | 'assignment'>('task')
   const [editingExam,   setEditingExam]   = useState<Exam | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  const [typeFilter,   setTypeFilter]   = useState<TypeFilter>('all')
+  const [typeFilter,    setTypeFilter]    = useState<TypeFilter>('all')
   const [subjectFilter, setSubjectFilter] = useState<string>('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [statusFilter,  setStatusFilter]  = useState<StatusFilter>('all')
+  const [filterOpen,    setFilterOpen]    = useState(false)
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -662,6 +666,18 @@ export default function PlannerPage() {
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [fetchData])
+
+  // Auto-open CreateSheet when navigated from a Quick Action
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const create = params.get('create')
+    if (create === 'task' || create === 'exam' || create === 'assignment') {
+      setSheetType(create)
+      setSheetOpen(true)
+      // Clean the URL so refreshing doesn't re-open the sheet
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   const deleteTask = async (id: string) => {
     await createClient().from('tasks').delete().eq('id', id)
@@ -741,54 +757,103 @@ export default function PlannerPage() {
         </h1>
       </div>
 
-      {/* ── Filter row 1: Type ── */}
-      <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1 scrollbar-hide">
-        {TYPE_FILTERS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setTypeFilter(key)}
-            className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap"
-            style={{
-              backgroundColor: typeFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
-              color:           typeFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
-              borderColor:     typeFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* ── Filters: type tabs + filter button in one row ── */}
+      <div className="flex items-center gap-2 mb-4">
+        {/* Type segmented control */}
+        <div className="flex gap-1 flex-1 overflow-x-auto scrollbar-hide">
+          {TYPE_FILTERS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTypeFilter(key)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap"
+              style={{
+                backgroundColor: typeFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                color:           typeFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
+                borderColor:     typeFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-subtle)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-      {/* ── Filter row 2: Subject dropdown ── */}
-      <div className="mb-3">
-        <select
-          value={subjectFilter}
-          onChange={e => setSubjectFilter(e.target.value)}
-          className="input w-full text-sm py-2"
-          style={{ color: subjectFilter ? 'var(--on-surface)' : 'var(--color-outline)' }}
+        {/* Filter button — shows badge when filters are active */}
+        <button
+          onClick={() => setFilterOpen(o => !o)}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+          style={{
+            backgroundColor: (subjectFilter || statusFilter !== 'all')
+              ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+              : 'transparent',
+            color: (subjectFilter || statusFilter !== 'all') ? 'var(--color-primary)' : 'var(--color-outline)',
+            borderColor: (subjectFilter || statusFilter !== 'all')
+              ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)'
+              : 'var(--border-subtle)',
+          }}
         >
-          <option value="">{t('planner.filterBySubject')}</option>
-          {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+          <span className="material-symbols-outlined text-[13px]">tune</span>
+          {(subjectFilter || statusFilter !== 'all') && (
+            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: 'var(--color-primary)' }} />
+          )}
+        </button>
       </div>
 
-      {/* ── Filter row 3: Status ── */}
-      <div className="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-1">
-        {STATUS_FILTERS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setStatusFilter(key)}
-            className="flex-shrink-0 flex-1 min-w-fit py-1.5 px-3 rounded-full text-xs font-semibold transition-all border text-center whitespace-nowrap"
-            style={{
-              backgroundColor: statusFilter === key ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : 'transparent',
-              color:           statusFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
-              borderColor:     statusFilter === key ? 'color-mix(in srgb, var(--color-primary) 25%, transparent)' : 'var(--border-default)',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* ── Collapsible filter panel ── */}
+      {filterOpen && (
+        <div className="mb-4 p-3 rounded-2xl animate-slide-up space-y-3"
+          style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
+          {/* Status */}
+          <div>
+            <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
+              Estado
+            </p>
+            <div className="flex gap-1.5 flex-wrap">
+              {STATUS_FILTERS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(key)}
+                  className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
+                  style={{
+                    backgroundColor: statusFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                    color:           statusFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
+                    borderColor:     statusFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Subject */}
+          {subjects.length > 0 && (
+            <div>
+              <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
+                Materia
+              </p>
+              <select
+                value={subjectFilter}
+                onChange={e => setSubjectFilter(e.target.value)}
+                className="input w-full text-sm py-1.5"
+                style={{ color: subjectFilter ? 'var(--on-surface)' : 'var(--color-outline)' }}
+              >
+                <option value="">{t('planner.allSubjects')}</option>
+                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
+          {/* Clear filters */}
+          {(subjectFilter || statusFilter !== 'all') && (
+            <button
+              onClick={() => { setSubjectFilter(''); setStatusFilter('all') }}
+              className="text-xs font-semibold"
+              style={{ color: 'var(--danger)' }}
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -857,11 +922,11 @@ export default function PlannerPage() {
       {/* FAB */}
       <button
         onClick={() => setSheetOpen(true)}
-        className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-5 lg:bottom-6 w-14 h-14 rounded-full flex items-center justify-center z-30 transition-all active:scale-95 hover:scale-110 lg:hover:scale-105"
+        className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-4 lg:bottom-6 w-12 h-12 rounded-full flex items-center justify-center z-30 transition-all active:scale-95 hover:scale-105"
         style={{
           backgroundColor: 'var(--color-primary)',
           color:           'var(--on-primary, white)',
-          boxShadow:       '0 4px 24px color-mix(in srgb, var(--color-primary) 40%, transparent)',
+          boxShadow:       '0 4px 18px color-mix(in srgb, var(--color-primary) 28%, transparent)',
         }}
         aria-label={t('planner.add')}
       >
@@ -870,7 +935,7 @@ export default function PlannerPage() {
 
       {/* Create sheet */}
       {sheetOpen && (
-        <CreateSheet subjects={subjects} onClose={() => setSheetOpen(false)} onSaved={fetchData} />
+        <CreateSheet subjects={subjects} onClose={() => { setSheetOpen(false); setSheetType('task') }} onSaved={fetchData} defaultType={sheetType} />
       )}
 
       {/* Edit exam modal */}

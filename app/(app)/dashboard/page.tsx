@@ -122,11 +122,11 @@ export default async function DashboardPage() {
   }
 
   const QUICK_ACTIONS = [
-    { href: '/subjects', icon: 'menu_book',    label: 'Materias',   color: 'var(--color-primary)'  },
-    { href: '/calendar', icon: 'calendar_month', label: 'Calendario', color: 'var(--color-tertiary)' },
-    { href: '/planner',  icon: 'check_circle', label: 'Planner',    color: '#10b981'               },
-    { href: '/notes',    icon: 'sticky_note_2', label: 'Notas',      color: 'var(--warning)'        },
-    { href: '/ai',       icon: 'auto_awesome', label: 'IA',         color: '#c084fc'               },
+    { href: '/planner?create=task', icon: 'add_task',          label: 'Nueva tarea',     color: 'var(--color-primary)'  },
+    { href: '/planner?create=exam', icon: 'event',             label: 'Nuevo examen',    color: '#ef4444'               },
+    { href: '/notes',               icon: 'edit_note',         label: 'Nota rápida',     color: 'var(--warning)'        },
+    { href: '/ai?tab=import',       icon: 'document_scanner',  label: 'Ver horario',     color: '#10b981'               },
+    { href: '/ai',                  icon: 'auto_awesome',      label: 'Preguntar a IA',  color: '#c084fc'               },
   ]
 
   // Motivational messages by hour (for empty "Hoy" widget)
@@ -437,7 +437,7 @@ export default async function DashboardPage() {
       {/* ── Quick Access ─────────────────────────────────────────────────── */}
       <div className="mt-3 lg:mt-4">
         <p className="mono text-[9px] uppercase tracking-[0.18em] mb-2 font-medium"
-          style={{ color: 'var(--color-outline)' }}>Acceso rápido</p>
+          style={{ color: 'var(--color-outline)' }}>Acciones rápidas</p>
         <div className="grid grid-cols-5 gap-2">
           {QUICK_ACTIONS.map(({ href, icon, label, color }) => (
             <Link

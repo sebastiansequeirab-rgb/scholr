@@ -18,16 +18,23 @@ const NAV_ITEMS = [
   { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
 ]
 
-// Bottom tab bar (7 tabs) — Home | Calendar | Planner | AI (center) | Subjects | Notes | Settings
+// Bottom tab bar (5 tabs) — Home | Calendar | Planner | Subjects | More
 const BOTTOM_NAV = [
   { key: 'dashboard', href: '/dashboard', icon: 'home'           },
   { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
   { key: 'planner',   href: '/planner',   icon: 'check_circle'   },
-  { key: 'ai',        href: '/ai',        icon: 'auto_awesome',  center: true },
   { key: 'subjects',  href: '/subjects',  icon: 'menu_book'      },
-  { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
-  { key: 'settings',  href: '/settings',  icon: 'settings'       },
 ]
+
+// Items revealed inside the "More" bottom sheet
+const MORE_ITEMS = [
+  { key: 'ai',       href: '/ai',       icon: 'auto_awesome'  },
+  { key: 'notes',    href: '/notes',    icon: 'sticky_note_2' },
+  { key: 'settings', href: '/settings', icon: 'settings'      },
+]
+
+// Paths that belong to "More" — used to highlight the More tab when active
+const MORE_PATHS = ['/ai', '/notes', '/settings']
 
 // Side drawer — account & utility only (no duplicate of bottom nav main items)
 const SIDE_MENU_ITEMS = [
@@ -47,6 +54,7 @@ export function Sidebar({ profile }: SidebarProps) {
   const router = useRouter()
   const { collapsed, toggle } = useSidebarCollapse()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [moreOpen,   setMoreOpen]   = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const touchStartXRef = useRef<number | null>(null)
 
@@ -275,48 +283,7 @@ export function Sidebar({ profile }: SidebarProps) {
         <div className="flex items-center h-full px-1">
           {BOTTOM_NAV.map(({ key, href, icon }) => {
             const active = isActive(href)
-            const isAI = key === 'ai'
-            const accentColor = isAI ? 'var(--color-tertiary)' : 'var(--color-primary)'
-
-            if (isAI) {
-              // Center AI button — visually elevated, most prominent tab
-              return (
-                <Link
-                  key={key}
-                  href={href}
-                  className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all duration-150 active:scale-90"
-                  aria-current={pathname === href ? 'page' : undefined}
-                >
-                  <div
-                    className="flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-150"
-                    style={{
-                      background: active
-                        ? `color-mix(in srgb, var(--color-tertiary) 28%, transparent)`
-                        : `color-mix(in srgb, var(--color-tertiary) 15%, transparent)`,
-                      border: `1.5px solid color-mix(in srgb, var(--color-tertiary) ${active ? 50 : 28}%, transparent)`,
-                      boxShadow: active ? `0 2px 16px color-mix(in srgb, var(--color-tertiary) 25%, transparent)` : 'none',
-                    }}
-                  >
-                    <span
-                      className="material-symbols-outlined text-[22px] transition-all duration-150"
-                      style={{
-                        color: 'var(--color-tertiary)',
-                        fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0.5",
-                      }}
-                    >
-                      {icon}
-                    </span>
-                  </div>
-                  <span
-                    className="text-[9px] font-bold leading-none"
-                    style={{ color: 'var(--color-tertiary)' }}
-                  >
-                    {t(`nav.${key}`)}
-                  </span>
-                </Link>
-              )
-            }
-
+            const accentColor = 'var(--color-primary)'
             return (
               <Link
                 key={key}
@@ -348,8 +315,122 @@ export function Sidebar({ profile }: SidebarProps) {
               </Link>
             )
           })}
+
+          {/* More tab */}
+          {(() => {
+            const moreActive = MORE_PATHS.some(p => pathname.startsWith(p))
+            const accentColor = 'var(--color-primary)'
+            return (
+              <button
+                onClick={() => setMoreOpen(true)}
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all duration-150 active:scale-95"
+                aria-label="Más"
+              >
+                {moreActive && (
+                  <div className="absolute top-2 rounded-full"
+                    style={{
+                      backgroundColor: `color-mix(in srgb, ${accentColor} 14%, transparent)`,
+                      width: '44px',
+                      height: '26px',
+                    }} />
+                )}
+                <span
+                  className="material-symbols-outlined text-[19px] relative transition-all duration-150"
+                  style={{
+                    color: moreActive ? accentColor : 'var(--color-outline)',
+                    fontVariationSettings: moreActive ? "'FILL' 1" : "'FILL' 0",
+                  }}
+                >
+                  apps
+                </span>
+                <span className="text-[8px] font-semibold leading-none relative transition-colors duration-150"
+                  style={{ color: moreActive ? accentColor : 'var(--color-outline)' }}>
+                  Más
+                </span>
+              </button>
+            )
+          })()}
         </div>
       </nav>
+
+      {/* ── More bottom sheet ────────────────────────────────────────────── */}
+      {moreOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="lg:hidden fixed inset-0 z-40"
+            style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setMoreOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Sheet */}
+          <div
+            className="lg:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl animate-slide-up pb-[env(safe-area-inset-bottom)]"
+            style={{
+              backgroundColor: 'var(--s-base)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.35)',
+            }}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-4">
+              <div className="w-9 h-1 rounded-full" style={{ backgroundColor: 'var(--border-strong)' }} />
+            </div>
+
+            {/* Items */}
+            <div className="px-4 pb-4 grid grid-cols-3 gap-3">
+              {MORE_ITEMS.map(({ key, href, icon }) => {
+                const active = isActive(href)
+                return (
+                  <Link
+                    key={key}
+                    href={href}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl transition-all active:scale-95"
+                    style={{
+                      backgroundColor: active
+                        ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)'
+                        : 'var(--s-low)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    <span
+                      className="material-symbols-outlined text-[26px]"
+                      style={{
+                        color: active ? 'var(--color-primary)' : 'var(--on-surface-variant)',
+                        fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
+                      }}
+                    >
+                      {icon}
+                    </span>
+                    <span className="text-[11px] font-semibold text-center leading-tight"
+                      style={{ color: active ? 'var(--color-primary)' : 'var(--on-surface)' }}>
+                      {t(`nav.${key}`)}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* Logout row */}
+            <div className="px-4 pb-4">
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all active:scale-[0.98]"
+                style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ color: 'var(--danger)' }}>
+                  {loggingOut ? 'hourglass_empty' : 'logout'}
+                </span>
+                <span className="text-[14px] font-medium" style={{ color: 'var(--danger)' }}>
+                  {t('nav.logout')}
+                </span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Mobile overlay ──────────────────────────────────────────────── */}
       <div

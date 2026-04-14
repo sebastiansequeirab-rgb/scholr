@@ -199,12 +199,14 @@ const SANCTUARY_CALENDAR_CSS = `
   .fc .fc-timegrid-event { min-height: 48px !important; }
   .fc .fc-timegrid-now-indicator-line {
     border-color: var(--color-primary) !important;
-    opacity: 0.6 !important;
+    border-width: 2px !important;
+    opacity: 0.9 !important;
   }
   .fc .fc-timegrid-now-indicator-arrow {
     border-top-color: var(--color-primary) !important;
     border-bottom-color: var(--color-primary) !important;
-    opacity: 0.6 !important;
+    opacity: 0.9 !important;
+    border-width: 5px !important;
   }
 
   /* ─── Popover (more events) ──────────────────── */
@@ -691,10 +693,11 @@ export default function CalendarPage() {
               dayHeaderFormat: isMobile
                 ? { weekday: 'narrow' }
                 : { weekday: 'short', day: 'numeric' },
-              slotDuration: '01:00:00',
+              slotDuration: isMobile ? '00:30:00' : '00:30:00',
             },
             timeGridDay: {
               dayHeaderFormat: { weekday: 'long', day: 'numeric', month: 'short' },
+              slotDuration: '00:30:00',
             },
           }}
           dayMaxEvents={isMobile ? 2 : 4}
@@ -704,8 +707,10 @@ export default function CalendarPage() {
             const type = arg.event.extendedProps.type as string
             const isMonthView = arg.view.type === 'dayGridMonth'
 
-            // Month view: compact text pill (title only, no time)
+            // Month view: compact text pill (title only, truncated for mobile)
             if (isMonthView) {
+              const title = arg.event.title
+              const displayTitle = isMobile && title.length > 12 ? title.slice(0, 11) + '…' : title
               return (
                 <div style={{
                   overflow: 'hidden',
@@ -716,7 +721,7 @@ export default function CalendarPage() {
                   padding: '0 2px',
                   lineHeight: 1.4,
                 }}>
-                  {arg.event.title}
+                  {displayTitle}
                 </div>
               )
             }

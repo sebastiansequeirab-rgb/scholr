@@ -50,6 +50,15 @@ export default function AIPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  // Handle ?tab=import from Quick Actions
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'import') {
+      setTab('import')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   /* ─── Send message ─────────────────────────────────────────────────────── */
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return
@@ -193,8 +202,8 @@ export default function AIPage() {
   }
 
   const SUGGESTIONS = language === 'es'
-    ? ['¿Cuándo es mi próximo examen?', '¿Qué tareas tengo esta semana?', '¿Cuál es mi horario de hoy?', 'Muéstrame mi progreso académico']
-    : ['When is my next exam?', 'What tasks do I have this week?', "What's my schedule today?", 'Show my academic progress']
+    ? ['¿Qué tengo esta semana?', 'Resúmeme mis próximos exámenes', '¿Cuándo tengo más tiempo libre?', '¿Qué tarea es más urgente?']
+    : ['What do I have this week?', 'Summarize my upcoming exams', 'When do I have the most free time?', 'What task is most urgent?']
 
   /* ─── Render ───────────────────────────────────────────────────────────── */
   return (

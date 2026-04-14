@@ -49,6 +49,7 @@ export default function SubjectsPage() {
   const [expandedSubject,  setExpandedSubject]  = useState<string | null>(null)
   const [deleteConfirm,    setDeleteConfirm]    = useState<string | null>(null)
   const [iconPickerOpen,   setIconPickerOpen]   = useState<string | null>(null)
+  const [kebabOpen,        setKebabOpen]        = useState<string | null>(null)
   const [detailSubject,    setDetailSubject]    = useState<Subject | null>(null)
 
   const fetchData = useCallback(async () => {
@@ -96,34 +97,36 @@ export default function SubjectsPage() {
     <div className="max-w-6xl mx-auto animate-fade-in">
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-10">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-2"
-            style={{ color: 'var(--color-tertiary)' }}>Active Semester</span>
-          <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
+          <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1 font-medium"
+            style={{ color: 'var(--color-primary)' }}>Scholar Sanctuary</p>
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
             {t('subjects.title')}
-            <span className="text-3xl font-extrabold ml-2" style={{ color: 'var(--border-strong)' }}>
-              Vault
-            </span>
           </h1>
-          <p className="text-sm mt-2" style={{ color: 'var(--on-surface-variant)' }}>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--color-outline)' }}>
             {subjects.length} {subjects.length === 1 ? 'materia activa' : 'materias activas'}
           </p>
         </div>
         <button
           onClick={() => { setEditingSubject(null); setModalOpen(true) }}
-          className="btn-primary"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+            color: 'var(--color-primary)',
+            border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
+          }}
           id="add-subject-btn"
         >
-          <span className="material-symbols-outlined text-[18px]">add_circle</span>
-          {t('subjects.add')}
+          <span className="material-symbols-outlined text-[16px]">add</span>
+          Nueva
         </button>
       </div>
 
       {/* Loading */}
       {loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1,2,3].map(i => <div key={i} className="skeleton h-56" />)}
+          {[1,2,3].map(i => <div key={i} className="skeleton h-40" />)}
         </div>
       )}
 
@@ -154,7 +157,7 @@ export default function SubjectsPage() {
             const subjectSchedules = schedulesBySubject(subject.id)
             return (
               <div key={subject.id}
-                className="group relative rounded-2xl p-6 flex flex-col transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
+                className="group relative rounded-2xl p-4 flex flex-col transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
                 style={{
                   backgroundColor: `color-mix(in srgb, ${subject.color} 6%, var(--s-low))`,
                   border: '1px solid var(--border-subtle)',
@@ -167,20 +170,19 @@ export default function SubjectsPage() {
                   style={{ background: `linear-gradient(to bottom, color-mix(in srgb, ${subject.color} 10%, transparent), transparent)` }} />
 
                 <div className="relative z-10 flex flex-col h-full">
-                  {/* Icon + Credits */}
-                  <div className="flex justify-between items-start mb-5">
-                    <div className="relative">
+                  {/* Icon + Name row */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="relative flex-shrink-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === subject.id ? null : subject.id) }}
-                        className="w-12 h-12 rounded-xl flex items-center justify-center transition-all hover:brightness-125 hover:scale-105"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:brightness-125 hover:scale-105"
                         style={{ backgroundColor: `color-mix(in srgb, ${subject.color} 12%, transparent)` }}
                         title="Cambiar ícono"
                       >
-                        <span className="material-symbols-outlined text-2xl" style={{ color: subject.color }}>
+                        <span className="material-symbols-outlined text-[20px]" style={{ color: subject.color }}>
                           {subject.icon || getSubjectIcon(subject.name)}
                         </span>
                       </button>
-
                       {iconPickerOpen === subject.id && (
                         <IconPicker
                           currentIcon={subject.icon || getSubjectIcon(subject.name)}
@@ -190,36 +192,75 @@ export default function SubjectsPage() {
                         />
                       )}
                     </div>
-                    {subject.credits && (
-                      <span className="mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-full"
-                        style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)', border: '1px solid var(--border-default)' }}>
-                        {subject.credits} créditos
-                      </span>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-base font-bold leading-tight transition-colors text-[var(--on-surface)] group-hover:text-[var(--color-primary)] truncate">
+                        {subject.name}
+                      </h2>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {subject.professor && (
+                          <p className="text-[11px] flex items-center gap-1" style={{ color: 'var(--color-outline)' }}>
+                            <span className="material-symbols-outlined text-[11px]">person</span>
+                            <span className="truncate max-w-[120px]">{subject.professor}</span>
+                          </p>
+                        )}
+                        {subject.room && (
+                          <p className="text-[11px] flex items-center gap-1" style={{ color: 'var(--color-outline)' }}>
+                            <span className="material-symbols-outlined text-[11px]">meeting_room</span>
+                            <span className="font-mono">{subject.room}</span>
+                          </p>
+                        )}
+                        {subject.credits && (
+                          <span className="mono text-[9px] px-1.5 py-0.5 rounded-full"
+                            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)', border: '1px solid var(--border-subtle)' }}>
+                            {subject.credits}cr
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Kebab menu */}
+                    <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => setKebabOpen(kebabOpen === subject.id ? null : subject.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-full transition-all hover:bg-black/10 dark:hover:bg-white/10"
+                        style={{ color: 'var(--color-outline)' }}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">more_vert</span>
+                      </button>
+                      {kebabOpen === subject.id && (
+                        <div className="absolute right-0 top-8 z-20 rounded-xl overflow-hidden shadow-lg"
+                          style={{ backgroundColor: 'var(--s-high)', border: '1px solid var(--border-default)', minWidth: '140px' }}>
+                          <button
+                            onClick={() => { setEditingSubject(subject); setModalOpen(true); setKebabOpen(null) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-all hover:bg-white/5"
+                            style={{ color: 'var(--on-surface)' }}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => { setExpandedSubject(expandedSubject === subject.id ? null : subject.id); setKebabOpen(null) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-all hover:bg-white/5"
+                            style={{ color: 'var(--on-surface)' }}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                            Horarios
+                          </button>
+                          <button
+                            onClick={() => { setDeleteConfirm(subject.id); setKebabOpen(null) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-all hover:bg-red-400/10"
+                            style={{ color: 'var(--danger)' }}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Name + Professor */}
-                  <h2 className="text-xl font-bold mb-1.5 transition-colors text-[var(--on-surface)] group-hover:text-[var(--color-primary)]">
-                    {subject.name}
-                  </h2>
-                  {subject.professor && (
-                    <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: 'var(--on-surface-variant)' }}>
-                      <span className="material-symbols-outlined text-[13px]" style={{ color: 'var(--color-outline)' }}>person</span>
-                      {subject.professor}
-                    </p>
-                  )}
-
-                  {/* Room */}
-                  {subject.room && (
-                    <p className="text-xs flex items-center gap-1.5 mb-3" style={{ color: 'var(--color-outline)' }}>
-                      <span className="material-symbols-outlined text-[13px]">meeting_room</span>
-                      <span className="font-mono">{subject.room}</span>
-                    </p>
-                  )}
 
                   {/* Schedule pills */}
                   {subjectSchedules.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
+                    <div className="flex flex-wrap gap-1.5 mb-2">
                       {subjectSchedules.slice(0, 2).map(s => (
                         <span key={s.id}
                           className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -265,27 +306,6 @@ export default function SubjectsPage() {
                     )
                   })()}
 
-                  {/* Actions */}
-                  <div className="pt-3 flex gap-2" style={{ borderTop: '1px solid var(--border-subtle)' }}
-                    onClick={e => e.stopPropagation()}>
-                    <button
-                      onClick={() => setExpandedSubject(expandedSubject === subject.id ? null : subject.id)}
-                      className="flex-1 text-xs font-semibold py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all hover:brightness-110"
-                      style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
-                      <span className="material-symbols-outlined text-[14px]">calendar_month</span>
-                      {t('subjects.schedules')}
-                    </button>
-                    <button onClick={() => { setEditingSubject(subject); setModalOpen(true) }}
-                      className="p-2 rounded-xl transition-all hover:bg-black/5 dark:hover:bg-white/5"
-                      style={{ color: 'var(--color-outline)' }}>
-                      <span className="material-symbols-outlined text-[16px]">edit</span>
-                    </button>
-                    <button onClick={() => setDeleteConfirm(subject.id)}
-                      className="p-2 rounded-xl transition-all hover:bg-red-400/10"
-                      style={{ color: 'var(--danger)' }}>
-                      <span className="material-symbols-outlined text-[16px]">delete</span>
-                    </button>
-                  </div>
 
                   {/* Expanded schedule manager */}
                   {expandedSubject === subject.id && (
