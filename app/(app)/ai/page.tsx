@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import type { ChatMessage, AppContext } from '@/lib/ai/types'
 import { ScheduleImportWizard } from '@/components/ai/ScheduleImportWizard'
+import { EvaluationImportWizard } from '@/components/ai/EvaluationImportWizard'
 
 const MAX_HISTORY = 8
 
@@ -22,7 +23,7 @@ export default function AIPage() {
   }])
   const [input,   setInput]   = useState('')
   const [loading, setLoading] = useState(false)
-  const [tab,     setTab]     = useState<'chat' | 'import'>('chat')
+  const [tab,     setTab]     = useState<'chat' | 'import' | 'evals'>('chat')
 
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -128,18 +129,20 @@ export default function AIPage() {
             {language === 'es' ? 'IA Scholr' : 'Scholr AI'}
           </h1>
         </div>
-        <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: 'var(--s-base)' }}>
-          {(['chat', 'import'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className="px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
+        <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{ backgroundColor: 'var(--s-base)' }}>
+          {([
+            { id: 'chat',   icon: 'chat',            label_es: 'Chat',          label_en: 'Chat'       },
+            { id: 'import', icon: 'calendar_month',  label_es: 'Horario',       label_en: 'Schedule'   },
+            { id: 'evals',  icon: 'assignment',      label_es: 'Evaluaciones',  label_en: 'Evaluations'},
+          ] as const).map(item => (
+            <button key={item.id} onClick={() => setTab(item.id)}
+              className="px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
               style={{
-                backgroundColor: tab === t ? 'var(--s-high)' : 'transparent',
-                color: tab === t ? 'var(--on-surface)' : 'var(--color-outline)',
+                backgroundColor: tab === item.id ? 'var(--s-high)' : 'transparent',
+                color: tab === item.id ? 'var(--on-surface)' : 'var(--color-outline)',
               }}>
-              <span className="material-symbols-outlined text-[16px]">
-                {t === 'chat' ? 'chat' : 'photo_camera'}
-              </span>
-              {t === 'chat' ? 'Chat' : (language === 'es' ? 'Importar horario' : 'Import schedule')}
+              <span className="material-symbols-outlined text-[15px]">{item.icon}</span>
+              {language === 'es' ? item.label_es : item.label_en}
             </button>
           ))}
         </div>
@@ -228,6 +231,14 @@ export default function AIPage() {
       {/* ─── IMPORT TAB ───────────────────────────────────────────────────── */}
       {tab === 'import' && (
         <ScheduleImportWizard
+          language={language as 'es' | 'en'}
+          onDone={() => setTab('chat')}
+        />
+      )}
+
+      {/* ─── EVALS TAB ────────────────────────────────────────────────────── */}
+      {tab === 'evals' && (
+        <EvaluationImportWizard
           language={language as 'es' | 'en'}
           onDone={() => setTab('chat')}
         />
