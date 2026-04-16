@@ -7,36 +7,7 @@ import { SubjectModal, ScheduleManager } from '@/components/subjects/SubjectModa
 import { IconPicker } from '@/components/subjects/IconPicker'
 import { SubjectDetail } from '@/components/subjects/SubjectDetail'
 import type { Subject, Schedule } from '@/types'
-
-const SUBJECT_ICON_MAP: [RegExp, string][] = [
-  [/matemátic|matemati|cálculo|calculo|álgebra|algebra|estadístic|estadistic/i, 'calculate'],
-  [/física|fisica|mecánica|mecanica/i, 'speed'],
-  [/química|quimica/i, 'science'],
-  [/biología|biologia|biotec/i, 'biotech'],
-  [/historia|social|política|politica|cultura/i, 'history_edu'],
-  [/geografía|geografia/i, 'public'],
-  [/lengua|literatura|español|inglés|ingles|idioma|comunicación|comunicacion/i, 'translate'],
-  [/programación|programacion|código|codigo|software|sistemas|computación|computacion/i, 'code'],
-  [/diseño|diseñ|arte|dibujo/i, 'palette'],
-  [/música|musica/i, 'music_note'],
-  [/educación física|educacion fisica|deporte|gym/i, 'fitness_center'],
-  [/economía|economia|finanzas|financier|contabilidad|trading/i, 'trending_up'],
-  [/administración|administracion|empresa|gestión|gestion|marketing/i, 'business_center'],
-  [/ingeniería|ingenieria|manufactura|industrial|almacenamiento|proceso/i, 'engineering'],
-  [/modelado|modelo.?3d|3d/i, 'view_in_ar'],
-  [/instalacion|eléctric|electric|auxiliar/i, 'electrical_services'],
-  [/práctica|practica|taller|laboratorio/i, 'lab_research'],
-  [/derecho|ley|legal|jurídic/i, 'gavel'],
-  [/arquitectura/i, 'architecture'],
-  [/medicina|salud|enfermería/i, 'medical_services'],
-]
-
-function getSubjectIcon(name: string): string {
-  for (const [pattern, icon] of SUBJECT_ICON_MAP) {
-    if (pattern.test(name)) return icon
-  }
-  return 'menu_book'
-}
+import { getSubjectIcon } from '@/lib/subjects/utils'
 
 export default function SubjectsPage() {
   const { t } = useTranslation()
@@ -230,7 +201,7 @@ export default function SubjectsPage() {
                         <div className="absolute right-0 top-8 z-20 rounded-xl overflow-hidden shadow-lg"
                           style={{ backgroundColor: 'var(--s-high)', border: '1px solid var(--border-default)', minWidth: '140px' }}>
                           <button
-                            onClick={() => { setEditingSubject(subject); setModalOpen(true); setKebabOpen(null) }}
+                            onClick={(e) => { e.stopPropagation(); setEditingSubject(subject); setModalOpen(true); setKebabOpen(null) }}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-all hover:bg-white/5"
                             style={{ color: 'var(--on-surface)' }}
                           >
@@ -238,7 +209,7 @@ export default function SubjectsPage() {
                             Editar
                           </button>
                           <button
-                            onClick={() => { setExpandedSubject(expandedSubject === subject.id ? null : subject.id); setKebabOpen(null) }}
+                            onClick={(e) => { e.stopPropagation(); setExpandedSubject(expandedSubject === subject.id ? null : subject.id); setKebabOpen(null) }}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-all hover:bg-white/5"
                             style={{ color: 'var(--on-surface)' }}
                           >
@@ -246,7 +217,7 @@ export default function SubjectsPage() {
                             Horarios
                           </button>
                           <button
-                            onClick={() => { setDeleteConfirm(subject.id); setKebabOpen(null) }}
+                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm(subject.id); setKebabOpen(null) }}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-all hover:bg-red-400/10"
                             style={{ color: 'var(--danger)' }}
                           >

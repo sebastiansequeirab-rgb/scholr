@@ -70,7 +70,11 @@ export default function AIPage() {
 
     try {
       const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      let { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        const { data: refreshed } = await supabase.auth.refreshSession()
+        session = refreshed.session
+      }
       if (!session) {
         setMessages(prev => [...prev, { role: 'assistant', content: 'Sesión expirada. Recarga la página.' }])
         return
