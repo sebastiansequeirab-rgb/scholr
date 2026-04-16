@@ -328,6 +328,7 @@ export default function NotesPage() {
   const [swipeId,       setSwipeId]       = useState<string | null>(null)
   const [swipeOffset,   setSwipeOffset]   = useState(0)
   const [touchStartX,   setTouchStartX]   = useState(0)
+  const [pendingCreate, setPendingCreate] = useState(false)
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -342,15 +343,24 @@ export default function NotesPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Auto-filter by subject when navigated with ?subject=<id>
+  // Auto-filter by subject or auto-create note when navigated with query params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const subjectParam = params.get('subject')
-    if (subjectParam) {
-      setActiveSubject(subjectParam)
-      window.history.replaceState({}, '', window.location.pathname)
-    }
+    const newParam = params.get('new')
+    if (subjectParam) setActiveSubject(subjectParam)
+    if (newParam === '1') setPendingCreate(true)
+    if (subjectParam || newParam) window.history.replaceState({}, '', window.location.pathname)
   }, [])
+
+  // Fire createNote once data is ready and a pending create was requested
+  useEffect(() => {
+    if (!loading && pendingCreate) {
+      setPendingCreate(false)
+      createNote()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, pendingCreate])
 
   const createNote = async () => {
     const supabase = createClient()

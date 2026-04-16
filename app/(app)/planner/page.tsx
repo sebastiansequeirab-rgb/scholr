@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { daysUntil, isToday, isTomorrow, uniqueById, uniqueByName, formatTime } from '@/lib/utils'
@@ -9,9 +9,10 @@ import { TaskNotes } from '@/components/tasks/TaskNotes'
 import type { Task, Exam, Subject, Schedule, Subtask, ActivityType, SubmissionStatus } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
 
-type TypeFilter       = 'all' | 'tasks' | 'exams' | 'assignments'
-type StatusFilter     = 'all' | 'not_started' | 'in_progress' | 'completed'
-type SubmissionFilter = 'all' | 'pending' | 'submitted' | 'graded' | 'ungraded'
+type TypeFilter        = 'all' | 'tasks' | 'exams' | 'assignments'
+type StatusFilter      = 'all' | 'not_started' | 'in_progress' | 'completed'
+type SubmissionFilter  = 'all' | 'pending' | 'submitted' | 'graded' | 'ungraded'
+type PercentageFilter  = 'all' | 'none' | 'low' | 'mid' | 'high'
 
 // ─── Bottom sheet for creating items ─────────────────────────────────────────
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -529,7 +530,9 @@ function AcademicCard({
   const { use12h }   = useTimeFormat()
   const [gradingOpen, setGradingOpen] = useState(false)
   const [gradeInput,  setGradeInput]  = useState('')
-  const [confirming,  setConfirming]  = useState(false)
+  const [undoVisible, setUndoVisible] = useState(false)
+  const [prevGrade,   setPrevGrade]   = useState<number | undefined>(undefined)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const subject   = subjects.find(s => s.id === exam.subject_id)
   const days      = daysUntil(exam.exam_date)
@@ -550,7 +553,16 @@ function AcademicCard({
   const handleStatusClick = () => {
     if (status === 'pending')   { onStatusChange(exam.id, 'submitted'); return }
     if (status === 'submitted') { setGradingOpen(true); return }
-    if (status === 'graded')    { setConfirming(true); return }
+    if (status === 'graded') {
+      // Direct reset — show undo strip for 3s instead of confirm dialog
+      const g = exam.grade ?? undefined
+      setPrevGrade(g)
+      onStatusChange(exam.id, 'pending')
+      setUndoVisible(true)
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = setTimeout(() => setUndoVisible(false), 3000)
+      return
+    }
   }
 
   const handleGradeSave = async () => {
@@ -560,9 +572,10 @@ function AcademicCard({
     setGradeInput('')
   }
 
-  const handleConfirmReset = async () => {
-    await onStatusChange(exam.id, 'pending')
-    setConfirming(false)
+  const handleUndo = async () => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    setUndoVisible(false)
+    await onStatusChange(exam.id, 'graded', prevGrade)
   }
 
   return (
@@ -656,6 +669,12 @@ function AcademicCard({
           </span>
           {language === 'es' ? sCfg.label_es : sCfg.label_en}
         </button>
+        {status === 'submitted' && (
+          <span className="mono text-[9px] font-bold px-1.5 py-0.5 rounded"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--warning) 12%, transparent)', color: 'var(--warning)' }}>
+            {language === 'es' ? 'Pendiente de nota' : 'Pending grade'}
+          </span>
+        )}
 
         <div className="ml-auto flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
@@ -704,22 +723,17 @@ function AcademicCard({
         </div>
       )}
 
-      {/* Inline confirm reset (graded → pending) */}
-      {confirming && (
+      {/* Undo strip (graded → pending, auto-hides in 3s) */}
+      {undoVisible && (
         <div className="px-4 pb-3 flex items-center gap-2 animate-slide-up"
           style={{ borderTop: '1px solid var(--border-subtle)' }}>
           <span className="text-xs flex-1" style={{ color: 'var(--color-outline)' }}>
-            {language === 'es' ? '¿Volver a pendiente?' : 'Reset to pending?'}
+            {language === 'es' ? 'Revertido a pendiente' : 'Reverted to pending'}
           </span>
-          <button onClick={handleConfirmReset}
+          <button onClick={handleUndo}
             className="text-xs font-semibold px-2.5 py-1 rounded-lg"
-            style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
-            {language === 'es' ? 'Sí' : 'Yes'}
-          </button>
-          <button onClick={() => setConfirming(false)}
-            className="text-xs font-semibold px-2.5 py-1 rounded-lg"
-            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
-            No
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)', color: 'var(--color-primary)' }}>
+            {language === 'es' ? 'Deshacer' : 'Undo'}
           </button>
         </div>
       )}
@@ -866,11 +880,24 @@ export default function PlannerPage() {
   const [editingExam,   setEditingExam]   = useState<Exam | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  const [typeFilter,       setTypeFilter]       = useState<TypeFilter>('all')
-  const [subjectFilter,    setSubjectFilter]    = useState<string>('')
-  const [statusFilter,     setStatusFilter]     = useState<StatusFilter>('all')
-  const [submissionFilter, setSubmissionFilter] = useState<SubmissionFilter>('all')
-  const [filterOpen,       setFilterOpen]       = useState(false)
+  const [typeFilter,        setTypeFilter]        = useState<TypeFilter>('all')
+  const [subjectFilter,     setSubjectFilter]     = useState<string>('')
+  const [statusFilter,      setStatusFilter]      = useState<StatusFilter>('all')
+  const [submissionFilter,  setSubmissionFilter]  = useState<SubmissionFilter>('all')
+  const [percentageFilter,  setPercentageFilter]  = useState<PercentageFilter>('all')
+  const [filterOpen,        setFilterOpen]        = useState(false)
+
+  const handleTypeFilter = (t: TypeFilter) => {
+    setTypeFilter(t)
+    // Reset filters that don't apply to the new type
+    if (t === 'tasks') {
+      setSubmissionFilter('all')
+      setPercentageFilter('all')
+    }
+    if (t === 'exams' || t === 'assignments') {
+      setStatusFilter('all')
+    }
+  }
   const [reminderDismissed, setReminderDismissed] = useState(false)
 
   const fetchData = useCallback(async () => {
@@ -999,6 +1026,17 @@ export default function PlannerPage() {
     })
   }
 
+  if (percentageFilter !== 'all') {
+    filteredExams = filteredExams.filter(e => {
+      const p = e.percentage ?? null
+      if (percentageFilter === 'none') return p === null
+      if (percentageFilter === 'low')  return p !== null && p < 20
+      if (percentageFilter === 'mid')  return p !== null && p >= 20 && p <= 40
+      if (percentageFilter === 'high') return p !== null && p > 40
+      return true
+    })
+  }
+
   const pendingTasks   = filteredTasks.filter(task => !task.is_done)
   const completedTasks = filteredTasks.filter(task => task.is_done)
   const upcomingExams  = filteredExams.filter(e => e.exam_date >= todayStr)
@@ -1041,7 +1079,7 @@ export default function PlannerPage() {
           {TYPE_FILTERS.map(({ key, label }) => (
             <button
               key={key}
-              onClick={() => setTypeFilter(key)}
+              onClick={() => handleTypeFilter(key)}
               className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap"
               style={{
                 backgroundColor: typeFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
@@ -1059,11 +1097,11 @@ export default function PlannerPage() {
           onClick={() => setFilterOpen(o => !o)}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
           style={{
-            backgroundColor: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all')
+            backgroundColor: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all' || percentageFilter !== 'all')
               ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
               : 'transparent',
-            color: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all') ? 'var(--color-primary)' : 'var(--color-outline)',
-            borderColor: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all')
+            color: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all' || percentageFilter !== 'all') ? 'var(--color-primary)' : 'var(--color-outline)',
+            borderColor: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all' || percentageFilter !== 'all')
               ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)'
               : 'var(--border-subtle)',
           }}
@@ -1109,9 +1147,9 @@ export default function PlannerPage() {
       )}
 
       {/* ── Active filter chips strip ── */}
-      {(statusFilter !== 'all' || submissionFilter !== 'all') && (
+      {(statusFilter !== 'all' || submissionFilter !== 'all' || percentageFilter !== 'all') && (
         <div className="flex gap-1.5 flex-wrap mb-3 -mt-1 animate-slide-up">
-          {statusFilter !== 'all' && (
+          {statusFilter !== 'all' && typeFilter !== 'exams' && typeFilter !== 'assignments' && (
             <button
               onClick={() => setStatusFilter('all')}
               className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all"
@@ -1125,7 +1163,7 @@ export default function PlannerPage() {
               <span className="material-symbols-outlined text-[11px]">close</span>
             </button>
           )}
-          {submissionFilter !== 'all' && (
+          {submissionFilter !== 'all' && typeFilter !== 'tasks' && (
             <button
               onClick={() => setSubmissionFilter('all')}
               className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all"
@@ -1142,6 +1180,23 @@ export default function PlannerPage() {
               <span className="material-symbols-outlined text-[11px]">close</span>
             </button>
           )}
+          {percentageFilter !== 'all' && typeFilter !== 'tasks' && (
+            <button
+              onClick={() => setPercentageFilter('all')}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+                color:           'var(--color-primary)',
+                borderColor:     'color-mix(in srgb, var(--color-primary) 28%, transparent)',
+              }}
+            >
+              {language === 'es'
+                ? ({ all: 'Todas', none: 'Sin peso', low: '< 20%', mid: '20–40%', high: '> 40%' } as Record<string, string>)[percentageFilter]
+                : ({ all: 'All', none: 'No weight', low: '< 20%', mid: '20–40%', high: '> 40%' } as Record<string, string>)[percentageFilter]
+              }
+              <span className="material-symbols-outlined text-[11px]">close</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -1149,62 +1204,98 @@ export default function PlannerPage() {
       {filterOpen && (
         <div className="mb-4 p-3 rounded-2xl animate-slide-up space-y-3"
           style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-          {/* Task status */}
-          <div>
-            <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
-              {language === 'es' ? 'Estado de tarea' : 'Task status'}
-            </p>
-            <div className="flex gap-1.5 flex-wrap">
-              {STATUS_FILTERS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setStatusFilter(key)}
-                  className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
-                  style={{
-                    backgroundColor: statusFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
-                    color:           statusFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
-                    borderColor:     statusFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Submission status (exams only) */}
-          <div>
-            <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
-              {language === 'es' ? 'Estado de entrega' : 'Submission status'}
-            </p>
-            <div className="flex gap-1.5 flex-wrap">
-              {([
-                { key: 'all',       label_es: 'Todas',         label_en: 'All'          },
-                { key: 'pending',   label_es: 'Pendiente',     label_en: 'Pending'      },
-                { key: 'submitted', label_es: 'Entregada',     label_en: 'Submitted'    },
-                { key: 'graded',    label_es: 'Calificada',    label_en: 'Graded'       },
-                { key: 'ungraded',  label_es: 'Sin calificar', label_en: 'Ungraded'     },
-              ] as const).map(({ key, label_es, label_en }) => (
-                <button
-                  key={key}
-                  onClick={() => setSubmissionFilter(key)}
-                  className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
-                  style={{
-                    backgroundColor: submissionFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
-                    color:           submissionFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
-                    borderColor:     submissionFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
-                  }}
-                >
-                  {language === 'es' ? label_es : label_en}
-                </button>
-              ))}
+          {/* Task status — only for tasks */}
+          {typeFilter !== 'exams' && typeFilter !== 'assignments' && (
+            <div>
+              <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
+                {language === 'es' ? 'Estado de tarea' : 'Task status'}
+              </p>
+              <div className="flex gap-1.5 flex-wrap">
+                {STATUS_FILTERS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setStatusFilter(key)}
+                    className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
+                    style={{
+                      backgroundColor: statusFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                      color:           statusFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
+                      borderColor:     statusFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Submission status — only for exams and assignments */}
+          {typeFilter !== 'tasks' && (
+            <div>
+              <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
+                {language === 'es' ? 'Estado de entrega' : 'Submission status'}
+              </p>
+              <div className="flex gap-1.5 flex-wrap">
+                {([
+                  { key: 'all',       label_es: 'Todas',         label_en: 'All'          },
+                  { key: 'pending',   label_es: 'Pendiente',     label_en: 'Pending'      },
+                  { key: 'submitted', label_es: 'Entregada',     label_en: 'Submitted'    },
+                  { key: 'graded',    label_es: 'Calificada',    label_en: 'Graded'       },
+                  { key: 'ungraded',  label_es: 'Sin calificar', label_en: 'Ungraded'     },
+                ] as const).map(({ key, label_es, label_en }) => (
+                  <button
+                    key={key}
+                    onClick={() => setSubmissionFilter(key)}
+                    className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
+                    style={{
+                      backgroundColor: submissionFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                      color:           submissionFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
+                      borderColor:     submissionFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
+                    }}
+                  >
+                    {language === 'es' ? label_es : label_en}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Percentage weight — only for exams and assignments */}
+          {typeFilter !== 'tasks' && (
+            <div>
+              <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
+                {language === 'es' ? 'Peso porcentual' : 'Weight'}
+              </p>
+              <div className="flex gap-1.5 flex-wrap">
+                {([
+                  { key: 'all',  label_es: 'Todos',     label_en: 'All'       },
+                  { key: 'none', label_es: 'Sin peso',  label_en: 'No weight' },
+                  { key: 'low',  label_es: '< 20%',     label_en: '< 20%'    },
+                  { key: 'mid',  label_es: '20–40%',    label_en: '20–40%'   },
+                  { key: 'high', label_es: '> 40%',     label_en: '> 40%'    },
+                ] as const).map(({ key, label_es, label_en }) => (
+                  <button
+                    key={key}
+                    onClick={() => setPercentageFilter(key)}
+                    className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
+                    style={{
+                      backgroundColor: percentageFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                      color:           percentageFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
+                      borderColor:     percentageFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
+                    }}
+                  >
+                    {language === 'es' ? label_es : label_en}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Clear filters */}
-          {(statusFilter !== 'all' || submissionFilter !== 'all') && (
+          {(statusFilter !== 'all' || submissionFilter !== 'all' || percentageFilter !== 'all') && (
             <button
-              onClick={() => { setStatusFilter('all'); setSubmissionFilter('all') }}
+              onClick={() => { setStatusFilter('all'); setSubmissionFilter('all'); setPercentageFilter('all') }}
               className="text-xs font-semibold"
               style={{ color: 'var(--danger)' }}
             >

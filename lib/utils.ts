@@ -10,17 +10,21 @@ export function formatDate(date: string | Date, locale: string = 'es'): string {
   })
 }
 
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d) // midnight local — avoids UTC off-by-one in negative-offset timezones
+}
+
 export function daysUntil(dateStr: string): number {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const target = new Date(dateStr)
-  target.setHours(0, 0, 0, 0)
+  const target = parseLocalDate(dateStr)
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 export function isToday(dateStr: string): boolean {
   const today = new Date()
-  const d = new Date(dateStr)
+  const d = parseLocalDate(dateStr)
   return (
     d.getDate() === today.getDate() &&
     d.getMonth() === today.getMonth() &&
@@ -31,7 +35,7 @@ export function isToday(dateStr: string): boolean {
 export function isTomorrow(dateStr: string): boolean {
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  const d = new Date(dateStr)
+  const d = parseLocalDate(dateStr)
   return (
     d.getDate() === tomorrow.getDate() &&
     d.getMonth() === tomorrow.getMonth() &&

@@ -190,7 +190,7 @@ export default function SubjectsPage() {
                       </div>
                     </div>
                     {/* Kebab menu */}
-                    <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
                       <button
                         onClick={() => setKebabOpen(kebabOpen === subject.id ? null : subject.id)}
                         className="w-7 h-7 flex items-center justify-center rounded-full transition-all hover:bg-black/10 dark:hover:bg-white/10"
@@ -211,6 +211,7 @@ export default function SubjectsPage() {
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setExpandedSubject(expandedSubject === subject.id ? null : subject.id); setKebabOpen(null) }}
+                            onPointerDown={(e) => e.stopPropagation()}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-all hover:bg-white/5"
                             style={{ color: 'var(--on-surface)' }}
                           >

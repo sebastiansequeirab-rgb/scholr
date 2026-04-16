@@ -28,20 +28,20 @@ const BOTTOM_NAV = [
 
 // Items revealed inside the "More" bottom sheet
 const MORE_ITEMS = [
-  { key: 'ai',       href: '/ai',       icon: 'auto_awesome'  },
-  { key: 'notes',    href: '/notes',    icon: 'sticky_note_2' },
-  { key: 'settings', href: '/settings', icon: 'settings'      },
+  { key: 'ai',    href: '/ai',    icon: 'auto_awesome'  },
+  { key: 'notes', href: '/notes', icon: 'sticky_note_2' },
 ]
 
 // Paths that belong to "More" — used to highlight the More tab when active
-const MORE_PATHS = ['/ai', '/notes', '/settings']
+const MORE_PATHS = ['/ai', '/notes', '/settings', '/personalization', '/ai-settings']
 
 // Side drawer — account & utility only (no duplicate of bottom nav main items)
 const SIDE_MENU_ITEMS = [
-  { key: 'profile',   href: '/settings', icon: 'person'            },
-  { key: 'settings',  href: '/settings', icon: 'settings'          },
-  { key: 'plan',      href: '/settings', icon: 'workspace_premium' },
-  { key: 'help',      href: '/settings', icon: 'help_outline'      },
+  { key: 'settings',        href: '/settings',        icon: 'manage_accounts',   label_es: 'Cuenta',           label_en: 'Account'          },
+  { key: 'personalization', href: '/personalization', icon: 'palette',           label_es: 'Personalización',  label_en: 'Personalization'  },
+  { key: 'ai',              href: '/ai-settings',     icon: 'auto_awesome',      label_es: 'Configuración IA', label_en: 'AI Settings'      },
+  { key: 'plan',            href: '/settings',        icon: 'workspace_premium', label_es: 'Plan',             label_en: 'Plan'             },
+  { key: 'help',            href: '/settings',        icon: 'help_outline',      label_es: 'Ayuda',            label_en: 'Help'             },
 ]
 
 interface SidebarProps {
@@ -49,7 +49,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ profile }: SidebarProps) {
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
   const { collapsed, toggle } = useSidebarCollapse()
@@ -497,12 +497,14 @@ export function Sidebar({ profile }: SidebarProps) {
 
         {/* Nav items */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto" aria-label="Side menu">
-          {SIDE_MENU_ITEMS.map(({ key, href, icon }) => {
-            const active = isActive(href)
+          {SIDE_MENU_ITEMS.map(({ key, href, icon, label_es, label_en }) => {
+            const active = pathname === href || (href !== '/settings' && pathname.startsWith(href))
+            const label  = language === 'es' ? label_es : label_en
             return (
               <Link
                 key={key}
                 href={href}
+                onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-150 active:scale-[0.98]"
                 style={{
                   color: active ? 'var(--color-primary)' : 'var(--on-surface)',
@@ -517,7 +519,7 @@ export function Sidebar({ profile }: SidebarProps) {
                   style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
                   {icon}
                 </span>
-                <span className="flex-1 leading-none">{t(`nav.${key}`)}</span>
+                <span className="flex-1 leading-none">{label}</span>
                 {active && (
                   <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: 'var(--color-primary)' }} />

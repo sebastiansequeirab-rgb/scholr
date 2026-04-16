@@ -265,6 +265,26 @@ export async function executeTool(
         const validTypes = ['exam', 'workshop', 'activity', 'task', 'study_session']
         if (!validTypes.includes(activity_type)) return { ok: false, error: `activity_type must be one of: ${validTypes.join(', ')}` }
 
+        const subjectId = typeof args.subject_id === 'string' ? args.subject_id : null
+        let exam_time: string | null = typeof args.exam_time === 'string' ? args.exam_time : null
+        let location: string | null = typeof args.location === 'string' ? args.location : null
+
+        // Autocomplete room + time from subject schedule if not provided
+        if (subjectId && (!exam_time || !location)) {
+          const [y, m, d] = exam_date.split('-').map(Number)
+          const dayOfWeek = new Date(y, m - 1, d).getDay() // 0=Sun..6=Sat
+          const { data: schedules } = await db
+            .from('schedules')
+            .select('start_time, room')
+            .eq('subject_id', subjectId)
+            .eq('day_of_week', dayOfWeek)
+            .order('start_time')
+          if (schedules && schedules.length > 0) {
+            if (!exam_time) exam_time = schedules[0].start_time?.slice(0, 5) ?? null
+            if (!location) location = schedules[0].room ?? null
+          }
+        }
+
         const { data, error } = await db
           .from('exams')
           .insert({
@@ -272,10 +292,10 @@ export async function executeTool(
             title,
             exam_date,
             activity_type,
-            subject_id:  typeof args.subject_id === 'string' ? args.subject_id : null,
+            subject_id:  subjectId,
             percentage:  typeof args.percentage === 'number' ? args.percentage : null,
-            exam_time:   typeof args.exam_time === 'string'  ? args.exam_time  : null,
-            location:    typeof args.location === 'string'   ? args.location   : null,
+            exam_time,
+            location,
           })
           .select('id, title, exam_date, activity_type')
           .single()

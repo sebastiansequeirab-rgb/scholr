@@ -16,7 +16,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { message, history = [], app_context, access_token } = body
+  const { message, history = [], app_context, access_token, pdf_text } = body
   if (!message?.trim()) return NextResponse.json({ error: 'message is required' },      { status: 400 })
   if (!access_token)    return NextResponse.json({ error: 'access_token is required' }, { status: 401 })
 
@@ -90,19 +90,23 @@ Assignments / entregas / talleres / prácticas / parciales / quizzes / exámenes
     "workshop" (talleres/prácticas/laboratorios), "activity" (actividades con nota)
   · exam_date es obligatorio. Si el usuario no lo da, pide SOLO ese dato.
   · Si hay materia activa, incluye SIEMPRE su subject_id.
+  · Si el usuario no especifica hora, usa exam_time="08:00" por defecto para assignments.
+  · El sistema autocompleta salón y hora según el horario registrado de la materia — no necesitas pedirlos.
 
-Recordatorios o to-dos personales sin nota/porcentaje → create_task
-  · Si hay materia activa, incluye también su subject_id.
+Recordatorios, to-dos personales o tareas sin materia → create_task
+  · Si el usuario pide algo personal (sin materia académica), usa create_task SIN subject_id. No pidas materia.
+  · Si hay materia activa y la tarea es académica, incluye subject_id.
 
 ━━ FLUJO DE CREACIÓN ━━
 1. Si tienes todos los datos necesarios → crea directamente sin confirmar.
 2. Si falta exam_date u otro campo obligatorio → pide SOLO ese campo, nada más.
-3. Después de crear: confirma en una línea qué se creó, en qué materia, para qué fecha.
+3. Después de crear: confirma en una línea qué se creó, en qué materia (o "personal"), para qué fecha.
 4. Nunca pidas datos que ya están en el contexto (materia activa = subject_id ya conocido).
+5. Nunca pidas salón ni hora si la materia tiene horario registrado — el sistema los completa automáticamente.
 
 ━━ CONTENIDO ACADÉMICO (sin tools) ━━
 Resúmenes · esquemas · fichas · mapas conceptuales · preguntas de práctica · explicaciones
-→ Responde directamente. Sé claro, estructurado y pedagógico. Usa listas y tablas si ayudan.${subjectContextBlock}`
+→ Responde directamente. Sé claro, estructurado y pedagógico. Usa listas y tablas si ayudan.${subjectContextBlock}${pdf_text ? `\n\n━━ DOCUMENTO PDF ADJUNTO ━━\nEl usuario adjuntó el siguiente documento. Úsalo para responder sus preguntas:\n\n${pdf_text.slice(0, 12000)}` : ''}`
 
   // ── 5. Build conversation ─────────────────────────────────────────────────
   let currentMessages: GroqMessage[] = [

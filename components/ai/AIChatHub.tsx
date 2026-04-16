@@ -64,6 +64,9 @@ export function AIChatHub({
   const [loading,       setLoading]       = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [mobileShowList, setMobileShowList] = useState(false)
+  const [pdfText,        setPdfText]        = useState<string | null>(null)
+  const [pdfName,        setPdfName]        = useState<string | null>(null)
+  const [pdfLoading,     setPdfLoading]     = useState(false)
 
   const currentSessionIdRef = useRef<string | null>(null)
   const pendingSubjectIdRef = useRef<string | null>(GENERAL_ID)
@@ -218,6 +221,9 @@ export function AIChatHub({
         next_exam_date:     ctxExtra?.next_exam_date,
       }
 
+      const currentPdfText = pdfText
+      if (pdfText) { setPdfText(null); setPdfName(null) } // consume PDF on first message
+
       const res = await fetch('/api/ai', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -226,6 +232,7 @@ export function AIChatHub({
           history:      messages.slice(-8),
           app_context,
           access_token: authSession.access_token,
+          pdf_text:     currentPdfText ?? undefined,
         }),
       })
 
@@ -536,7 +543,44 @@ export function AIChatHub({
 
       {/* Input */}
       <div className="pt-2 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+        {/* PDF badge */}
+        {pdfName && (
+          <div className="flex items-center gap-1.5 mb-1.5 px-1">
+            <span className="material-symbols-outlined text-[14px]" style={{ color: 'var(--warning)' }}>picture_as_pdf</span>
+            <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--on-surface)' }}>{pdfName}</span>
+            <button onClick={() => { setPdfText(null); setPdfName(null) }}
+              className="text-[10px]" style={{ color: 'var(--color-outline)' }}>
+              <span className="material-symbols-outlined text-[14px]">close</span>
+            </button>
+          </div>
+        )}
         <form onSubmit={e => { e.preventDefault(); sendMessage(input) }} className="flex gap-2">
+          {/* PDF attach button */}
+          <label className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl cursor-pointer transition-all hover:bg-black/10 dark:hover:bg-white/10"
+            style={{ color: pdfText ? 'var(--warning)' : 'var(--color-outline)', border: '1px solid var(--border-subtle)' }}
+            title={language === 'es' ? 'Adjuntar PDF' : 'Attach PDF'}>
+            <span className="material-symbols-outlined text-[18px]">{pdfLoading ? 'hourglass_empty' : 'picture_as_pdf'}</span>
+            <input type="file" accept="application/pdf" className="hidden" disabled={pdfLoading || loading}
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setPdfLoading(true)
+                try {
+                  const fd = new FormData()
+                  fd.append('file', file)
+                  const res = await fetch('/api/parse-pdf', { method: 'POST', body: fd })
+                  if (res.ok) {
+                    const { text } = await res.json()
+                    setPdfText(text)
+                    setPdfName(file.name)
+                  }
+                } finally {
+                  setPdfLoading(false)
+                  e.target.value = ''
+                }
+              }}
+            />
+          </label>
           <input
             ref={inputRef}
             value={input}

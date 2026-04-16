@@ -11,6 +11,7 @@ export interface AIRequest {
   history: ChatMessage[]       // last N messages (trimmed client-side)
   app_context: AppContext
   access_token: string         // Supabase JWT — used server-side to auth queries
+  pdf_text?: string            // extracted text from an attached PDF (if any)
 }
 
 /** What the client knows about the current UI state */

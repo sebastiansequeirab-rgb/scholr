@@ -120,8 +120,8 @@ export default async function DashboardPage() {
   const QUICK_ACTIONS = [
     { href: '/planner?create=task', icon: 'add_task',          label: 'Nueva tarea',     color: 'var(--color-primary)'  },
     { href: '/planner?create=exam', icon: 'event',             label: 'Nuevo examen',    color: '#ef4444'               },
-    { href: '/notes',               icon: 'edit_note',         label: 'Nota rápida',     color: 'var(--warning)'        },
-    { href: '/ai?tab=import',       icon: 'document_scanner',  label: 'Ver horario',     color: '#10b981'               },
+    { href: '/notes?new=1',          icon: 'edit_note',         label: 'Nota rápida',     color: 'var(--warning)'        },
+    { href: '/ai?tab=import',       icon: 'document_scanner',  label: 'Registrar horario con IA', color: '#10b981'      },
     { href: '/ai',                  icon: 'auto_awesome',      label: 'Preguntar a IA',  color: '#c084fc'               },
   ]
 
