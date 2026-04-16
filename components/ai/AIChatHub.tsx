@@ -38,7 +38,6 @@ export function AIChatHub({
   const [sessions,        setSessions]        = useState<AISession[]>([])
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null)
   const [activeSubjectName, setActiveSubjectName] = useState('')
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [messages,        setMessages]        = useState<LocalMessage[]>([])
   const [input,           setInput]           = useState('')
   const [loading,         setLoading]         = useState(false)
@@ -79,7 +78,6 @@ export function AIChatHub({
   const startNewChat = () => {
     currentSessionIdRef.current  = null
     pendingSubjectIdRef.current   = activeSubjectId
-    setActiveSessionId(null)
     setMessages([])
     setView('chat')
     setTimeout(() => inputRef.current?.focus(), 80)
@@ -87,7 +85,6 @@ export function AIChatHub({
 
   const openSession = async (session: AISession) => {
     currentSessionIdRef.current = session.id
-    setActiveSessionId(session.id)
     const supabase = createClient()
     const { data } = await supabase
       .from('ai_session_messages')
@@ -144,7 +141,6 @@ export function AIChatHub({
             sessionId                     = newSess.id
             currentSessionIdRef.current   = sessionId
             pendingSubjectIdRef.current   = null
-            setActiveSessionId(sessionId)
             setSessions(prev => [newSess, ...prev])
           }
         }
