@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { VISION_MODEL } from '@/lib/ai/provider'
+import { SUBJECT_COLORS } from '@/types'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -10,6 +11,8 @@ export async function POST(req: NextRequest) {
   try {
     const { imageBase64, mimeType } = await req.json()
     if (!imageBase64) return NextResponse.json({ error: 'No image provided' }, { status: 400 })
+
+    const colorPalette = SUBJECT_COLORS.join(' ')
 
     const prompt = `Eres un extractor preciso de horarios académicos. Analiza la imagen y extrae CADA bloque horario visible.
 
@@ -27,7 +30,14 @@ REGLAS CRÍTICAS para horarios:
 - Si ves "7:00" como inicio de fila y la siguiente fila es "8:30", ese bloque dura 1h30.
 - NUNCA asumas duraciones estándar; siempre lee los valores reales de la imagen.
 - Si una celda abarca múltiples filas horarias, la duración es desde la primera hasta la última fila.
+- Si una celda de contenido abarca múltiples COLUMNAS de día (celda fusionada horizontal), crea un bloque separado para CADA día que abarca.
 - day_of_week: 0=Dom 1=Lun 2=Mar 3=Mié 4=Jue 5=Vie 6=Sáb
+
+NORMALIZACIÓN de nombres:
+- El campo "name" debe ser el nombre completo de la materia, sin prefijos de sección.
+- Si la celda muestra "LEC Cálculo I" o "LAB-Física", el name es "Cálculo I" o "Física".
+- Si el prefijo (LEC/LAB/DIS/TUT) es el único identificador, inclúyelo en "professor".
+- Agrupa LEC, LAB y DIS de la misma materia bajo un solo objeto con múltiples bloques.
 
 VALIDACIÓN antes de responder:
 - ¿Cada bloque tiene un día específico (0-6)?
@@ -42,7 +52,7 @@ Devuelve ÚNICAMENTE este JSON válido (sin markdown, sin texto extra):
     {
       "name": "nombre exacto de la materia",
       "professor": "código, sección o nombre del profesor si aparece, si no null",
-      "color": "#6366f1",
+      "color": "#185FA5",
       "icon": "menu_book",
       "schedules": [
         { "day_of_week": 1, "start_time": "14:00", "end_time": "15:30", "room": "aula/salón o null" }
@@ -51,11 +61,11 @@ Devuelve ÚNICAMENTE este JSON válido (sin markdown, sin texto extra):
   ]
 }
 
-Colores disponibles (asigna uno distinto a cada materia):
-#6366f1 #ec4899 #f59e0b #10b981 #3b82f6 #8b5cf6 #ef4444 #06b6d4 #84cc16 #f97316
+Colores disponibles (asigna uno distinto a cada materia, en este orden):
+${colorPalette}
 
 Icons disponibles:
-menu_book bar_chart calculate science history_edu language computer engineering psychology savings campaign receipt_long school`
+menu_book calculate science speed biotech history_edu translate code palette music_note fitness_center trending_up business_center engineering gavel architecture medical_services lab_research assignment school psychology bar_chart`
 
     const res = await fetch(GROQ_URL, {
       method: 'POST',

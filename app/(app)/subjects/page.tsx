@@ -240,7 +240,7 @@ export default function SubjectsPage() {
                             color: subject.color,
                           }}>
                           <span className="material-symbols-outlined text-[11px]">schedule</span>
-                          {t(`subjects.days.${s.day_of_week}`).slice(0, 3)} {s.start_time.slice(0, 5)}
+                          {t(`subjects.days.${s.day_of_week}`).slice(0, 3)} {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}{s.room ? ` · ${s.room}` : ''}
                         </span>
                       ))}
                       {subjectSchedules.length > 2 && (
