@@ -20,9 +20,29 @@ interface LocalMessage {
   content: string
 }
 
-type ChatView = 'projects' | 'sessions' | 'chat'
-
 const GENERAL_ID = '__general__'
+
+const QUICK_ACTIONS_ES = [
+  { icon: 'calendar_today',  label: '¿Qué tengo esta semana?',  action: '¿Qué tengo esta semana en clases, tareas y evaluaciones?' },
+  { icon: 'school',          label: 'Próximos exámenes',         action: 'Resume mis próximos exámenes y su porcentaje en la nota final.' },
+  { icon: 'priority_high',   label: '¿Qué es más urgente?',     action: '¿Qué es lo más urgente que debo hacer hoy o esta semana?' },
+  { icon: 'auto_fix_high',   label: 'Organizar mi semana',       action: 'Ayúdame a organizar mi semana académica según materias, tareas y evaluaciones.' },
+  { icon: 'add_task',        label: 'Agregar tarea',             action: 'Quiero agregar una tarea nueva. ¿Me ayudas a registrarla?' },
+  { icon: 'event',           label: 'Agregar examen',            action: 'Quiero registrar un examen nuevo. ¿Me ayudas?' },
+  { icon: 'assignment',      label: 'Agregar assignment',        action: 'Quiero agregar un assignment o entrega nueva. ¿Me ayudas?' },
+  { icon: 'upload_file',     label: 'Resumir archivo',           action: 'Quiero subir un archivo para que lo analices y resumas.' },
+]
+
+const QUICK_ACTIONS_EN = [
+  { icon: 'calendar_today',  label: 'What do I have this week?', action: 'What do I have this week in classes, tasks and exams?' },
+  { icon: 'school',          label: 'Upcoming exams',            action: 'Summarize my upcoming exams and their weight in my final grade.' },
+  { icon: 'priority_high',   label: "What's most urgent?",      action: 'What is the most urgent thing I need to do today or this week?' },
+  { icon: 'auto_fix_high',   label: 'Organize my week',          action: 'Help me organize my academic week based on subjects, tasks, and evaluations.' },
+  { icon: 'add_task',        label: 'Add task',                  action: 'I want to add a new task. Can you help me register it?' },
+  { icon: 'event',           label: 'Add exam',                  action: 'I want to register a new exam. Can you help?' },
+  { icon: 'assignment',      label: 'Add assignment',            action: 'I want to add a new assignment or submission. Can you help?' },
+  { icon: 'upload_file',     label: 'Summarize file',            action: 'I want to upload a file for you to analyze and summarize.' },
+]
 
 // ─── AIChatHub ────────────────────────────────────────────────────────────────
 
@@ -33,33 +53,55 @@ export function AIChatHub({
   language: 'es' | 'en'
   ctxExtra: { subject_count: number; pending_task_count: number; next_exam_date: string | null } | null
 }) {
-  const [view,            setView]            = useState<ChatView>('projects')
-  const [subjects,        setSubjects]        = useState<Subject[]>([])
-  const [sessions,        setSessions]        = useState<AISession[]>([])
-  const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null)
-  const [activeSubjectName, setActiveSubjectName] = useState('')
-  const [messages,        setMessages]        = useState<LocalMessage[]>([])
-  const [input,           setInput]           = useState('')
-  const [loading,         setLoading]         = useState(false)
-  const [loadingData,     setLoadingData]     = useState(true)
-  const [deleteConfirm,   setDeleteConfirm]   = useState<string | null>(null)
+  const [subjects,      setSubjects]      = useState<Subject[]>([])
+  const [sessions,      setSessions]      = useState<AISession[]>([])
+  const [loadingData,   setLoadingData]   = useState(true)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [activeSubjectId, setActiveSubjectId] = useState<string>(GENERAL_ID)
+  const [activeSubjectName, setActiveSubjectName] = useState(language === 'es' ? 'General' : 'General')
+  const [messages,      setMessages]      = useState<LocalMessage[]>([])
+  const [input,         setInput]         = useState('')
+  const [loading,       setLoading]       = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [mobileShowList, setMobileShowList] = useState(false)
 
   const currentSessionIdRef = useRef<string | null>(null)
-  const pendingSubjectIdRef = useRef<string | null>(null)
+  const pendingSubjectIdRef = useRef<string | null>(GENERAL_ID)
   const bottomRef           = useRef<HTMLDivElement>(null)
   const inputRef            = useRef<HTMLInputElement>(null)
 
-  // ── Load subjects + sessions ───────────────────────────────────────────────
+  // ── Load data & auto-open General ─────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
-      supabase.from('subjects').select('id, name, color, icon, user_id, professor, room, credits, created_at').order('name'),
-      supabase.from('ai_sessions').select('id, subject_id, title, created_at, last_message_at')
+      supabase.from('subjects')
+        .select('id, name, color, icon, user_id, professor, room, credits, created_at')
+        .order('name'),
+      supabase.from('ai_sessions')
+        .select('id, subject_id, title, created_at, last_message_at')
         .order('last_message_at', { ascending: false }),
-    ]).then(([sRes, sessRes]) => {
+    ]).then(async ([sRes, sessRes]) => {
       setSubjects(sRes.data ?? [])
-      setSessions(sessRes.data ?? [])
+      const sess = sessRes.data ?? []
+      setSessions(sess)
       setLoadingData(false)
+
+      // Auto-open most recent General session
+      const generalSess = sess.filter(s => !s.subject_id)
+      if (generalSess.length > 0) {
+        const first = generalSess[0]
+        currentSessionIdRef.current = first.id
+        pendingSubjectIdRef.current = null
+        setActiveSessionId(first.id)
+        const { data } = await supabase
+          .from('ai_session_messages')
+          .select('role, content')
+          .eq('session_id', first.id)
+          .order('created_at', { ascending: true })
+          .limit(60)
+        setMessages(data ?? [])
+      }
+      // else: pending new General chat — messages stay empty, quick actions shown
     })
   }, [])
 
@@ -69,22 +111,22 @@ export function AIChatHub({
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
-  const openSubject = (subjectId: string | null, name: string) => {
-    setActiveSubjectId(subjectId)
-    setActiveSubjectName(name)
-    setView('sessions')
-  }
-
-  const startNewChat = () => {
-    currentSessionIdRef.current  = null
-    pendingSubjectIdRef.current   = activeSubjectId
-    setMessages([])
-    setView('chat')
-    setTimeout(() => inputRef.current?.focus(), 80)
-  }
-
-  const openSession = async (session: AISession) => {
+  const selectSession = useCallback(async (session: AISession) => {
+    if (currentSessionIdRef.current === session.id) {
+      setMobileShowList(false)
+      return
+    }
+    const subId = session.subject_id
     currentSessionIdRef.current = session.id
+    pendingSubjectIdRef.current = null
+    setActiveSessionId(session.id)
+    setActiveSubjectId(subId ?? GENERAL_ID)
+    setActiveSubjectName(
+      subId
+        ? (subjects.find(s => s.id === subId)?.name ?? '')
+        : (language === 'es' ? 'General' : 'General')
+    )
+    setMobileShowList(false)
     const supabase = createClient()
     const { data } = await supabase
       .from('ai_session_messages')
@@ -93,14 +135,34 @@ export function AIChatHub({
       .order('created_at', { ascending: true })
       .limit(60)
     setMessages(data ?? [])
-    setView('chat')
-  }
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }, [subjects, language])
 
-  const deleteSession = async (sessionId: string) => {
+  const startNewChat = useCallback((subjectId: string, subjectName: string) => {
+    currentSessionIdRef.current = null
+    pendingSubjectIdRef.current = subjectId
+    setActiveSessionId(null)
+    setActiveSubjectId(subjectId)
+    setActiveSubjectName(subjectName)
+    setMessages([])
+    setMobileShowList(false)
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }, [])
+
+  const confirmDelete = useCallback(async (sessionId: string) => {
     await createClient().from('ai_sessions').delete().eq('id', sessionId)
     setSessions(prev => prev.filter(s => s.id !== sessionId))
     setDeleteConfirm(null)
-  }
+    // If deleted the active session, reset to pending new General chat
+    if (currentSessionIdRef.current === sessionId) {
+      currentSessionIdRef.current = null
+      pendingSubjectIdRef.current = GENERAL_ID
+      setActiveSessionId(null)
+      setActiveSubjectId(GENERAL_ID)
+      setActiveSubjectName(language === 'es' ? 'General' : 'General')
+      setMessages([])
+    }
+  }, [language])
 
   // ── Send message ───────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
@@ -138,15 +200,15 @@ export function AIChatHub({
             .select()
             .single()
           if (newSess) {
-            sessionId                     = newSess.id
-            currentSessionIdRef.current   = sessionId
-            pendingSubjectIdRef.current   = null
+            sessionId                   = newSess.id
+            currentSessionIdRef.current = sessionId
+            pendingSubjectIdRef.current = null
+            setActiveSessionId(sessionId)
             setSessions(prev => [newSess, ...prev])
           }
         }
       }
 
-      // Build AppContext
       const app_context: AppContext = {
         current_page:       'ai',
         active_subject_id:  subjectId ?? undefined,
@@ -190,7 +252,6 @@ export function AIChatHub({
       const assistantContent = data.reply ?? '...'
       setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }])
 
-      // Persist
       if (sessionId) {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
@@ -213,264 +274,217 @@ export function AIChatHub({
     }
   }, [loading, messages, activeSubjectId, language, ctxExtra])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW: Projects
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Derived values ─────────────────────────────────────────────────────────
+  const isGeneral     = activeSubjectId === GENERAL_ID
+  const activeSubject = !isGeneral ? subjects.find(s => s.id === activeSubjectId) : null
+  const accentColor   = activeSubject?.color ?? 'var(--color-tertiary)'
+  const quickActions  = language === 'es' ? QUICK_ACTIONS_ES : QUICK_ACTIONS_EN
 
-  if (view === 'projects') {
+  // ── Sidebar ────────────────────────────────────────────────────────────────
+
+  const SessionRow = ({ session }: { session: AISession }) => {
+    const subId     = session.subject_id
+    const sub       = subId ? subjects.find(s => s.id === subId) : null
+    const color     = sub?.color ?? 'var(--color-tertiary)'
+    const isActive  = activeSessionId === session.id
+
+    if (deleteConfirm === session.id) {
+      return (
+        <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg mb-0.5"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--danger) 10%, transparent)' }}>
+          <span className="text-[10px] flex-1" style={{ color: 'var(--on-surface)' }}>
+            {language === 'es' ? '¿Eliminar?' : 'Delete?'}
+          </span>
+          <button onClick={() => confirmDelete(session.id)}
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+            style={{ backgroundColor: 'var(--danger)', color: 'white' }}>
+            {language === 'es' ? 'Sí' : 'Yes'}
+          </button>
+          <button onClick={() => setDeleteConfirm(null)}
+            className="text-[10px] px-1.5 py-0.5 rounded"
+            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
+            No
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <button
+        onClick={() => selectSession(session)}
+        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5 text-left group transition-colors"
+        style={{
+          backgroundColor: isActive
+            ? `color-mix(in srgb, ${color} 12%, transparent)`
+            : 'transparent',
+        }}>
+        <span className="material-symbols-outlined text-[12px] flex-shrink-0"
+          style={{ color: isActive ? color : 'var(--color-outline)' }}>
+          chat
+        </span>
+        <span className="text-[11px] truncate flex-1"
+          style={{ color: isActive ? 'var(--on-surface)' : 'var(--color-secondary)' }}>
+          {session.title ?? (language === 'es' ? 'Sin título' : 'Untitled')}
+        </span>
+        <button
+          onClick={e => { e.stopPropagation(); setDeleteConfirm(session.id) }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-0.5 rounded"
+          style={{ color: 'var(--danger)' }}>
+          <span className="material-symbols-outlined text-[12px]">close</span>
+        </button>
+      </button>
+    )
+  }
+
+  const SidebarContent = () => {
     const generalSessions = sessions.filter(s => !s.subject_id)
 
     return (
-      <div className="space-y-2 animate-fade-in">
-        {/* General project */}
-        <button
-          onClick={() => openSubject(GENERAL_ID, language === 'es' ? 'General' : 'General')}
-          className="w-full flex items-center gap-3 p-4 rounded-2xl text-left transition-all active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
-        >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 15%, transparent)' }}>
-            <span className="material-symbols-outlined text-[20px]"
-              style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
-              auto_awesome
+      <div className="space-y-3">
+        {/* General */}
+        <div>
+          <div className="flex items-center justify-between px-1 py-0.5 mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-widest"
+              style={{ color: 'var(--color-outline)' }}>
+              General
             </span>
+            <button
+              onClick={() => startNewChat(GENERAL_ID, language === 'es' ? 'General' : 'General')}
+              className="rounded p-0.5 hover:opacity-70 transition-opacity"
+              style={{ color: 'var(--color-outline)' }}
+              title={language === 'es' ? 'Nuevo chat' : 'New chat'}>
+              <span className="material-symbols-outlined text-[14px]">add</span>
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold" style={{ color: 'var(--on-surface)' }}>
-              {language === 'es' ? 'General' : 'General'}
-            </p>
-            <p className="text-xs truncate mt-0.5" style={{ color: 'var(--color-outline)' }}>
-              {generalSessions[0]?.title
-                ?? (language === 'es' ? 'Sin chats aún' : 'No chats yet')}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {generalSessions.length > 0 && (
-              <span className="mono text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
-                {generalSessions.length}
-              </span>
-            )}
-            <span className="material-symbols-outlined text-[16px]"
-              style={{ color: 'var(--color-outline)' }}>chevron_right</span>
-          </div>
-        </button>
+          {generalSessions.length === 0 ? (
+            <button
+              onClick={() => startNewChat(GENERAL_ID, language === 'es' ? 'General' : 'General')}
+              className="w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-colors"
+              style={{ color: 'var(--color-outline)' }}>
+              {language === 'es' ? '+ Nuevo chat' : '+ New chat'}
+            </button>
+          ) : (
+            generalSessions.map(s => <SessionRow key={s.id} session={s} />)
+          )}
+        </div>
 
-        {/* Subject projects */}
-        {loadingData ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map(i => <div key={i} className="skeleton h-[66px] rounded-2xl" />)}
-          </div>
-        ) : subjects.length === 0 ? (
-          <p className="text-center py-6 text-sm" style={{ color: 'var(--color-outline)' }}>
-            {language === 'es'
-              ? 'Agrega materias para ver proyectos por materia.'
-              : 'Add subjects to see subject projects.'}
-          </p>
-        ) : (
-          subjects.map(subject => {
-            const subjectSessions = sessions.filter(s => s.subject_id === subject.id)
-            return (
-              <button
-                key={subject.id}
-                onClick={() => openSubject(subject.id, subject.name)}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl text-left transition-all active:scale-[0.98]"
-                style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: `${subject.color}18` }}>
-                  <span className="material-symbols-outlined text-[20px]"
+        {/* Subjects */}
+        {!loadingData && subjects.map(subject => {
+          const subSessions = sessions.filter(s => s.subject_id === subject.id)
+          return (
+            <div key={subject.id}>
+              <div className="flex items-center justify-between px-1 py-0.5 mb-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="material-symbols-outlined text-[11px] flex-shrink-0"
                     style={{ color: subject.color, fontVariationSettings: "'FILL' 1" }}>
                     {subject.icon || 'menu_book'}
                   </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold" style={{ color: 'var(--on-surface)' }}>
+                  <span className="text-[10px] font-bold uppercase tracking-widest truncate"
+                    style={{ color: 'var(--color-outline)' }}>
                     {subject.name}
-                  </p>
-                  <p className="text-xs truncate mt-0.5" style={{ color: 'var(--color-outline)' }}>
-                    {subjectSessions[0]?.title
-                      ?? (language === 'es' ? 'Sin chats aún' : 'No chats yet')}
-                  </p>
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {subjectSessions.length > 0 && (
-                    <span className="mono text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ backgroundColor: `${subject.color}18`, color: subject.color }}>
-                      {subjectSessions.length}
-                    </span>
-                  )}
-                  <span className="material-symbols-outlined text-[16px]"
-                    style={{ color: 'var(--color-outline)' }}>chevron_right</span>
-                </div>
-              </button>
-            )
-          })
-        )}
-      </div>
-    )
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW: Sessions list for a subject/general
-  // ─────────────────────────────────────────────────────────────────────────
-
-  if (view === 'sessions') {
-    const isGeneral    = activeSubjectId === GENERAL_ID
-    const subject      = subjects.find(s => s.id === activeSubjectId)
-    const accentColor  = subject?.color ?? 'var(--color-tertiary)'
-    const activeSessions = sessions.filter(s =>
-      isGeneral ? !s.subject_id : s.subject_id === activeSubjectId
-    )
-
-    return (
-      <div className="animate-fade-in">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <button onClick={() => setView('projects')}
-            className="p-1.5 rounded-lg transition-all"
-            style={{ color: 'var(--color-outline)' }}>
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-          </button>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)` }}>
-            <span className="material-symbols-outlined text-[14px]"
-              style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>
-              {isGeneral ? 'auto_awesome' : (subject?.icon || 'menu_book')}
-            </span>
-          </div>
-          <h2 className="text-sm font-bold flex-1 truncate" style={{ color: 'var(--on-surface)' }}>
-            {activeSubjectName}
-          </h2>
-          <button onClick={startNewChat}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-            style={{
-              backgroundColor: `color-mix(in srgb, ${accentColor} 12%, transparent)`,
-              color:           accentColor,
-              border:          `1px solid color-mix(in srgb, ${accentColor} 25%, transparent)`,
-            }}>
-            <span className="material-symbols-outlined text-[14px]">add</span>
-            {language === 'es' ? 'Nuevo chat' : 'New chat'}
-          </button>
-        </div>
-
-        {activeSessions.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
-              style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 12%, transparent)` }}>
-              <span className="material-symbols-outlined text-2xl"
-                style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>chat</span>
-            </div>
-            <p className="text-sm font-bold mb-1" style={{ color: 'var(--on-surface)' }}>
-              {language === 'es' ? 'Sin chats aún' : 'No chats yet'}
-            </p>
-            <p className="text-xs mb-4" style={{ color: 'var(--color-outline)' }}>
-              {language === 'es' ? 'Crea un chat nuevo para empezar.' : 'Create a new chat to get started.'}
-            </p>
-            <button onClick={startNewChat}
-              className="btn-primary text-xs px-4">
-              {language === 'es' ? 'Nuevo chat' : 'New chat'}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {activeSessions.map(session => (
-              <div key={session.id} className="group">
-                {deleteConfirm === session.id ? (
-                  <div className="flex items-center gap-2 p-3 rounded-2xl animate-slide-up"
-                    style={{
-                      backgroundColor: 'var(--priority-high-bg)',
-                      border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
-                    }}>
-                    <span className="text-xs flex-1" style={{ color: 'var(--on-surface)' }}>
-                      {language === 'es' ? '¿Eliminar este chat?' : 'Delete this chat?'}
-                    </span>
-                    <button onClick={() => deleteSession(session.id)}
-                      className="text-xs font-semibold px-2.5 py-1 rounded-lg"
-                      style={{ backgroundColor: 'var(--danger)', color: 'white' }}>
-                      {language === 'es' ? 'Sí' : 'Yes'}
-                    </button>
-                    <button onClick={() => setDeleteConfirm(null)}
-                      className="text-xs font-semibold px-2.5 py-1 rounded-lg"
-                      style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
-                      No
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => openSession(session)}
-                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl text-left transition-all"
-                    style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
-                  >
-                    <span className="material-symbols-outlined text-[16px] flex-shrink-0"
-                      style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>
-                      chat
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
-                        {session.title ?? (language === 'es' ? 'Chat sin título' : 'Untitled chat')}
-                      </p>
-                      <p className="mono text-[10px] mt-0.5" style={{ color: 'var(--color-outline)' }}>
-                        {new Date(session.last_message_at).toLocaleDateString(
-                          language === 'es' ? 'es-ES' : 'en-US',
-                          { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
-                        )}
-                      </p>
-                    </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); setDeleteConfirm(session.id) }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-red-400/10 flex-shrink-0"
-                      style={{ color: 'var(--danger)' }}
-                    >
-                      <span className="material-symbols-outlined text-[15px]">delete</span>
-                    </button>
-                  </button>
-                )}
+                <button
+                  onClick={() => startNewChat(subject.id, subject.name)}
+                  className="rounded p-0.5 hover:opacity-70 transition-opacity flex-shrink-0"
+                  style={{ color: 'var(--color-outline)' }}>
+                  <span className="material-symbols-outlined text-[14px]">add</span>
+                </button>
               </div>
-            ))}
+              {subSessions.length === 0 ? (
+                <button
+                  onClick={() => startNewChat(subject.id, subject.name)}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-colors"
+                  style={{ color: 'var(--color-outline)' }}>
+                  {language === 'es' ? '+ Nuevo chat' : '+ New chat'}
+                </button>
+              ) : (
+                subSessions.map(s => <SessionRow key={s.id} session={s} />)
+              )}
+            </div>
+          )
+        })}
+
+        {loadingData && (
+          <div className="space-y-1.5 px-1 pt-1">
+            {[1, 2, 3].map(i => <div key={i} className="skeleton h-6 rounded-lg" />)}
           </div>
         )}
       </div>
     )
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW: Active chat
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Chat area ──────────────────────────────────────────────────────────────
 
-  const isGeneral   = activeSubjectId === GENERAL_ID || activeSubjectId === null
-  const subject     = !isGeneral ? subjects.find(s => s.id === activeSubjectId) : null
-  const accentColor = subject?.color ?? 'var(--color-tertiary)'
-
-  return (
-    <div className="flex flex-col animate-fade-in" style={{ height: '440px' }}>
-      {/* Chat header */}
-      <div className="flex items-center gap-2 pb-3 mb-1 flex-shrink-0"
+  const ChatArea = () => (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center gap-2 pb-3 flex-shrink-0"
         style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <button onClick={() => setView('sessions')}
-          className="p-1 rounded-lg flex-shrink-0"
+
+        {/* Mobile: hamburger to open list */}
+        <button
+          onClick={() => setMobileShowList(true)}
+          className="md:hidden p-1 rounded-lg flex-shrink-0"
           style={{ color: 'var(--color-outline)' }}>
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          <span className="material-symbols-outlined text-[18px]">menu</span>
         </button>
+
         <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)` }}>
           <span className="material-symbols-outlined text-[12px]"
             style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>
-            {isGeneral ? 'auto_awesome' : (subject?.icon || 'menu_book')}
+            {isGeneral ? 'auto_awesome' : (activeSubject?.icon || 'menu_book')}
           </span>
         </div>
-        <p className="text-xs font-semibold flex-1 truncate" style={{ color: 'var(--on-surface)' }}>
+        <p className="text-sm font-semibold flex-1 truncate" style={{ color: 'var(--on-surface)' }}>
           {activeSubjectName}
         </p>
+        <button
+          onClick={() => startNewChat(activeSubjectId, activeSubjectName)}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold flex-shrink-0 transition-all"
+          style={{
+            backgroundColor: `color-mix(in srgb, ${accentColor} 10%, transparent)`,
+            color:            accentColor,
+            border:           `1px solid color-mix(in srgb, ${accentColor} 22%, transparent)`,
+          }}>
+          <span className="material-symbols-outlined text-[12px]">add</span>
+          {language === 'es' ? 'Nuevo' : 'New'}
+        </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-3 space-y-4">
+      <div className="flex-1 overflow-y-auto py-3 min-h-0 space-y-4">
         {messages.length === 0 && (
-          <p className="text-center text-xs pt-8" style={{ color: 'var(--color-outline)' }}>
-            {language === 'es' ? 'Escribe algo para empezar…' : 'Type something to start…'}
-          </p>
+          <div className="pt-1 pb-2">
+            <p className="text-[11px] font-semibold mb-3 px-0.5"
+              style={{ color: 'var(--color-outline)' }}>
+              {language === 'es' ? 'Acciones rápidas' : 'Quick actions'}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {quickActions.map((action, i) => (
+                <button
+                  key={i}
+                  onClick={() => sendMessage(action.action)}
+                  className="flex items-center gap-2 p-3 rounded-xl text-left transition-all active:scale-[0.97]"
+                  style={{
+                    backgroundColor: 'var(--s-base)',
+                    border:          '1px solid var(--border-subtle)',
+                  }}>
+                  <span className="material-symbols-outlined text-[16px] flex-shrink-0"
+                    style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>
+                    {action.icon}
+                  </span>
+                  <span className="text-xs font-medium leading-tight"
+                    style={{ color: 'var(--on-surface)' }}>
+                    {action.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
+
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
@@ -485,7 +499,7 @@ export function AIChatHub({
             <div className="max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
               style={{
                 backgroundColor: msg.role === 'user'
-                  ? (subject?.color ?? 'var(--color-primary)')
+                  ? (activeSubject?.color ?? 'var(--color-primary)')
                   : 'var(--s-base)',
                 color:           msg.role === 'user' ? 'white' : 'var(--on-surface)',
                 borderBottomRightRadius: msg.role === 'user'      ? '4px' : undefined,
@@ -538,5 +552,78 @@ export function AIChatHub({
         </form>
       </div>
     </div>
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────
+
+  return (
+    <>
+      {/* ── Desktop: two-column ─────────────────────────────────────────── */}
+      <div className="hidden md:flex rounded-2xl overflow-hidden"
+        style={{
+          border:          '1px solid var(--border-subtle)',
+          height:          '600px',
+          backgroundColor: 'var(--s-low)',
+        }}>
+        {/* Sidebar */}
+        <div className="w-[210px] flex-shrink-0 flex flex-col overflow-hidden"
+          style={{ borderRight: '1px solid var(--border-subtle)' }}>
+          <div className="px-3 pt-3 pb-2 flex-shrink-0"
+            style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <span className="mono text-[9px] tracking-[0.18em] uppercase font-bold"
+              style={{ color: 'var(--color-outline)' }}>
+              {language === 'es' ? 'Conversaciones' : 'Conversations'}
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2.5">
+            <SidebarContent />
+          </div>
+        </div>
+
+        {/* Chat */}
+        <div className="flex-1 p-4 min-w-0 overflow-hidden">
+          <ChatArea />
+        </div>
+      </div>
+
+      {/* ── Mobile: chat + slide-over list ──────────────────────────────── */}
+      <div className="md:hidden">
+        {/* List slide-over */}
+        {mobileShowList && (
+          <div className="animate-fade-in">
+            <div className="flex items-center gap-2 mb-4">
+              <button onClick={() => setMobileShowList(false)}
+                className="p-1.5 rounded-lg" style={{ color: 'var(--color-outline)' }}>
+                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+              </button>
+              <h2 className="text-sm font-bold" style={{ color: 'var(--on-surface)' }}>
+                {language === 'es' ? 'Conversaciones' : 'Conversations'}
+              </h2>
+            </div>
+            <div className="rounded-2xl p-4"
+              style={{ border: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-low)' }}>
+              <SidebarContent />
+            </div>
+          </div>
+        )}
+
+        {/* Chat */}
+        {!mobileShowList && (
+          <div className="rounded-2xl overflow-hidden animate-fade-in"
+            style={{
+              border:          '1px solid var(--border-subtle)',
+              backgroundColor: 'var(--s-low)',
+              height:          'calc(100svh - 180px)',
+              minHeight:       '480px',
+            }}>
+            <div className="p-4 h-full">
+              <ChatArea />
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
