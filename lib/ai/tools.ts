@@ -87,7 +87,7 @@ export const TOOL_DECLARATIONS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'create_task',
-      description: 'Create a new pending task for the student.',
+      description: 'Create a general to-do task (NOT for academic assignments, entregas, exams, workshops or graded activities — use create_exam for those). Use only for reminders or personal to-dos without a grade/percentage.',
       parameters: {
         type: 'object',
         properties: {
@@ -126,14 +126,14 @@ export const TOOL_DECLARATIONS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'create_exam',
-      description: 'Create a new exam or academic activity.',
+      description: 'Create a graded academic activity that appears in the Planner: exams, assignments, entregas, talleres, workshops, prácticas, or any activity with a percentage/grade. Use activity_type="task" for assignments/entregas/deliveries, "exam" for exams/parciales, "workshop" for talleres/prácticas, "activity" for general graded activities.',
       parameters: {
         type: 'object',
         properties: {
           title:         { type: 'string', description: 'Title of the activity' },
           exam_date:     { type: 'string', description: 'Date YYYY-MM-DD' },
-          activity_type: { type: 'string', description: 'exam | workshop | activity | task | study_session' },
-          subject_id:    { type: 'string', description: 'UUID of related subject (optional)' },
+          activity_type: { type: 'string', description: 'exam | workshop | activity | task | study_session. Use "task" for assignments/entregas/deliveries.' },
+          subject_id:    { type: 'string', description: 'UUID of related subject. ALWAYS include if the user is chatting in a subject context.' },
           percentage:    { type: 'number', description: 'Weight % of final grade (optional)' },
           exam_time:     { type: 'string', description: 'Time HH:MM (optional)' },
           location:      { type: 'string', description: 'Room or location (optional)' },
