@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import type { Subject, Exam } from '@/types'
@@ -75,19 +76,27 @@ export function SubjectDetail({
   initialTab?: DetailTab
 }) {
   const { language } = useTranslation()
-  const [activeTab, setActiveTab] = useState<DetailTab>(initialTab)
-  const [exams,   setExams]   = useState<Exam[]>([])
-  const [loading, setLoading] = useState(true)
+  const [activeTab,  setActiveTab]  = useState<DetailTab>(initialTab)
+  const [exams,      setExams]      = useState<Exam[]>([])
+  const [noteCount,  setNoteCount]  = useState<number>(0)
+  const [loading,    setLoading]    = useState(true)
 
   const fetchExams = useCallback(async () => {
     const supabase = createClient()
-    const { data } = await supabase
-      .from('exams')
-      .select('*')
-      .eq('subject_id', subject.id)
-      .neq('activity_type', 'study_session')
-      .order('exam_date', { ascending: true })
+    const [{ data }, { count }] = await Promise.all([
+      supabase
+        .from('exams')
+        .select('*')
+        .eq('subject_id', subject.id)
+        .neq('activity_type', 'study_session')
+        .order('exam_date', { ascending: true }),
+      supabase
+        .from('notes')
+        .select('id', { count: 'exact', head: true })
+        .eq('subject_id', subject.id),
+    ])
     setExams(data || [])
+    setNoteCount(count ?? 0)
     setLoading(false)
   }, [subject.id])
 
@@ -151,6 +160,21 @@ export function SubjectDetail({
                 <span className="material-symbols-outlined text-[12px]">person</span>
                 {subject.professor}
               </p>
+            )}
+            {noteCount > 0 && (
+              <Link
+                href={`/notes?subject=${subject.id}`}
+                onClick={onClose}
+                className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: `${subject.color}18`,
+                  color:           subject.color,
+                  border:          `1px solid ${subject.color}30`,
+                }}
+              >
+                <span className="material-symbols-outlined text-[11px]">edit_note</span>
+                {noteCount} {language === 'es' ? `nota${noteCount !== 1 ? 's' : ''}` : `note${noteCount !== 1 ? 's' : ''}`}
+              </Link>
             )}
           </div>
           <button onClick={onClose}

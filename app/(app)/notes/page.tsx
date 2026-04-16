@@ -342,6 +342,16 @@ export default function NotesPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  // Auto-filter by subject when navigated with ?subject=<id>
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const subjectParam = params.get('subject')
+    if (subjectParam) {
+      setActiveSubject(subjectParam)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   const createNote = async () => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()

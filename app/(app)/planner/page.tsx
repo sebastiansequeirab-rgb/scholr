@@ -1108,6 +1108,43 @@ export default function PlannerPage() {
         </div>
       )}
 
+      {/* ── Active filter chips strip ── */}
+      {(statusFilter !== 'all' || submissionFilter !== 'all') && (
+        <div className="flex gap-1.5 flex-wrap mb-3 -mt-1 animate-slide-up">
+          {statusFilter !== 'all' && (
+            <button
+              onClick={() => setStatusFilter('all')}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+                color:           'var(--color-primary)',
+                borderColor:     'color-mix(in srgb, var(--color-primary) 28%, transparent)',
+              }}
+            >
+              {STATUS_FILTERS.find(f => f.key === statusFilter)?.label}
+              <span className="material-symbols-outlined text-[11px]">close</span>
+            </button>
+          )}
+          {submissionFilter !== 'all' && (
+            <button
+              onClick={() => setSubmissionFilter('all')}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+                color:           'var(--color-primary)',
+                borderColor:     'color-mix(in srgb, var(--color-primary) 28%, transparent)',
+              }}
+            >
+              {language === 'es'
+                ? ({ all: 'Todas', pending: 'Pendiente', submitted: 'Entregada', graded: 'Calificada', ungraded: 'Sin calificar' } as Record<string, string>)[submissionFilter]
+                : ({ all: 'All', pending: 'Pending', submitted: 'Submitted', graded: 'Graded', ungraded: 'Ungraded' } as Record<string, string>)[submissionFilter]
+              }
+              <span className="material-symbols-outlined text-[11px]">close</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Collapsible filter panel ── */}
       {filterOpen && (
         <div className="mb-4 p-3 rounded-2xl animate-slide-up space-y-3"
