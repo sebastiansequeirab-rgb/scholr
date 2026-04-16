@@ -18,6 +18,9 @@ export interface AppContext {
   current_page?: string        // e.g. "subjects", "calendar", "tasks"
   active_subject_id?: string   // if user is inside a subject detail
   language: 'es' | 'en'
+  subject_count?: number       // total subjects registered
+  pending_task_count?: number  // tasks not yet done
+  next_exam_date?: string | null // YYYY-MM-DD of nearest upcoming exam
 }
 
 /** Returned to the client */

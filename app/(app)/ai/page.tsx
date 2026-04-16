@@ -18,12 +18,35 @@ export default function AIPage() {
   const [messages,  setMessages]  = useState<ChatMessage[]>([{
     role: 'assistant',
     content: language === 'es'
-      ? '¡Hola! Soy tu asistente académico. Puedo consultar tus materias, horarios, actividades y tareas. ¿En qué puedo ayudarte?'
-      : "Hi! I'm your academic assistant. I can check your subjects, schedule, activities and tasks. How can I help?",
+      ? '¡Hola! Soy tu asistente académico. Puedo consultar tus materias, horarios, actividades y tareas. También puedo ayudarte a estudiar: resúmenes, esquemas, fichas, preguntas de práctica. ¿En qué puedo ayudarte?'
+      : "Hi! I'm your academic assistant. I can check your subjects, schedule, activities and tasks — and help you study: summaries, outlines, flashcards, practice questions. How can I help?",
   }])
   const [input,   setInput]   = useState('')
   const [loading, setLoading] = useState(false)
   const [tab,     setTab]     = useState<'chat' | 'import' | 'evals'>('chat')
+
+  // Lightweight context: subject count, pending tasks, next exam
+  const [ctxExtra, setCtxExtra] = useState<{
+    subject_count: number
+    pending_task_count: number
+    next_exam_date: string | null
+  } | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    const today = new Date().toISOString().split('T')[0]
+    Promise.all([
+      supabase.from('subjects').select('id', { count: 'exact', head: true }),
+      supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('is_done', false),
+      supabase.from('exams').select('exam_date').gte('exam_date', today).order('exam_date').limit(1).maybeSingle(),
+    ]).then(([sRes, tRes, eRes]) => {
+      setCtxExtra({
+        subject_count:      sRes.count  ?? 0,
+        pending_task_count: tRes.count  ?? 0,
+        next_exam_date:     eRes.data?.exam_date ?? null,
+      })
+    })
+  }, [])
 
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -62,8 +85,11 @@ export default function AIPage() {
       }
 
       const app_context: AppContext = {
-        current_page: pathname?.split('/').filter(Boolean).pop() ?? 'ai',
-        language: language as 'es' | 'en',
+        current_page:       pathname?.split('/').filter(Boolean).pop() ?? 'ai',
+        language:           language as 'es' | 'en',
+        subject_count:      ctxExtra?.subject_count,
+        pending_task_count: ctxExtra?.pending_task_count,
+        next_exam_date:     ctxExtra?.next_exam_date,
       }
 
       const history = [...messages, userMsg].slice(-MAX_HISTORY)
@@ -108,11 +134,29 @@ export default function AIPage() {
     } finally {
       setLoading(false)
     }
-  }, [loading, messages, pathname, language])
+  }, [loading, messages, pathname, language, ctxExtra])
 
-  const SUGGESTIONS = language === 'es'
-    ? ['¿Qué tengo esta semana?', 'Resúmeme mis próximos exámenes', '¿Cuándo tengo más tiempo libre?', '¿Qué tarea es más urgente?']
-    : ['What do I have this week?', 'Summarize my upcoming exams', 'When do I have the most free time?', 'What task is most urgent?']
+  const SUGGESTIONS: { label: string; action: string; fill?: boolean }[] = language === 'es'
+    ? [
+        { label: '¿Qué tengo esta semana?',         action: '¿Qué tengo esta semana?' },
+        { label: 'Mis próximos exámenes',            action: 'Resúmeme mis próximos exámenes' },
+        { label: '¿Qué tarea es más urgente?',       action: '¿Qué tarea es más urgente?' },
+        { label: 'Explicar [tema]',                  action: 'Explícame el tema: ', fill: true },
+        { label: 'Preguntas de práctica: [tema]',    action: 'Genera preguntas de práctica sobre: ', fill: true },
+        { label: 'Resumen de [tema]',                action: 'Hazme un resumen de: ', fill: true },
+        { label: 'Esquema de [tema]',                action: 'Crea un esquema sobre: ', fill: true },
+      ]
+    : [
+        { label: 'What do I have this week?',        action: 'What do I have this week?' },
+        { label: 'Upcoming exams',                   action: 'Summarize my upcoming exams' },
+        { label: 'Most urgent task?',                action: 'What task is most urgent?' },
+        { label: 'Explain [topic]',                  action: 'Explain this topic: ', fill: true },
+        { label: 'Practice questions: [topic]',      action: 'Generate practice questions about: ', fill: true },
+        { label: 'Summary of [topic]',               action: 'Give me a summary of: ', fill: true },
+        { label: 'Outline of [topic]',               action: 'Create an outline for: ', fill: true },
+      ]
+
+  const inputRef = useRef<HTMLInputElement>(null)
 
   /* ─── Render ───────────────────────────────────────────────────────────── */
   return (
@@ -200,10 +244,19 @@ export default function AIPage() {
           {messages.length <= 1 && (
             <div className="px-5 pb-3 flex flex-wrap gap-2">
               {SUGGESTIONS.map((s, i) => (
-                <button key={i} onClick={() => sendMessage(s)}
-                  className="text-xs px-3 py-1.5 rounded-full border transition-all"
+                <button key={i}
+                  onClick={() => {
+                    if (s.fill) {
+                      setInput(s.action)
+                      setTimeout(() => inputRef.current?.focus(), 50)
+                    } else {
+                      sendMessage(s.action)
+                    }
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-full border transition-all flex items-center gap-1"
                   style={{ color: 'var(--color-outline)', borderColor: 'var(--border-default)', backgroundColor: 'var(--s-base)' }}>
-                  {s}
+                  {s.fill && <span className="material-symbols-outlined text-[11px]">edit</span>}
+                  {s.label}
                 </button>
               ))}
             </div>
@@ -213,6 +266,7 @@ export default function AIPage() {
           <div className="p-4 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <form onSubmit={e => { e.preventDefault(); sendMessage(input) }} className="flex gap-2">
               <input
+                ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 placeholder={language === 'es' ? 'Pregúntame algo sobre tus estudios...' : 'Ask me anything about your studies...'}

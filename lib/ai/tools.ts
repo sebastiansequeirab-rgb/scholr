@@ -103,6 +103,28 @@ export const TOOL_DECLARATIONS: ToolDefinition[] = [
   {
     type: 'function',
     function: {
+      name: 'get_subject_evaluations',
+      description: 'Get all evaluations for a specific subject with their submission status, dates and weights.',
+      parameters: {
+        type: 'object',
+        properties: {
+          subject_id: { type: 'string', description: 'UUID of the subject' },
+        },
+        required: ['subject_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_all_subjects_summary',
+      description: 'Get a summary of all subjects: credits, grade progress, and next upcoming evaluation.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'create_exam',
       description: 'Create a new exam or academic activity.',
       parameters: {
@@ -259,6 +281,51 @@ export async function executeTool(
           .single()
         if (error) return { ok: false, error: error.message }
         return { ok: true, data }
+      }
+
+      case 'get_subject_evaluations': {
+        const subjectId = String(args.subject_id ?? '')
+        if (!subjectId) return { ok: false, error: 'subject_id required' }
+        const { data, error } = await db
+          .from('exams')
+          .select('id, title, activity_type, exam_date, exam_time, percentage, grade, submission_status, submitted_at, graded_at, location, notes')
+          .eq('user_id', userId)
+          .eq('subject_id', subjectId)
+          .neq('activity_type', 'study_session')
+          .order('exam_date')
+        if (error) return { ok: false, error: error.message }
+        const exams = data ?? []
+        const earned   = exams.filter(e => e.grade != null && e.percentage != null).reduce((s, e) => s + (e.grade * e.percentage / 100), 0)
+        const possible = exams.filter(e => e.grade == null && e.percentage != null).reduce((s, e) => s + (20 * e.percentage / 100), 0)
+        return { ok: true, data: { evaluations: exams, earned: +earned.toFixed(2), max_possible: +(earned + possible).toFixed(2) } }
+      }
+
+      case 'get_all_subjects_summary': {
+        const today = new Date().toISOString().split('T')[0]
+        const [subjectsRes, examsRes] = await Promise.all([
+          db.from('subjects').select('id, name, professor, color, credits').eq('user_id', userId).order('name'),
+          db.from('exams').select('subject_id, title, exam_date, percentage, grade, activity_type').eq('user_id', userId).neq('activity_type', 'study_session').order('exam_date'),
+        ])
+        if (subjectsRes.error) return { ok: false, error: subjectsRes.error.message }
+        const subjects = subjectsRes.data ?? []
+        const allExams = examsRes.data ?? []
+        const summary = subjects.map(s => {
+          const evals = allExams.filter(e => e.subject_id === s.id)
+          const graded = evals.filter(e => e.grade != null && e.percentage != null)
+          const earned = graded.reduce((sum, e) => sum + (e.grade * e.percentage / 100), 0)
+          const nextEval = evals.find(e => e.exam_date >= today)
+          return {
+            id: s.id,
+            name: s.name,
+            professor: s.professor,
+            credits: s.credits,
+            earned: +earned.toFixed(2),
+            graded_count: graded.length,
+            total_evals: evals.length,
+            next_eval: nextEval ? { title: nextEval.title, date: nextEval.exam_date, type: nextEval.activity_type } : null,
+          }
+        })
+        return { ok: true, data: summary }
       }
 
       default:

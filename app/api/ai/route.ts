@@ -42,21 +42,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const contextHints = [
     app_context?.current_page      ? `Página actual: ${app_context.current_page}` : null,
     app_context?.active_subject_id ? `Materia activa (ID): ${app_context.active_subject_id}` : null,
+    app_context?.subject_count     != null ? `Materias registradas: ${app_context.subject_count}` : null,
+    app_context?.pending_task_count != null ? `Tareas pendientes: ${app_context.pending_task_count}` : null,
+    app_context?.next_exam_date    != null ? `Próxima evaluación: ${app_context.next_exam_date}` : null,
   ].filter(Boolean).join('\n')
 
   const systemPrompt = `Eres el asistente académico de Scholr Sanctuary.
 Hoy es ${today}. Idioma: ${language === 'es' ? 'español' : 'inglés'}.
 ${contextHints}
 
-REGLAS:
-- Responde siempre en ${language === 'es' ? 'español' : 'English'}.
-- Sé conciso y útil. Sin relleno.
-- Para responder sobre datos del usuario, SIEMPRE usa las herramientas disponibles. No inventes datos.
-- Para consultas sobre horario, clases de hoy, clases de esta semana o qué tienes hoy, usa get_today_schedule.
-- Para consultas sobre próximos exámenes, evaluaciones o fechas de entrega, usa get_upcoming_exams.
+REGLAS DE DATOS:
+- Para responder sobre datos del usuario (horario, evaluaciones, notas, progreso, tareas), SIEMPRE usa las herramientas disponibles. Nunca inventes datos.
+- Para consultas sobre horario, clases de hoy o esta semana, usa get_today_schedule.
+- Para consultas sobre próximos exámenes o evaluaciones, usa get_upcoming_exams.
+- Para progreso de una materia, usa get_subject_evaluations o get_subject_progress.
+- Para resumen global de materias, usa get_all_subjects_summary.
 - Si falta un parámetro para una acción, pide SOLO ese dato.
 - Confirma antes de crear datos: di qué vas a crear y espera confirmación del usuario.
-- Nunca hagas dos acciones en un solo mensaje.`
+- Nunca hagas dos acciones en un solo mensaje.
+
+CAPACIDADES ACADÉMICAS:
+- Puedes generar resúmenes, esquemas, fichas de estudio, mapas conceptuales, preguntas de práctica y explicaciones de cualquier tema académico. Responde directamente sin usar tools para estas solicitudes.
+- Para contenido de estudio: sé claro, estructurado y pedagógico. Usa listas, tablas y jerarquías cuando ayuden.
+- Puedes comparar temas, explicar conceptos, sugerir estrategias de estudio y ayudar a preparar evaluaciones.
+- Responde siempre en ${language === 'es' ? 'español' : 'English'}.
+- Sé conciso y útil. Sin relleno ni frases de relleno.`
 
   // ── 4. Build conversation messages ───────────────────────────────────────
   const trimmedHistory = history.slice(-MAX_HISTORY)
