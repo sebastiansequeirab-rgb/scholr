@@ -6,11 +6,12 @@ import { useTranslation } from '@/hooks/useTranslation'
 import { daysUntil, isToday, isTomorrow, uniqueById, uniqueByName, formatTime } from '@/lib/utils'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { TaskNotes } from '@/components/tasks/TaskNotes'
-import type { Task, Exam, Subject, Schedule, Subtask, ActivityType } from '@/types'
+import type { Task, Exam, Subject, Schedule, Subtask, ActivityType, SubmissionStatus } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
 
-type TypeFilter   = 'all' | 'tasks' | 'exams' | 'assignments'
-type StatusFilter = 'all' | 'not_started' | 'in_progress' | 'completed'
+type TypeFilter       = 'all' | 'tasks' | 'exams' | 'assignments'
+type StatusFilter     = 'all' | 'not_started' | 'in_progress' | 'completed'
+type SubmissionFilter = 'all' | 'pending' | 'submitted' | 'graded' | 'ungraded'
 
 // ─── Bottom sheet for creating items ─────────────────────────────────────────
 const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -505,19 +506,30 @@ function TaskCard({
 }
 
 // ─── Academic card (exams/assignments) ────────────────────────────────────────
+const STATUS_CFG = {
+  pending:   { icon: 'radio_button_unchecked', label_es: 'Pendiente',  label_en: 'Pending',   color: 'var(--color-outline)', fill: 0 },
+  submitted: { icon: 'upload_file',            label_es: 'Entregada',  label_en: 'Submitted', color: 'var(--warning)',       fill: 0 },
+  graded:    { icon: 'check_circle',           label_es: 'Calificada', label_en: 'Graded',    color: 'var(--success)',       fill: 1 },
+}
+
 function AcademicCard({
   exam,
   subjects,
   onEdit,
   onDelete,
+  onStatusChange,
 }: {
   exam: Exam
   subjects: Subject[]
   onEdit: (exam: Exam) => void
   onDelete: (id: string) => void
+  onStatusChange: (examId: string, newStatus: SubmissionStatus, grade?: number) => Promise<void>
 }) {
   const { language } = useTranslation()
-  const { use12h } = useTimeFormat()
+  const { use12h }   = useTimeFormat()
+  const [gradingOpen, setGradingOpen] = useState(false)
+  const [gradeInput,  setGradeInput]  = useState('')
+  const [confirming,  setConfirming]  = useState(false)
 
   const subject   = subjects.find(s => s.id === exam.subject_id)
   const days      = daysUntil(exam.exam_date)
@@ -532,6 +544,27 @@ function AcademicCard({
     : days === 1 ? (language === 'es' ? 'Mañana' : 'Tomorrow')
     : `${days}${language === 'es' ? 'd' : 'd'}`
 
+  const status = (exam.submission_status || 'pending') as keyof typeof STATUS_CFG
+  const sCfg   = STATUS_CFG[status]
+
+  const handleStatusClick = () => {
+    if (status === 'pending')   { onStatusChange(exam.id, 'submitted'); return }
+    if (status === 'submitted') { setGradingOpen(true); return }
+    if (status === 'graded')    { setConfirming(true); return }
+  }
+
+  const handleGradeSave = async () => {
+    const g = gradeInput !== '' ? parseFloat(gradeInput) : undefined
+    await onStatusChange(exam.id, 'graded', g)
+    setGradingOpen(false)
+    setGradeInput('')
+  }
+
+  const handleConfirmReset = async () => {
+    await onStatusChange(exam.id, 'pending')
+    setConfirming(false)
+  }
+
   return (
     <div
       className="rounded-2xl mb-2 overflow-hidden group"
@@ -541,7 +574,7 @@ function AcademicCard({
         borderLeft: `4px solid ${typeColor}`,
       }}
     >
-      <div className="p-4">
+      <div className="p-4 pb-3">
         {/* Row 1: type badge + countdown badge + date */}
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span
@@ -605,25 +638,91 @@ function AcademicCard({
         )}
       </div>
 
-      {/* Hover actions */}
-      <div className="flex gap-2 px-4 pb-3 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Status row + hover actions */}
+      <div className="flex items-center gap-2 px-4 pb-3 pt-2.5"
+        style={{ borderTop: '1px solid var(--border-subtle)' }}>
         <button
-          onClick={() => onEdit(exam)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}
+          onClick={handleStatusClick}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all"
+          style={{
+            color:           sCfg.color,
+            borderColor:     `color-mix(in srgb, ${sCfg.color} 30%, transparent)`,
+            backgroundColor: `color-mix(in srgb, ${sCfg.color} 8%, transparent)`,
+          }}
         >
-          <span className="material-symbols-outlined text-[13px]">edit</span>
-          {language === 'es' ? 'Editar' : 'Edit'}
+          <span className="material-symbols-outlined text-[12px]"
+            style={{ fontVariationSettings: `'FILL' ${sCfg.fill}` }}>
+            {sCfg.icon}
+          </span>
+          {language === 'es' ? sCfg.label_es : sCfg.label_en}
         </button>
-        <button
-          onClick={() => onDelete(exam.id)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}
-        >
-          <span className="material-symbols-outlined text-[13px]">delete</span>
-          {language === 'es' ? 'Eliminar' : 'Delete'}
-        </button>
+
+        <div className="ml-auto flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onEdit(exam)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}
+          >
+            <span className="material-symbols-outlined text-[13px]">edit</span>
+            {language === 'es' ? 'Editar' : 'Edit'}
+          </button>
+          <button
+            onClick={() => onDelete(exam.id)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+            style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}
+          >
+            <span className="material-symbols-outlined text-[13px]">delete</span>
+            {language === 'es' ? 'Eliminar' : 'Delete'}
+          </button>
+        </div>
       </div>
+
+      {/* Inline grade input (submitted → graded) */}
+      {gradingOpen && (
+        <div className="px-4 pb-3 flex items-center gap-2 animate-slide-up"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="relative">
+            <input
+              type="number" min="0" max="20" step="0.5"
+              value={gradeInput}
+              onChange={e => setGradeInput(e.target.value)}
+              placeholder="0–20"
+              className="input text-sm h-8 w-24 pr-10"
+              autoFocus
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold"
+              style={{ color: 'var(--color-outline)' }}>/20</span>
+          </div>
+          <button onClick={handleGradeSave}
+            className="btn-primary text-xs px-3 h-8">
+            {language === 'es' ? 'Guardar' : 'Save'}
+          </button>
+          <button onClick={() => { setGradingOpen(false); setGradeInput('') }}
+            className="text-xs font-medium" style={{ color: 'var(--color-outline)' }}>
+            {language === 'es' ? 'Cancelar' : 'Cancel'}
+          </button>
+        </div>
+      )}
+
+      {/* Inline confirm reset (graded → pending) */}
+      {confirming && (
+        <div className="px-4 pb-3 flex items-center gap-2 animate-slide-up"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <span className="text-xs flex-1" style={{ color: 'var(--color-outline)' }}>
+            {language === 'es' ? '¿Volver a pendiente?' : 'Reset to pending?'}
+          </span>
+          <button onClick={handleConfirmReset}
+            className="text-xs font-semibold px-2.5 py-1 rounded-lg"
+            style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
+            {language === 'es' ? 'Sí' : 'Yes'}
+          </button>
+          <button onClick={() => setConfirming(false)}
+            className="text-xs font-semibold px-2.5 py-1 rounded-lg"
+            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
+            No
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -767,10 +866,12 @@ export default function PlannerPage() {
   const [editingExam,   setEditingExam]   = useState<Exam | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  const [typeFilter,    setTypeFilter]    = useState<TypeFilter>('all')
-  const [subjectFilter, setSubjectFilter] = useState<string>('')
-  const [statusFilter,  setStatusFilter]  = useState<StatusFilter>('all')
-  const [filterOpen,    setFilterOpen]    = useState(false)
+  const [typeFilter,       setTypeFilter]       = useState<TypeFilter>('all')
+  const [subjectFilter,    setSubjectFilter]    = useState<string>('')
+  const [statusFilter,     setStatusFilter]     = useState<StatusFilter>('all')
+  const [submissionFilter, setSubmissionFilter] = useState<SubmissionFilter>('all')
+  const [filterOpen,       setFilterOpen]       = useState(false)
+  const [reminderDismissed, setReminderDismissed] = useState(false)
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -820,7 +921,42 @@ export default function PlannerPage() {
     fetchData()
   }
 
+  const updateSubmissionStatus = useCallback(async (examId: string, newStatus: SubmissionStatus, grade?: number) => {
+    const supabase = createClient()
+    const update: Record<string, unknown> = { submission_status: newStatus }
+    if (newStatus === 'submitted') {
+      update.submitted_at = new Date().toISOString()
+    } else if (newStatus === 'graded') {
+      update.graded_at = new Date().toISOString()
+      if (grade !== undefined) update.grade = grade
+    } else if (newStatus === 'pending') {
+      update.submitted_at     = null
+      update.graded_at        = null
+      update.grade            = null
+      update.reminder_triggered = false
+    }
+    await supabase.from('exams').update(update).eq('id', examId)
+    fetchData()
+  }, [fetchData])
+
   const todayStr = new Date().toISOString().split('T')[0]
+
+  // Reminder: exams submitted > 3 days ago, not yet triggered
+  const reminderExams = exams.filter(e => {
+    if (e.submission_status !== 'submitted') return false
+    if (e.reminder_triggered) return false
+    if (!e.submitted_at) return false
+    const daysSince = (Date.now() - new Date(e.submitted_at).getTime()) / (1000 * 60 * 60 * 24)
+    return daysSince > 3
+  })
+
+  const dismissReminder = async () => {
+    setReminderDismissed(true)
+    const ids = reminderExams.map(e => e.id)
+    if (ids.length > 0) {
+      await createClient().from('exams').update({ reminder_triggered: true }).in('id', ids)
+    }
+  }
 
   // ── Filtering ──────────────────────────────────────────────────────────────
   let filteredTasks = [...tasks]
@@ -850,6 +986,17 @@ export default function PlannerPage() {
   } else if (statusFilter === 'completed') {
     filteredTasks = filteredTasks.filter(task => task.is_done)
     filteredExams = filteredExams.filter(e => e.exam_date < todayStr)
+  }
+
+  if (submissionFilter !== 'all') {
+    filteredExams = filteredExams.filter(e => {
+      const s = e.submission_status || 'pending'
+      if (submissionFilter === 'pending')   return s === 'pending'
+      if (submissionFilter === 'submitted') return s === 'submitted'
+      if (submissionFilter === 'graded')    return s === 'graded'
+      if (submissionFilter === 'ungraded')  return s === 'pending' || s === 'submitted'
+      return true
+    })
   }
 
   const pendingTasks   = filteredTasks.filter(task => !task.is_done)
@@ -912,17 +1059,17 @@ export default function PlannerPage() {
           onClick={() => setFilterOpen(o => !o)}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
           style={{
-            backgroundColor: (subjectFilter || statusFilter !== 'all')
+            backgroundColor: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all')
               ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
               : 'transparent',
-            color: (subjectFilter || statusFilter !== 'all') ? 'var(--color-primary)' : 'var(--color-outline)',
-            borderColor: (subjectFilter || statusFilter !== 'all')
+            color: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all') ? 'var(--color-primary)' : 'var(--color-outline)',
+            borderColor: (subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all')
               ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)'
               : 'var(--border-subtle)',
           }}
         >
           <span className="material-symbols-outlined text-[13px]">tune</span>
-          {(subjectFilter || statusFilter !== 'all') && (
+          {(subjectFilter || statusFilter !== 'all' || submissionFilter !== 'all') && (
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: 'var(--color-primary)' }} />
           )}
@@ -961,14 +1108,14 @@ export default function PlannerPage() {
         </div>
       )}
 
-      {/* ── Collapsible filter panel (status only) ── */}
+      {/* ── Collapsible filter panel ── */}
       {filterOpen && (
         <div className="mb-4 p-3 rounded-2xl animate-slide-up space-y-3"
           style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-          {/* Status */}
+          {/* Task status */}
           <div>
             <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
-              Estado
+              {language === 'es' ? 'Estado de tarea' : 'Task status'}
             </p>
             <div className="flex gap-1.5 flex-wrap">
               {STATUS_FILTERS.map(({ key, label }) => (
@@ -987,16 +1134,70 @@ export default function PlannerPage() {
               ))}
             </div>
           </div>
+
+          {/* Submission status (exams only) */}
+          <div>
+            <p className="mono text-[9px] uppercase tracking-wider mb-2" style={{ color: 'var(--color-outline)' }}>
+              {language === 'es' ? 'Estado de entrega' : 'Submission status'}
+            </p>
+            <div className="flex gap-1.5 flex-wrap">
+              {([
+                { key: 'all',       label_es: 'Todas',         label_en: 'All'          },
+                { key: 'pending',   label_es: 'Pendiente',     label_en: 'Pending'      },
+                { key: 'submitted', label_es: 'Entregada',     label_en: 'Submitted'    },
+                { key: 'graded',    label_es: 'Calificada',    label_en: 'Graded'       },
+                { key: 'ungraded',  label_es: 'Sin calificar', label_en: 'Ungraded'     },
+              ] as const).map(({ key, label_es, label_en }) => (
+                <button
+                  key={key}
+                  onClick={() => setSubmissionFilter(key)}
+                  className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
+                  style={{
+                    backgroundColor: submissionFilter === key ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                    color:           submissionFilter === key ? 'var(--color-primary)' : 'var(--color-outline)',
+                    borderColor:     submissionFilter === key ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-default)',
+                  }}
+                >
+                  {language === 'es' ? label_es : label_en}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Clear filters */}
-          {statusFilter !== 'all' && (
+          {(statusFilter !== 'all' || submissionFilter !== 'all') && (
             <button
-              onClick={() => setStatusFilter('all')}
+              onClick={() => { setStatusFilter('all'); setSubmissionFilter('all') }}
               className="text-xs font-semibold"
               style={{ color: 'var(--danger)' }}
             >
-              Limpiar filtros
+              {language === 'es' ? 'Limpiar filtros' : 'Clear filters'}
             </button>
           )}
+        </div>
+      )}
+
+      {/* Reminder banner */}
+      {reminderExams.length > 0 && !reminderDismissed && (
+        <div className="mb-4 p-3 rounded-2xl flex items-center gap-3 animate-slide-up"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--warning) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--warning) 25%, transparent)',
+          }}>
+          <span className="material-symbols-outlined text-[18px] flex-shrink-0"
+            style={{ color: 'var(--warning)', fontVariationSettings: "'FILL' 1" }}>
+            notification_important
+          </span>
+          <p className="flex-1 text-xs font-medium" style={{ color: 'var(--on-surface)' }}>
+            {language === 'es'
+              ? `Tienes ${reminderExams.length} evaluación${reminderExams.length > 1 ? 'es' : ''} entregada${reminderExams.length > 1 ? 's' : ''} sin calificar`
+              : `You have ${reminderExams.length} submitted evaluation${reminderExams.length > 1 ? 's' : ''} without a grade`}
+          </p>
+          <button onClick={dismissReminder}
+            className="p-1 rounded-lg flex-shrink-0 transition-all hover:bg-black/5"
+            style={{ color: 'var(--color-outline)' }}>
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>
         </div>
       )}
 
@@ -1038,7 +1239,7 @@ export default function PlannerPage() {
             <TaskCard key={`t-${task.id}`} task={task} subjects={subjects} onDelete={deleteTask} onRefresh={fetchData} />
           ))}
           {upcomingExams.map(exam => (
-            <AcademicCard key={`e-${exam.id}`} exam={exam} subjects={subjects} onEdit={setEditingExam} onDelete={id => setDeleteConfirm(id)} />
+            <AcademicCard key={`e-${exam.id}`} exam={exam} subjects={subjects} onEdit={setEditingExam} onDelete={id => setDeleteConfirm(id)} onStatusChange={updateSubmissionStatus} />
           ))}
 
           {/* Completed / Past */}
@@ -1056,7 +1257,7 @@ export default function PlannerPage() {
                   <TaskCard key={`td-${task.id}`} task={task} subjects={subjects} onDelete={deleteTask} onRefresh={fetchData} />
                 ))}
                 {pastExams.map(exam => (
-                  <AcademicCard key={`ep-${exam.id}`} exam={exam} subjects={subjects} onEdit={setEditingExam} onDelete={id => setDeleteConfirm(id)} />
+                  <AcademicCard key={`ep-${exam.id}`} exam={exam} subjects={subjects} onEdit={setEditingExam} onDelete={id => setDeleteConfirm(id)} onStatusChange={updateSubmissionStatus} />
                 ))}
               </div>
             </details>

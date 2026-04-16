@@ -56,6 +56,7 @@ export type Subtask = {
 }
 
 export type ActivityType = 'exam' | 'workshop' | 'activity' | 'task' | 'study_session'
+export type SubmissionStatus = 'pending' | 'submitted' | 'graded'
 
 export type Exam = {
   id: string
@@ -70,6 +71,11 @@ export type Exam = {
   activity_type: ActivityType
   percentage: number | null
   grade: number | null
+  submission_status: SubmissionStatus | null
+  submitted_at: string | null
+  graded_at: string | null
+  max_grade: number | null
+  reminder_triggered: boolean | null
 }
 
 export const ACTIVITY_TYPES: Record<ActivityType, { label_es: string; label_en: string; icon: string; color: string; requiresPercentage: boolean }> = {

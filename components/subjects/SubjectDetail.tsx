@@ -94,9 +94,10 @@ export function SubjectDetail({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const gradedExams   = exams.filter(e => e.grade != null && e.percentage != null)
-  const ungradedExams = exams.filter(e => e.grade == null && e.percentage != null)
-  const noWeightExams = exams.filter(e => e.percentage == null)
+  const gradedExams    = exams.filter(e => e.grade != null && e.percentage != null)
+  const submittedExams = exams.filter(e => e.submission_status === 'submitted' && e.grade == null)
+  const ungradedExams  = exams.filter(e => e.grade == null && e.percentage != null)
+  const noWeightExams  = exams.filter(e => e.percentage == null)
 
   const earned    = gradedExams.reduce((sum, e) => sum + (e.grade! * e.percentage! / 100), 0)
   const potential = ungradedExams.reduce((sum, e) => sum + (e.percentage! / 100 * MAX_SCORE), 0)
@@ -193,16 +194,17 @@ export function SubjectDetail({
                   </div>
 
                   {/* Stats row */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {[
-                      { label: language === 'es' ? 'Evaluadas' : 'Graded', value: gradedExams.length, color: 'var(--success)' },
-                      { label: language === 'es' ? 'Pendientes' : 'Pending', value: ungradedExams.length, color: 'var(--warning)' },
-                      { label: language === 'es' ? 'Peso evaluado' : 'Evaluated', value: `${totalWeight}%`, color: 'var(--color-primary)' },
+                      { label: language === 'es' ? 'Calificadas' : 'Graded',    value: gradedExams.length,    color: 'var(--success)'       },
+                      { label: language === 'es' ? 'Entregadas'  : 'Submitted', value: submittedExams.length, color: 'var(--warning)'       },
+                      { label: language === 'es' ? 'Pendientes'  : 'Pending',   value: ungradedExams.length - submittedExams.length, color: 'var(--color-outline)' },
+                      { label: language === 'es' ? 'Peso eval.'  : 'Weight',    value: `${totalWeight}%`,     color: 'var(--color-primary)' },
                     ].map(stat => (
-                      <div key={stat.label} className="rounded-xl p-3 text-center"
+                      <div key={stat.label} className="rounded-xl p-2 text-center"
                         style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
-                        <p className="text-lg font-black leading-none" style={{ color: stat.color }}>{stat.value}</p>
-                        <p className="text-[9px] mt-0.5 font-semibold uppercase tracking-wide" style={{ color: 'var(--color-outline)' }}>
+                        <p className="text-base font-black leading-none" style={{ color: stat.color }}>{stat.value}</p>
+                        <p className="text-[8px] mt-0.5 font-semibold uppercase tracking-wide" style={{ color: 'var(--color-outline)' }}>
                           {stat.label}
                         </p>
                       </div>
