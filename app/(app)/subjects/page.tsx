@@ -22,6 +22,7 @@ export default function SubjectsPage() {
   const [iconPickerOpen,   setIconPickerOpen]   = useState<string | null>(null)
   const [kebabOpen,        setKebabOpen]        = useState<string | null>(null)
   const [detailSubject,    setDetailSubject]    = useState<Subject | null>(null)
+  const [detailTab,        setDetailTab]        = useState<'progress' | 'chat'>('progress')
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -134,7 +135,7 @@ export default function SubjectsPage() {
                   border: '1px solid var(--border-subtle)',
                   borderTop: `2px solid color-mix(in srgb, ${subject.color} 30%, transparent)`,
                 }}
-                onClick={() => setDetailSubject(subject)}>
+                onClick={() => { setDetailTab('progress'); setDetailSubject(subject) }}>
 
                 {/* Hover gradient */}
                 <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
@@ -215,6 +216,14 @@ export default function SubjectsPage() {
                           >
                             <span className="material-symbols-outlined text-[16px]">calendar_month</span>
                             Horarios
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDetailTab('chat'); setDetailSubject(subject); setKebabOpen(null) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-all hover:bg-white/5"
+                            style={{ color: 'var(--on-surface)' }}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                            Chat IA
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setDeleteConfirm(subject.id); setKebabOpen(null) }}
@@ -339,6 +348,7 @@ export default function SubjectsPage() {
         <SubjectDetail
           subject={detailSubject}
           onClose={() => setDetailSubject(null)}
+          initialTab={detailTab}
         />
       )}
     </div>

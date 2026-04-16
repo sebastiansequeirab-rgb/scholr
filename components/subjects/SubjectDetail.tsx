@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import type { Subject, Exam } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
+import { SubjectChat } from './SubjectChat'
+
+type DetailTab = 'progress' | 'chat'
 
 const PASS_SCORE = 10
 const MAX_SCORE  = 20
@@ -65,11 +68,14 @@ function ProgressRing({ earned, potential, max }: { earned: number; potential: n
 export function SubjectDetail({
   subject,
   onClose,
+  initialTab = 'progress',
 }: {
   subject: Subject
   onClose: () => void
+  initialTab?: DetailTab
 }) {
   const { language } = useTranslation()
+  const [activeTab, setActiveTab] = useState<DetailTab>(initialTab)
   const [exams,   setExams]   = useState<Exam[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -135,7 +141,7 @@ export function SubjectDetail({
           <div className="flex-1 min-w-0">
             <p className="mono text-[9px] tracking-[0.2em] uppercase mb-0.5"
               style={{ color: subject.color }}>
-              {language === 'es' ? 'Progreso académico' : 'Academic progress'}
+              Scholar Sanctuary
             </p>
             <h2 className="text-xl font-extrabold tracking-tight truncate" style={{ color: 'var(--on-surface)' }}>
               {subject.name}
@@ -154,7 +160,36 @@ export function SubjectDetail({
           </button>
         </div>
 
-        {/* ── Scrollable body ── */}
+        {/* ── Tab bar ── */}
+        <div className="flex gap-1 px-4 py-2" style={{ borderBottom: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-low)' }}>
+          {([
+            { id: 'progress', icon: 'trending_up',  label_es: 'Progreso',  label_en: 'Progress' },
+            { id: 'chat',     icon: 'auto_awesome',  label_es: 'Chat IA',   label_en: 'AI Chat'  },
+          ] as const).map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: activeTab === tab.id ? `${subject.color}15` : 'transparent',
+                color:           activeTab === tab.id ? subject.color : 'var(--color-outline)',
+              }}>
+              <span className="material-symbols-outlined text-[14px]"
+                style={{ fontVariationSettings: activeTab === tab.id ? "'FILL' 1" : "'FILL' 0" }}>
+                {tab.icon}
+              </span>
+              {language === 'es' ? tab.label_es : tab.label_en}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Chat tab ── */}
+        {activeTab === 'chat' && (
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <SubjectChat subject={subject} />
+          </div>
+        )}
+
+        {/* ── Progress tab ── */}
+        {activeTab === 'progress' && (
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {loading ? (
             <div className="space-y-3">
@@ -374,6 +409,7 @@ export function SubjectDetail({
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   )

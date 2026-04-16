@@ -38,6 +38,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const language = app_context?.language ?? 'es'
   const today    = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
+  // ── 3a. Fetch subject context summary if active_subject_id ───────────────
+  let subjectContextBlock = ''
+  if (app_context?.active_subject_id) {
+    const { data: ctx } = await supabase
+      .from('subject_ai_contexts')
+      .select('summary')
+      .eq('subject_id', app_context.active_subject_id)
+      .maybeSingle()
+    if (ctx?.summary) {
+      subjectContextBlock = `\nCONTEXTO ACUMULADO DE LA MATERIA:\n${ctx.summary}`
+    }
+  }
+
   // ── 3. Build system prompt ────────────────────────────────────────────────
   const contextHints = [
     app_context?.current_page      ? `Página actual: ${app_context.current_page}` : null,
@@ -66,7 +79,7 @@ CAPACIDADES ACADÉMICAS:
 - Para contenido de estudio: sé claro, estructurado y pedagógico. Usa listas, tablas y jerarquías cuando ayuden.
 - Puedes comparar temas, explicar conceptos, sugerir estrategias de estudio y ayudar a preparar evaluaciones.
 - Responde siempre en ${language === 'es' ? 'español' : 'English'}.
-- Sé conciso y útil. Sin relleno ni frases de relleno.`
+- Sé conciso y útil. Sin relleno ni frases de relleno.${subjectContextBlock}`
 
   // ── 4. Build conversation messages ───────────────────────────────────────
   const trimmedHistory = history.slice(-MAX_HISTORY)
