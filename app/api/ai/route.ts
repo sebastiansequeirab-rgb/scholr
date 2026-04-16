@@ -5,148 +5,154 @@ import { TOOL_DECLARATIONS, executeTool } from '@/lib/ai/tools'
 import type { AIRequest, AIResponse } from '@/lib/ai/types'
 import type { GroqMessage } from '@/lib/ai/provider'
 
-const MAX_HISTORY = 8 // last N messages sent to model — keeps cost low
+const MAX_HISTORY     = 8  // last N messages sent to model
+const MAX_TOOL_ROUNDS = 3  // max chained tool calls per request
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // ── 1. Parse & validate request ─────────────────────────────────────────
+
+  // ── 1. Parse & validate ───────────────────────────────────────────────────
   let body: AIRequest
-  try {
-    body = await req.json()
-  } catch {
+  try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
   const { message, history = [], app_context, access_token } = body
+  if (!message?.trim()) return NextResponse.json({ error: 'message is required' },      { status: 400 })
+  if (!access_token)    return NextResponse.json({ error: 'access_token is required' }, { status: 401 })
 
-  if (!message?.trim())    return NextResponse.json({ error: 'message is required' },      { status: 400 })
-  if (!access_token)       return NextResponse.json({ error: 'access_token is required' }, { status: 401 })
-
-  // ── 2. Authenticate user via JWT ─────────────────────────────────────────
+  // ── 2. Authenticate ───────────────────────────────────────────────────────
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { global: { headers: { Authorization: `Bearer ${access_token}` } } }
   )
-
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    console.warn('[AI] Auth failed:', authError?.message)
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId   = user.id
   const language = app_context?.language ?? 'es'
-  const today    = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const today    = new Date().toLocaleDateString('es-ES', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  })
 
-  // ── 3a. Fetch subject context summary if active_subject_id ───────────────
-  let subjectContextBlock = ''
-  if (app_context?.active_subject_id) {
-    const { data: ctx } = await supabase
-      .from('subject_ai_contexts')
-      .select('summary')
-      .eq('subject_id', app_context.active_subject_id)
-      .maybeSingle()
-    if (ctx?.summary) {
-      subjectContextBlock = `\nCONTEXTO ACUMULADO DE LA MATERIA:\n${ctx.summary}`
-    }
-  }
+  // ── 3. Fetch subject name + accumulated context (parallel) ────────────────
+  const hasSubject = !!app_context?.active_subject_id
 
-  // ── 3. Build system prompt ────────────────────────────────────────────────
+  const [subjectCtxRes, subjectNameRes] = await Promise.all([
+    hasSubject
+      ? supabase.from('subject_ai_contexts').select('summary')
+          .eq('subject_id', app_context!.active_subject_id!)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    hasSubject
+      ? supabase.from('subjects').select('name')
+          .eq('id', app_context!.active_subject_id!)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const subjectContextBlock = subjectCtxRes.data?.summary
+    ? `\nCONTEXTO ACUMULADO DE ESTA MATERIA:\n${subjectCtxRes.data.summary}`
+    : ''
+  const activeSubjectName   = subjectNameRes.data?.name ?? ''
+
+  // ── 4. Build system prompt ────────────────────────────────────────────────
+  const subjectCtxLine = hasSubject
+    ? `Materia activa: "${activeSubjectName}" — subject_id: ${app_context!.active_subject_id} — incluye SIEMPRE este subject_id en create_exam y create_task`
+    : null
+
   const contextHints = [
-    app_context?.current_page      ? `Página actual: ${app_context.current_page}` : null,
-    app_context?.active_subject_id ? `Materia activa (ID): ${app_context.active_subject_id}` : null,
-    app_context?.subject_count     != null ? `Materias registradas: ${app_context.subject_count}` : null,
+    app_context?.current_page       ? `Página: ${app_context.current_page}` : null,
+    subjectCtxLine,
+    app_context?.subject_count      != null ? `Materias registradas: ${app_context.subject_count}` : null,
     app_context?.pending_task_count != null ? `Tareas pendientes: ${app_context.pending_task_count}` : null,
-    app_context?.next_exam_date    != null ? `Próxima evaluación: ${app_context.next_exam_date}` : null,
+    app_context?.next_exam_date     != null ? `Próxima evaluación: ${app_context.next_exam_date}` : null,
   ].filter(Boolean).join('\n')
 
+  const lang = language === 'es' ? 'español' : 'English'
+
   const systemPrompt = `Eres el asistente académico de Scholr Sanctuary.
-Hoy es ${today}. Idioma: ${language === 'es' ? 'español' : 'inglés'}.
+Hoy es ${today}. Responde siempre en ${lang}. Sé conciso y útil. Sin frases de relleno.
 ${contextHints}
 
-REGLAS DE DATOS:
-- Para responder sobre datos del usuario (horario, evaluaciones, notas, progreso, tareas), SIEMPRE usa las herramientas disponibles. Nunca inventes datos.
-- Para consultas sobre horario, clases de hoy o esta semana, usa get_today_schedule.
-- Para consultas sobre próximos exámenes o evaluaciones, usa get_upcoming_exams.
-- Para progreso de una materia, usa get_subject_evaluations o get_subject_progress.
-- Para resumen global de materias, usa get_all_subjects_summary.
-- Si falta un parámetro para una acción, pide SOLO ese dato.
-- Confirma antes de crear datos: di qué vas a crear y espera confirmación del usuario.
-- Nunca hagas dos acciones en un solo mensaje.
+━━ CONSULTA DE DATOS (usa tools, nunca inventes) ━━
+• Horario de hoy o clases de la semana     → get_today_schedule
+• Próximos exámenes / evaluaciones         → get_upcoming_exams
+• Tareas pendientes de la semana           → get_week_tasks
+• Evaluaciones o progreso de una materia  → get_subject_evaluations
+• Resumen global de todas las materias    → get_all_subjects_summary
+• Notas de una materia                    → get_notes_by_subject
+• Lista de materias (para buscar subject_id) → get_subjects
 
-REGLAS DE CREACIÓN (CRÍTICAS):
-- Para crear un assignment, entrega, taller, práctica, parcial, quiz o cualquier actividad académica con nota: usa SIEMPRE create_exam (con activity_type correspondiente). NUNCA uses create_task para esto.
-  - activity_type="task"     → assignments, entregas, deliveries, trabajos
-  - activity_type="exam"     → exámenes, parciales, finales, quizzes
-  - activity_type="workshop" → talleres, prácticas, laboratorios
-  - activity_type="activity" → actividades generales con nota
-- Para crear un recordatorio o to-do personal sin nota ni porcentaje: usa create_task.
-- Si el usuario está chateando en el contexto de una materia (Materia activa en contexto), incluye SIEMPRE ese subject_id al crear exams o tasks.
+━━ CREACIÓN DE ÍTEMS ━━
+Assignments / entregas / talleres / prácticas / parciales / quizzes / exámenes → create_exam
+  · activity_type: "task" (entregas/assignments), "exam" (exámenes/parciales),
+    "workshop" (talleres/prácticas/laboratorios), "activity" (actividades con nota)
+  · exam_date es obligatorio. Si el usuario no lo da, pide SOLO ese dato.
+  · Si hay materia activa, incluye SIEMPRE su subject_id.
 
-CAPACIDADES ACADÉMICAS:
-- Puedes generar resúmenes, esquemas, fichas de estudio, mapas conceptuales, preguntas de práctica y explicaciones de cualquier tema académico. Responde directamente sin usar tools para estas solicitudes.
-- Para contenido de estudio: sé claro, estructurado y pedagógico. Usa listas, tablas y jerarquías cuando ayuden.
-- Puedes comparar temas, explicar conceptos, sugerir estrategias de estudio y ayudar a preparar evaluaciones.
-- Responde siempre en ${language === 'es' ? 'español' : 'English'}.
-- Sé conciso y útil. Sin relleno ni frases de relleno.${subjectContextBlock}`
+Recordatorios o to-dos personales sin nota/porcentaje → create_task
+  · Si hay materia activa, incluye también su subject_id.
 
-  // ── 4. Build conversation messages ───────────────────────────────────────
-  const trimmedHistory = history.slice(-MAX_HISTORY)
+━━ FLUJO DE CREACIÓN ━━
+1. Si tienes todos los datos necesarios → crea directamente sin confirmar.
+2. Si falta exam_date u otro campo obligatorio → pide SOLO ese campo, nada más.
+3. Después de crear: confirma en una línea qué se creó, en qué materia, para qué fecha.
+4. Nunca pidas datos que ya están en el contexto (materia activa = subject_id ya conocido).
 
-  const messages: GroqMessage[] = [
+━━ CONTENIDO ACADÉMICO (sin tools) ━━
+Resúmenes · esquemas · fichas · mapas conceptuales · preguntas de práctica · explicaciones
+→ Responde directamente. Sé claro, estructurado y pedagógico. Usa listas y tablas si ayudan.${subjectContextBlock}`
+
+  // ── 5. Build conversation ─────────────────────────────────────────────────
+  let currentMessages: GroqMessage[] = [
     { role: 'system', content: systemPrompt },
-    ...trimmedHistory.map(m => ({
+    ...history.slice(-MAX_HISTORY).map(m => ({
       role:    m.role === 'user' ? 'user' as const : 'assistant' as const,
       content: m.content,
     })),
     { role: 'user', content: message },
   ]
 
-  const toolsUsed: string[] = []
+  console.log(`[AI] user=${userId} subject="${activeSubjectName || '-'}" msg="${message.slice(0, 80)}"`)
 
-  // ── 5. First Groq call ────────────────────────────────────────────────────
-  console.log(`[AI] user=${userId} page=${app_context?.current_page ?? '-'} msg="${message.slice(0, 80)}"`)
+  // ── 6. First call ─────────────────────────────────────────────────────────
+  const toolsUsed: string[] = []
 
   let groqResp
   try {
     groqResp = await callGroq({
       model:       CHAT_MODEL,
-      messages,
+      messages:    currentMessages,
       tools:       TOOL_DECLARATIONS,
       tool_choice: 'auto',
       temperature: 0.4,
-      max_tokens:  800,
+      max_tokens:  900,
     })
   } catch (err: unknown) {
     const e = err as Error & { status?: number }
-    console.error('[AI] Groq call 1 failed:', e.message)
     if (e.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
     return NextResponse.json({ error: 'Error del modelo de IA' }, { status: 500 })
   }
 
-  // ── 6. Handle tool call (max 1 round) ────────────────────────────────────
-  const toolCall = getToolCall(groqResp)
+  // ── 7. Tool calling loop (max MAX_TOOL_ROUNDS rounds) ─────────────────────
+  let toolCall = getToolCall(groqResp)
 
-  if (toolCall) {
+  while (toolCall && toolsUsed.length < MAX_TOOL_ROUNDS) {
     const { id, function: { name, arguments: argsStr } } = toolCall
 
     let args: Record<string, unknown> = {}
     try { args = JSON.parse(argsStr) } catch { /* use empty args */ }
 
-    console.log(`[AI] tool call: ${name}`, JSON.stringify(args))
+    console.log(`[AI] tool call (round ${toolsUsed.length + 1}): ${name}`, JSON.stringify(args))
     toolsUsed.push(name)
 
     const result = await executeTool(name, args, access_token, userId)
     console.log(`[AI] tool result ok=${result.ok}`, result.error ?? '')
 
-    // Feed tool result back for the final answer
-    const messagesWithTool: GroqMessage[] = [
-      ...messages,
-      {
-        role:       'assistant',
-        content:    null,
-        tool_calls: [toolCall],
-      },
+    currentMessages = [
+      ...currentMessages,
+      { role: 'assistant', content: null, tool_calls: [toolCall] },
       {
         role:         'tool',
         content:      JSON.stringify(result.ok ? result.data : { error: result.error }),
@@ -155,28 +161,29 @@ CAPACIDADES ACADÉMICAS:
       },
     ]
 
-    let groqResp2
+    const isLastRound = toolsUsed.length >= MAX_TOOL_ROUNDS
+
     try {
-      groqResp2 = await callGroq({
+      groqResp = await callGroq({
         model:       CHAT_MODEL,
-        messages:    messagesWithTool,
+        messages:    currentMessages,
+        // Last round: no tools — force a text answer
+        tools:       isLastRound ? undefined : TOOL_DECLARATIONS,
+        tool_choice: isLastRound ? undefined : 'auto',
         temperature: 0.4,
-        max_tokens:  800,
+        max_tokens:  900,
       })
     } catch (err: unknown) {
       const e = err as Error & { status?: number }
-      console.error('[AI] Groq call 2 failed:', e.message)
       if (e.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
       return NextResponse.json({ error: 'Error del modelo de IA' }, { status: 500 })
     }
 
-    const reply = getText(groqResp2)
-    console.log(`[AI] reply (${reply.length} chars) tools=[${toolsUsed.join(',')}]`)
-    return NextResponse.json({ reply, tools_used: toolsUsed } satisfies AIResponse)
+    toolCall = isLastRound ? null : getToolCall(groqResp)
   }
 
-  // ── 7. Direct answer (no tool call) ──────────────────────────────────────
+  // ── 8. Return final reply ─────────────────────────────────────────────────
   const reply = getText(groqResp)
-  console.log(`[AI] reply (${reply.length} chars) no tools`)
-  return NextResponse.json({ reply, tools_used: [] } satisfies AIResponse)
+  console.log(`[AI] reply (${reply.length} chars) tools=[${toolsUsed.join(', ') || 'none'}]`)
+  return NextResponse.json({ reply, tools_used: toolsUsed } satisfies AIResponse)
 }
