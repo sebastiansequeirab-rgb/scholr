@@ -10,7 +10,7 @@ import type { ToolResult } from '../types'
 function supabaseAs(accessToken: string) {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
   )
 }

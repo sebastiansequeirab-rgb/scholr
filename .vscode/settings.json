@@ -1,0 +1,7 @@
+{
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "CLAUDE.md": "package.json, package-lock.json, tsconfig.json, tsconfig.tsbuildinfo, tailwind.config.ts, postcss.config.mjs, next.config.js, next.config.mjs, next-env.d.ts, middleware.ts, .eslintrc.json, .gitignore"
+  }
+}

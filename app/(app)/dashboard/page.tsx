@@ -3,10 +3,10 @@ import Link from 'next/link'
 import { daysUntil } from '@/lib/utils'
 import type { Task, Exam, Subject, Schedule } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
-import { LiveClock } from '@/features/dashboard/components/LiveClock'
-import { ClientTime } from '@/features/dashboard/components/ClientTime'
-import { TaskFeed } from '@/features/dashboard/components/TaskFeed'
-import { ExamFeed } from '@/features/dashboard/components/ExamFeed'
+import { LiveClock } from '@/features/home/components/LiveClock'
+import { ClientTime } from '@/features/home/components/ClientTime'
+import { TaskFeed } from '@/features/home/components/TaskFeed'
+import { ExamFeed } from '@/features/home/components/ExamFeed'
 
 export default async function DashboardPage() {
   const supabase = createClient()

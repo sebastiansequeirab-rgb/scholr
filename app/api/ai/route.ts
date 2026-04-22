@@ -24,7 +24,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── 2. Authenticate ───────────────────────────────────────────────────────
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     { global: { headers: { Authorization: `Bearer ${access_token}` } } }
   )
   const { data: { user }, error: authError } = await supabase.auth.getUser()
