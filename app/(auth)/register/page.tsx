@@ -98,7 +98,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold" style={{ color: 'var(--color-primary)' }}>
-            Scholr
+            Skolar
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-muted)' }}>
             {t('auth.register')}

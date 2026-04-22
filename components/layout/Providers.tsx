@@ -2,8 +2,8 @@
 
 import { ThemeProvider } from 'next-themes'
 import { useEffect } from 'react'
-import { LanguageProvider } from '@/contexts/LanguageContext'
-import { TimeFormatProvider } from '@/contexts/TimeFormatContext'
+import { LanguageProvider } from '@/components/layout/LanguageContext'
+import { TimeFormatProvider } from '@/components/layout/TimeFormatContext'
 
 interface ProvidersProps {
   children: React.ReactNode

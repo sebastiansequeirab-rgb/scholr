@@ -79,7 +79,7 @@ export default function SettingsPage() {
       {/* Page title */}
       <div className="mb-6">
         <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1" style={{ color: 'var(--color-primary)' }}>
-          Scholar
+          Skolar
         </p>
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
           {language === 'es' ? 'Cuenta' : 'Account'}
@@ -185,7 +185,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-bold" style={{ color: 'var(--on-surface)' }}>
-                    {profile?.is_premium ? 'Scholar Premium' : 'Scholar Free'}
+                    {profile?.is_premium ? 'Skolar Premium' : 'Skolar Free'}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
                     {profile?.is_premium

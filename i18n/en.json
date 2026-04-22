@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Scholr",
+    "name": "Skolar",
     "tagline": "Your academic productivity, supercharged",
     "description": "The all-in-one tool for students"
   },
@@ -234,7 +234,7 @@
     "upgrade": "Upgrade to Premium",
     "themes": {
       "indigo": "Focus Mode",
-      "purple": "Creative Scholar",
+      "purple": "Creative Skolar",
       "green": "Nature Brain"
     }
   },
@@ -254,7 +254,7 @@
   "landing": {
     "hero": {
       "title": "Master your academic life",
-      "subtitle": "Scholr centralizes your subjects, tasks, exams, and notes in one place. Focus on learning.",
+      "subtitle": "Skolar centralizes your subjects, tasks, exams, and notes in one place. Focus on learning.",
       "cta": "Get started free",
       "login": "Sign in"
     },

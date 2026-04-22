@@ -3,8 +3,8 @@
 // The model never touches the DB directly — it only calls these.
 
 import { createClient } from '@supabase/supabase-js'
-import type { ToolDefinition } from './provider'
-import type { ToolResult } from './types'
+import type { ToolDefinition } from '../provider'
+import type { ToolResult } from '../types'
 
 // Build an authenticated Supabase client from the user's JWT
 function supabaseAs(accessToken: string) {

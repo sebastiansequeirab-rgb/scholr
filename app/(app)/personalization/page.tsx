@@ -12,7 +12,7 @@ const THEMES: Array<{ key: 'indigo' | 'purple'; primary: string; secondary: stri
     primary:   '#3b82f6',
     secondary: '#94a3b8',
     tertiary:  '#c084fc',
-    desc: 'Scholar Blue',
+    desc: 'Skolar Blue',
     gradient: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #c084fc 100%)',
   },
   {
@@ -20,7 +20,7 @@ const THEMES: Array<{ key: 'indigo' | 'purple'; primary: string; secondary: stri
     primary:   '#a855f7',
     secondary: '#c4b5fd',
     tertiary:  '#fbbf24',
-    desc: 'Scholar Violet',
+    desc: 'Skolar Violet',
     gradient: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 50%, #fbbf24 100%)',
   },
 ]
@@ -81,7 +81,7 @@ export default function PersonalizationPage() {
       {/* Page title */}
       <div className="mb-6">
         <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1" style={{ color: 'var(--color-primary)' }}>
-          Scholar
+          Skolar
         </p>
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
           {language === 'es' ? 'Personalización' : 'Personalization'}

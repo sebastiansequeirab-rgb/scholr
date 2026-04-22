@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import type { Subject } from '@/types'
-import type { AppContext } from '@/lib/ai/types'
+import type { AppContext } from '@/features/ai/types'
 
 interface LocalMessage {
   role: 'user' | 'assistant'

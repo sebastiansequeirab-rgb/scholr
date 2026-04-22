@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Scholr",
+    "name": "Skolar",
     "tagline": "Tu productividad académica, potenciada",
     "description": "La herramienta todo-en-uno para estudiantes"
   },
@@ -234,7 +234,7 @@
     "upgrade": "Mejorar a Premium",
     "themes": {
       "indigo": "Modo Foco",
-      "purple": "Scholar Creativo",
+      "purple": "Skolar Creativo",
       "green": "Nature Brain"
     }
   },
@@ -254,7 +254,7 @@
   "landing": {
     "hero": {
       "title": "Domina tu vida académica",
-      "subtitle": "Scholr centraliza tus materias, tareas, exámenes y notas en un solo lugar. Enfócate en aprender.",
+      "subtitle": "Skolar centraliza tus materias, tareas, exámenes y notas en un solo lugar. Enfócate en aprender.",
       "cta": "Empieza gratis",
       "login": "Iniciar sesión"
     },

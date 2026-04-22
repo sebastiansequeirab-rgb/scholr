@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Sidebar } from '@/components/ui/Sidebar'
-import { SidebarCollapseProvider } from '@/components/ui/SidebarCollapseContext'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { SidebarCollapseProvider } from '@/components/layout/SidebarCollapseContext'
 import type { Profile } from '@/types'
 
 export default async function AppLayout({

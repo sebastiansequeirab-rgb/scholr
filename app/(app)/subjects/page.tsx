@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { SubjectModal, ScheduleManager } from '@/components/subjects/SubjectModal'
-import { IconPicker } from '@/components/subjects/IconPicker'
-import { SubjectDetail } from '@/components/subjects/SubjectDetail'
+import { SubjectModal, ScheduleManager } from '@/features/subjects/components/SubjectModal'
+import { IconPicker } from '@/features/subjects/components/IconPicker'
+import { SubjectDetail } from '@/features/subjects/components/SubjectDetail'
 import type { Subject, Schedule } from '@/types'
-import { getSubjectIcon } from '@/lib/subjects/utils'
+import { getSubjectIcon } from '@/features/subjects/utils'
 
 export default function SubjectsPage() {
   const { t } = useTranslation()
@@ -72,7 +72,7 @@ export default function SubjectsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1 font-medium"
-            style={{ color: 'var(--color-primary)' }}>Scholar Sanctuary</p>
+            style={{ color: 'var(--color-primary)' }}>Skolar Sanctuary</p>
           <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
             {t('subjects.title')}
           </h1>

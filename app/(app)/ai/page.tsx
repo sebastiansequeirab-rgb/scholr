@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { ScheduleImportWizard } from '@/components/ai/ScheduleImportWizard'
-import { EvaluationImportWizard } from '@/components/ai/EvaluationImportWizard'
-import { AIChatHub } from '@/components/ai/AIChatHub'
+import { ScheduleImportWizard } from '@/features/ai/components/ScheduleImportWizard'
+import { EvaluationImportWizard } from '@/features/ai/components/EvaluationImportWizard'
+import { AIChatHub } from '@/features/ai/components/AIChatHub'
 
 /* ─── Page ───────────────────────────────────────────────────────────────── */
 export default function AIPage() {
@@ -57,7 +57,7 @@ export default function AIPage() {
             {language === 'es' ? 'Asistente Académico' : 'Academic Assistant'}
           </span>
           <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-            {language === 'es' ? 'IA Scholr' : 'Scholr AI'}
+            {language === 'es' ? 'IA Skolar' : 'Skolar AI'}
           </h1>
         </div>
         <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{ backgroundColor: 'var(--s-base)' }}>

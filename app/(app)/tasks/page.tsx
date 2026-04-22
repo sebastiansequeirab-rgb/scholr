@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { isToday, isTomorrow, daysUntil, uniqueById, uniqueByName } from '@/lib/utils'
-import { TaskNotes } from '@/components/tasks/TaskNotes'
+import { TaskNotes } from '@/features/tasks/components/TaskNotes'
 import type { Task, Subtask, Subject } from '@/types'
 
 type Filter = 'all' | 'not_started' | 'in_progress' | 'completed' | 'urgent'

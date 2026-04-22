@@ -11,7 +11,7 @@ export default function AISettingsPage() {
       {/* Page title */}
       <div className="mb-6">
         <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1" style={{ color: 'var(--color-primary)' }}>
-          Scholar
+          Skolar
         </p>
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
           {language === 'es' ? 'Configuración de IA' : 'AI Settings'}
@@ -38,8 +38,8 @@ export default function AISettingsPage() {
               style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>info</span>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--on-surface)' }}>
               {language === 'es'
-                ? 'La IA de Scholar utiliza el modelo llama-3.3-70b y responde en el idioma configurado en Personalización. Las conversaciones por materia acumulan contexto automáticamente.'
-                : "Scholar's AI uses the llama-3.3-70b model and responds in the language set in Personalization. Subject conversations accumulate context automatically."}
+                ? 'La IA de Skolar utiliza el modelo llama-3.3-70b y responde en el idioma configurado en Personalización. Las conversaciones por materia acumulan contexto automáticamente.'
+                : "Skolar's AI uses the llama-3.3-70b model and responds in the language set in Personalization. Subject conversations accumulate context automatically."}
             </p>
           </div>
 

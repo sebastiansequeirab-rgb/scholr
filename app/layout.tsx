@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { Providers } from './providers'
+import { Providers } from '@/components/layout/Providers'
 
 export const metadata: Metadata = {
-  title: 'Scholr — Tu productividad académica',
+  title: 'Skolar — Tu productividad académica',
   description: 'La herramienta todo-en-uno para estudiantes. Gestiona materias, tareas, exámenes y notas.',
 }
 

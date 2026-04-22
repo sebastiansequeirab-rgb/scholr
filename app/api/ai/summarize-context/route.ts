@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { callGroq, getText, CHAT_MODEL } from '@/lib/ai/provider'
+import { callGroq, getText, CHAT_MODEL } from '@/features/ai/provider'
 
 const MSG_LIMIT = 30
 

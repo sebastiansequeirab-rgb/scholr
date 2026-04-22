@@ -136,7 +136,7 @@
   --priority-low-bg:  rgba(59, 130, 246, 0.10);
 }
 
-/* ── Scholar Blue (indigo) — dark mode ── */
+/* ── Skolar Blue (indigo) — dark mode ── */
 [data-theme="indigo"] {
   --color-primary:              #7eb3ff;
   --color-primary-container:    #3b82f6;
@@ -155,7 +155,7 @@
   --color-outline-variant:      #1e3a6e;
 }
 
-/* ── Scholar Violet (purple) — dark mode ── */
+/* ── Skolar Violet (purple) — dark mode ── */
 [data-theme="purple"] {
   --color-primary:              #d8b4fe;
   --color-primary-container:    #a855f7;
@@ -174,7 +174,7 @@
   --color-outline-variant:      #3d1f6e;
 }
 
-/* ── Scholar Blue (indigo) — light mode ── */
+/* ── Skolar Blue (indigo) — light mode ── */
 .light[data-theme="indigo"],
 .light [data-theme="indigo"] {
   --color-primary:              #1d4ed8;
@@ -193,7 +193,7 @@
   --color-outline-variant:      #bfdbfe;
 }
 
-/* ── Scholar Violet (purple) — light mode ── */
+/* ── Skolar Violet (purple) — light mode ── */
 .light[data-theme="purple"],
 .light [data-theme="purple"] {
   --color-primary:              #7c3aed;

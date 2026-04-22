@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { SUBJECT_COLORS } from '@/types'
-import { IconPicker } from '@/components/subjects/IconPicker'
+import { IconPicker } from '@/features/subjects/components/IconPicker'
 import type { Subject, Schedule } from '@/types'
-import { getSubjectIcon } from '@/lib/subjects/utils'
+import { getSubjectIcon } from '@/features/subjects/utils'
 
 interface SubjectModalProps {
   subject?: Subject | null

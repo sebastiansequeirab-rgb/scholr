@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { daysUntil, isToday, isTomorrow, uniqueById, uniqueByName, formatTime } from '@/lib/utils'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
-import { TaskNotes } from '@/components/tasks/TaskNotes'
+import { TaskNotes } from '@/features/tasks/components/TaskNotes'
 import type { Task, Exam, Subject, Schedule, Subtask, ActivityType, SubmissionStatus } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
 
@@ -1065,7 +1065,7 @@ export default function PlannerPage() {
       {/* Header */}
       <div className="mb-5">
         <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1" style={{ color: 'var(--color-primary)' }}>
-          Scholar Sanctuary
+          Skolar Sanctuary
         </p>
         <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
           {t('planner.title')}

@@ -3,10 +3,10 @@ import Link from 'next/link'
 import { daysUntil } from '@/lib/utils'
 import type { Task, Exam, Subject, Schedule } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
-import { LiveClock } from '@/components/ui/LiveClock'
-import { ClientTime } from '@/components/ui/ClientTime'
-import { TaskFeed } from '@/components/ui/TaskFeed'
-import { ExamFeed } from '@/components/ui/ExamFeed'
+import { LiveClock } from '@/features/dashboard/components/LiveClock'
+import { ClientTime } from '@/features/dashboard/components/ClientTime'
+import { TaskFeed } from '@/features/dashboard/components/TaskFeed'
+import { ExamFeed } from '@/features/dashboard/components/ExamFeed'
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
       <header className="mb-3 lg:mb-5 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="mono text-[10px] tracking-[0.18em] uppercase font-medium mb-1"
-            style={{ color: 'var(--color-tertiary)' }}>Scholar Sanctuary</p>
+            style={{ color: 'var(--color-tertiary)' }}>Skolar Sanctuary</p>
 
           <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight leading-tight"
             style={{ color: 'var(--on-surface)' }}>

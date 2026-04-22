@@ -150,7 +150,7 @@ export function SubjectDetail({
           <div className="flex-1 min-w-0">
             <p className="mono text-[9px] tracking-[0.2em] uppercase mb-0.5"
               style={{ color: subject.color }}>
-              Scholar Sanctuary
+              Skolar Sanctuary
             </p>
             <h2 className="text-xl font-extrabold tracking-tight truncate" style={{ color: 'var(--on-surface)' }}>
               {subject.name}

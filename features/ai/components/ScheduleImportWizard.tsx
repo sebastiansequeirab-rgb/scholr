@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SUBJECT_COLORS } from '@/types'
-import { getSubjectIcon } from '@/lib/subjects/utils'
+import { getSubjectIcon } from '@/features/subjects/utils'
 
 type WizardStep = 'upload' | 'parsing' | 'review' | 'saving' | 'done'
 type SaveMode = 'merge' | 'replace'

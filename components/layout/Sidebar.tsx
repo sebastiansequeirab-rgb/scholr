@@ -6,43 +6,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { getInitials } from '@/lib/utils'
-import { useSidebarCollapse } from '@/components/ui/SidebarCollapseContext'
+import { useSidebarCollapse } from '@/components/layout/SidebarCollapseContext'
+import { NAV_ITEMS, BOTTOM_NAV, MORE_ITEMS, MORE_PATHS, SIDE_MENU_ITEMS } from '@/config/nav'
 import type { Profile } from '@/types'
-
-const NAV_ITEMS = [
-  { key: 'dashboard', href: '/dashboard', icon: 'home'           },
-  { key: 'ai',        href: '/ai',        icon: 'auto_awesome'   },
-  { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
-  { key: 'subjects',  href: '/subjects',  icon: 'menu_book'      },
-  { key: 'planner',   href: '/planner',   icon: 'check_circle'   },
-  { key: 'notes',     href: '/notes',     icon: 'sticky_note_2'  },
-]
-
-// Bottom tab bar (5 tabs) — Home | Calendar | Planner | Subjects | More
-const BOTTOM_NAV = [
-  { key: 'dashboard', href: '/dashboard', icon: 'home'           },
-  { key: 'calendar',  href: '/calendar',  icon: 'calendar_month' },
-  { key: 'planner',   href: '/planner',   icon: 'check_circle'   },
-  { key: 'subjects',  href: '/subjects',  icon: 'menu_book'      },
-]
-
-// Items revealed inside the "More" bottom sheet
-const MORE_ITEMS = [
-  { key: 'ai',    href: '/ai',    icon: 'auto_awesome'  },
-  { key: 'notes', href: '/notes', icon: 'sticky_note_2' },
-]
-
-// Paths that belong to "More" — used to highlight the More tab when active
-const MORE_PATHS = ['/ai', '/notes', '/settings', '/personalization', '/ai-settings']
-
-// Side drawer — account & utility only (no duplicate of bottom nav main items)
-const SIDE_MENU_ITEMS = [
-  { key: 'settings',        href: '/settings',        icon: 'manage_accounts',   label_es: 'Cuenta',           label_en: 'Account'          },
-  { key: 'personalization', href: '/personalization', icon: 'palette',           label_es: 'Personalización',  label_en: 'Personalization'  },
-  { key: 'ai',              href: '/ai-settings',     icon: 'auto_awesome',      label_es: 'Configuración IA', label_en: 'AI Settings'      },
-  { key: 'plan',            href: '/settings',        icon: 'workspace_premium', label_es: 'Plan',             label_en: 'Plan'             },
-  { key: 'help',            href: '/settings',        icon: 'help_outline',      label_es: 'Ayuda',            label_en: 'Help'             },
-]
 
 interface SidebarProps {
   profile: Profile | null
@@ -99,7 +65,7 @@ export function Sidebar({ profile }: SidebarProps) {
           {!collapsed && (
             <div>
               <span className="text-base font-black tracking-tighter" style={{ color: 'var(--color-primary)' }}>
-                Scholr
+                Skolar
               </span>
               <p className="text-[9px] uppercase tracking-[0.2em] font-mono leading-none mt-0.5"
                 style={{ color: 'var(--color-outline)' }}>
@@ -261,7 +227,7 @@ export function Sidebar({ profile }: SidebarProps) {
               style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>school</span>
           </div>
           <span className="text-[17px] font-black tracking-tighter" style={{ color: 'var(--color-primary)' }}>
-            Scholr
+            Skolar
           </span>
         </Link>
         <button
@@ -470,7 +436,7 @@ export function Sidebar({ profile }: SidebarProps) {
             </div>
             <div>
               <span className="text-[17px] font-black tracking-tighter leading-none block"
-                style={{ color: 'var(--color-primary)' }}>Scholr</span>
+                style={{ color: 'var(--color-primary)' }}>Skolar</span>
               <span className="text-[9px] uppercase tracking-[0.18em] font-mono leading-none"
                 style={{ color: 'var(--color-outline)' }}>Sanctuary</span>
             </div>
