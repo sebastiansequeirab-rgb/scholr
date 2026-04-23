@@ -87,7 +87,14 @@
     "endTime": "End",
     "conflict": "Schedule conflict detected",
     "icon": "Icon",
-    "scheduleRoom": "Room"
+    "scheduleRoom": "Room",
+    "joinWithCode": "Join with code",
+    "joinTitle": "Join with code",
+    "joinDesc": "Enter the access code your teacher gave you.",
+    "joinBtn": "Enroll",
+    "enrolledSection": "Enrolled courses",
+    "enrolledTitle": "Teacher courses",
+    "enrolled": "Enrolled"
   },
   "planner": {
     "title": "Planner",
@@ -299,7 +306,8 @@
     "justNow": "just now",
     "minutesAgo": "min ago",
     "hoursAgo": "h ago",
-    "daysAgo": "days ago"
+    "daysAgo": "days ago",
+    "seeAll": "See all"
   },
   "teacher": {
     "nav": {
@@ -346,7 +354,9 @@
       "normal": "Normal",
       "expiresAt": "Expires on",
       "noAnnouncements": "No announcements",
-      "delete": "Delete announcement"
+      "delete": "Delete announcement",
+      "deleteTitle": "Delete announcement?",
+      "deleteIrreversible": "This action cannot be undone."
     },
     "documents": {
       "title": "Documents",
@@ -354,7 +364,9 @@
       "noDocuments": "No documents",
       "download": "Download",
       "delete": "Delete",
-      "uploading": "Uploading..."
+      "uploading": "Uploading...",
+      "deleteTitle": "Delete document?",
+      "deleteConfirm": "will be permanently deleted."
     },
     "students": {
       "title": "Students",

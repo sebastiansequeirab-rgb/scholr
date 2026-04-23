@@ -87,7 +87,14 @@
     "endTime": "Fin",
     "conflict": "Conflicto de horario detectado",
     "icon": "Ícono",
-    "scheduleRoom": "Salón"
+    "scheduleRoom": "Salón",
+    "joinWithCode": "Unirme con código",
+    "joinTitle": "Unirme con código",
+    "joinDesc": "Ingresa el código de acceso que te dio tu profesor.",
+    "joinBtn": "Inscribirme",
+    "enrolledSection": "Cursos inscritos",
+    "enrolledTitle": "Cursos de profesores",
+    "enrolled": "Inscrito"
   },
   "planner": {
     "title": "Planner",
@@ -299,7 +306,8 @@
     "justNow": "ahora mismo",
     "minutesAgo": "min",
     "hoursAgo": "h",
-    "daysAgo": "días"
+    "daysAgo": "días",
+    "seeAll": "Ver todos"
   },
   "teacher": {
     "nav": {
@@ -346,7 +354,9 @@
       "normal": "Normal",
       "expiresAt": "Expira el",
       "noAnnouncements": "Sin anuncios",
-      "delete": "Eliminar anuncio"
+      "delete": "Eliminar anuncio",
+      "deleteTitle": "¿Eliminar anuncio?",
+      "deleteIrreversible": "Esta acción no se puede deshacer."
     },
     "documents": {
       "title": "Documentos",
@@ -354,7 +364,9 @@
       "noDocuments": "Sin documentos",
       "download": "Descargar",
       "delete": "Eliminar",
-      "uploading": "Subiendo..."
+      "uploading": "Subiendo...",
+      "deleteTitle": "¿Eliminar documento?",
+      "deleteConfirm": "será eliminado permanentemente."
     },
     "students": {
       "title": "Estudiantes",

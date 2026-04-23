@@ -215,8 +215,8 @@ export function AnnouncementsClient({ courseId, courseName, teacherId, initialAn
           style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}>
           <div className="w-full max-w-sm rounded-2xl p-6 space-y-4"
             style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
-            <h2 className="font-bold" style={{ color: 'var(--on-surface)' }}>¿Eliminar anuncio?</h2>
-            <p className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>Esta acción no se puede deshacer.</p>
+            <h2 className="font-bold" style={{ color: 'var(--on-surface)' }}>{t('teacher.announcements.deleteTitle')}</h2>
+            <p className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>{t('teacher.announcements.deleteIrreversible')}</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="btn-secondary flex-1">{t('common.cancel')}</button>
               <button onClick={() => handleDelete(deleteId)} className="btn-danger flex-1">{t('common.delete')}</button>

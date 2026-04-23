@@ -142,7 +142,7 @@ export default function SubjectsPage() {
             }}
           >
             <span className="material-symbols-outlined text-[16px]">input</span>
-            {t('subjects.joinWithCode') || 'Unirme'}
+            {t('subjects.joinWithCode')}
           </button>
           <button
             onClick={() => { setEditingSubject(null); setModalOpen(true) }}
@@ -423,10 +423,10 @@ export default function SubjectsPage() {
         <div className="mt-10">
           <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1 font-medium"
             style={{ color: 'var(--color-primary)' }}>
-            {t('subjects.enrolledSection') || 'Cursos inscritos'}
+            {t('subjects.enrolledSection')}
           </p>
           <h2 className="text-lg font-extrabold tracking-tight mb-4" style={{ color: 'var(--on-surface)' }}>
-            {t('subjects.enrolledTitle') || 'Cursos de profesores'}
+            {t('subjects.enrolledTitle')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {enrolledSubjects.map((subject) => {
@@ -449,7 +449,7 @@ export default function SubjectsPage() {
                         backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
                         color: 'var(--color-primary)',
                       }}>
-                      Inscrito
+                      {t('subjects.enrolled')}
                     </span>
                   </div>
 
@@ -504,14 +504,14 @@ export default function SubjectsPage() {
             style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold" style={{ color: 'var(--on-surface)' }}>
-                {t('subjects.joinTitle') || 'Unirme con código'}
+                {t('subjects.joinTitle')}
               </h2>
               <button onClick={() => setJoinOpen(false)} className="p-1 rounded-lg" style={{ color: 'var(--color-outline)' }}>
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
             <p className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>
-              {t('subjects.joinDesc') || 'Ingresa el código de acceso que te dio tu profesor.'}
+              {t('subjects.joinDesc')}
             </p>
             <form onSubmit={handleJoin} className="space-y-3">
               <input
@@ -529,7 +529,7 @@ export default function SubjectsPage() {
                 </p>
               )}
               <button type="submit" disabled={joinLoading || !joinCode.trim()} className="btn-primary w-full">
-                {joinLoading ? t('common.loading') : (t('subjects.joinBtn') || 'Inscribirme')}
+                {joinLoading ? t('common.loading') : t('subjects.joinBtn')}
               </button>
             </form>
           </div>

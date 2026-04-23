@@ -67,7 +67,7 @@ export function TeacherDashboard({ profile, courses, totalStudents }: TeacherDas
             className="text-sm font-semibold hover:underline"
             style={{ color: 'var(--color-primary)' }}
           >
-            {t('common.seeAll') || 'Ver todos'}
+            {t('common.seeAll')}
           </Link>
         </div>
 
