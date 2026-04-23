@@ -74,7 +74,7 @@ export function AIChatHub({
   const pendingSubjectIdRef = useRef<string | null>(GENERAL_ID)
   const bottomRef           = useRef<HTMLDivElement>(null)
   const inputRef            = useRef<HTMLInputElement>(null)
-  const aiRecognitionRef    = useRef<SpeechRecognition | null>(null)
+  const aiRecognitionRef    = useRef<{ stop: () => void } | null>(null)
   const imageInputRef       = useRef<HTMLInputElement>(null)
   const [isAIRecording, setIsAIRecording] = useState(false)
 
@@ -82,10 +82,20 @@ export function AIChatHub({
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
   const handleAIVoiceToggle = () => {
-    type SpeechRecognitionCtor = new () => SpeechRecognition
-    const SRCtor: SpeechRecognitionCtor | undefined =
-      (window as Window & { SpeechRecognition?: SpeechRecognitionCtor }).SpeechRecognition ??
-      (window as Window & { webkitSpeechRecognition?: SpeechRecognitionCtor }).webkitSpeechRecognition
+    interface VoiceRecognitionInstance {
+      lang: string
+      continuous: boolean
+      interimResults: boolean
+      onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
+      onend: (() => void) | null
+      start(): void
+      stop(): void
+    }
+    type VoiceRecognitionCtor = new () => VoiceRecognitionInstance
+    const SRCtor = (
+      (window as Window & { SpeechRecognition?: unknown }).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
+    ) as VoiceRecognitionCtor | undefined
     if (!SRCtor) return
 
     if (isAIRecording) {
@@ -97,7 +107,7 @@ export function AIChatHub({
     recognition.lang = 'es-ES'
     recognition.continuous = false
     recognition.interimResults = false
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    recognition.onresult = (e) => {
       const transcript = e.results[0]?.[0]?.transcript ?? ''
       if (transcript) setInput(prev => prev ? prev + ' ' + transcript : transcript)
     }

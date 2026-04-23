@@ -49,7 +49,7 @@ function NoteEditor({
   const [subjectDropdown, setSubjectDropdown] = useState(false)
   const [uploadingImage,  setUploadingImage]  = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<{ stop: () => void } | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const supabase = createClient()
 
@@ -149,10 +149,20 @@ function NoteEditor({
   }
 
   const handleVoiceToggle = () => {
-    type SpeechRecognitionCtor = new () => SpeechRecognition
-    const SRCtor: SpeechRecognitionCtor | undefined =
-      (window as Window & { SpeechRecognition?: SpeechRecognitionCtor }).SpeechRecognition ??
-      (window as Window & { webkitSpeechRecognition?: SpeechRecognitionCtor }).webkitSpeechRecognition
+    interface VoiceRecognitionInstance {
+      lang: string
+      continuous: boolean
+      interimResults: boolean
+      onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
+      onend: (() => void) | null
+      start(): void
+      stop(): void
+    }
+    type VoiceRecognitionCtor = new () => VoiceRecognitionInstance
+    const SRCtor = (
+      (window as Window & { SpeechRecognition?: unknown }).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
+    ) as VoiceRecognitionCtor | undefined
     if (!SRCtor) return
 
     if (isRecording) {
@@ -164,7 +174,7 @@ function NoteEditor({
     recognition.lang = 'es-ES'
     recognition.continuous = false
     recognition.interimResults = false
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    recognition.onresult = (e) => {
       const transcript = e.results[0]?.[0]?.transcript ?? ''
       if (transcript) editor?.chain().focus().insertContent(transcript + ' ').run()
     }
