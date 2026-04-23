@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
   const supabase = createClient()
@@ -15,8 +16,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Access code is required' }, { status: 400 })
   }
 
-  // Find subject by access_code
-  const { data: subject, error: subjectError } = await supabase
+  // Use admin client to bypass RLS — students can't read other users' subjects directly
+  const adminClient = createAdminClient()
+  const { data: subject, error: subjectError } = await adminClient
     .from('subjects')
     .select('id, name, color, icon, teacher_id')
     .eq('access_code', code.trim().toUpperCase())

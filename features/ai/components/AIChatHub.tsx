@@ -790,13 +790,13 @@ export function AIChatHub({
             </span>
           </div>
           <div className="flex-1 overflow-y-auto p-2.5">
-            <SidebarContent />
+            {SidebarContent()}
           </div>
         </div>
 
         {/* Chat */}
         <div className="flex-1 p-4 min-w-0 overflow-hidden">
-          <ChatArea />
+          {ChatArea()}
         </div>
       </div>
 
@@ -816,7 +816,7 @@ export function AIChatHub({
             </div>
             <div className="rounded-2xl p-4"
               style={{ border: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-low)' }}>
-              <SidebarContent />
+              {SidebarContent()}
             </div>
           </div>
         )}
@@ -831,7 +831,7 @@ export function AIChatHub({
               minHeight:       '480px',
             }}>
             <div className="p-4 h-full">
-              <ChatArea />
+              {ChatArea()}
             </div>
           </div>
         )}
