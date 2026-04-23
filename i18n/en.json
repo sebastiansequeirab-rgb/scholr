@@ -380,7 +380,10 @@
       "noSchedulesDesc": "Add a class schedule and it will automatically appear on enrolled students' calendars.",
       "propagatedNote": "Visible to enrolled students",
       "invalidTime": "End time must be after start time.",
-      "errorSaving": "Error saving the schedule."
+      "errorSaving": "Error saving the schedule.",
+      "sync": "Sync students",
+      "syncTitle": "Copy schedules to all enrolled students",
+      "syncDone": "Done — {n} schedule(s) synced to students."
     }
   }
 }

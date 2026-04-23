@@ -35,6 +35,8 @@ export function CourseScheduleManager({
   const [room, setRoom] = useState('')
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
   const [error, setError] = useState('')
 
   const handleAdd = async () => {
@@ -67,6 +69,25 @@ export function CourseScheduleManager({
     }
   }
 
+  const handleSync = async () => {
+    setSyncing(true)
+    setSyncMsg('')
+    try {
+      const res = await fetch(`/api/teacher/courses/${courseId}/sync-schedules`, { method: 'POST' })
+      const data = await res.json() as { synced?: number; error?: string }
+      if (res.ok) {
+        setSyncMsg(t('teacher.schedules.syncDone').replace('{n}', String(data.synced ?? 0)))
+      } else {
+        setSyncMsg(data.error ?? 'Error')
+      }
+    } catch {
+      setSyncMsg(t('teacher.schedules.errorSaving'))
+    } finally {
+      setSyncing(false)
+      setTimeout(() => setSyncMsg(''), 4000)
+    }
+  }
+
   const handleDelete = async (scheduleId: string) => {
     setDeleting(scheduleId)
     try {
@@ -95,19 +116,40 @@ export function CourseScheduleManager({
         {courseName}
       </Link>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-extrabold" style={{ color: 'var(--on-surface)' }}>
           {t('teacher.schedules.title')}
         </h1>
-        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full font-semibold"
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-semibold transition-all"
           style={{
-            backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
+            backgroundColor: syncing
+              ? 'color-mix(in srgb, var(--color-primary) 8%, transparent)'
+              : 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
             color: 'var(--color-primary)',
-          }}>
-          <span className="material-symbols-outlined text-[14px]">info</span>
-          {t('teacher.schedules.propagatedNote')}
-        </div>
+            border: '1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)',
+          }}
+          title={t('teacher.schedules.syncTitle')}
+        >
+          <span className="material-symbols-outlined text-[14px]">
+            {syncing ? 'hourglass_empty' : 'sync'}
+          </span>
+          {syncing ? t('common.loading') : t('teacher.schedules.sync')}
+        </button>
       </div>
+
+      {syncMsg && (
+        <div className="rounded-xl px-4 py-2.5 text-xs font-medium"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--success) 12%, transparent)',
+            color: 'var(--success)',
+            border: '1px solid color-mix(in srgb, var(--success) 25%, transparent)',
+          }}>
+          {syncMsg}
+        </div>
+      )}
 
       {/* Existing schedules */}
       {schedules.length === 0 ? (

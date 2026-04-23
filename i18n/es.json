@@ -380,7 +380,10 @@
       "noSchedulesDesc": "Agrega un horario de clase y aparecerá automáticamente en el calendario de los alumnos inscritos.",
       "propagatedNote": "Visible para alumnos inscritos",
       "invalidTime": "La hora de fin debe ser mayor a la hora de inicio.",
-      "errorSaving": "Error al guardar el horario."
+      "errorSaving": "Error al guardar el horario.",
+      "sync": "Sincronizar alumnos",
+      "syncTitle": "Copia los horarios a todos los alumnos inscritos",
+      "syncDone": "Listo — {n} horario(s) sincronizados con los alumnos."
     }
   }
 }
