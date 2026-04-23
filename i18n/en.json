@@ -372,6 +372,15 @@
       "title": "Students",
       "progress": "Progress",
       "noStudents": "No students enrolled yet"
+    },
+    "schedules": {
+      "title": "Schedules",
+      "addSchedule": "Add schedule",
+      "noSchedules": "No schedules configured",
+      "noSchedulesDesc": "Add a class schedule and it will automatically appear on enrolled students' calendars.",
+      "propagatedNote": "Visible to enrolled students",
+      "invalidTime": "End time must be after start time.",
+      "errorSaving": "Error saving the schedule."
     }
   }
 }

@@ -34,6 +34,7 @@ export function CourseOverview({ course, students }: CourseOverviewProps) {
   }
 
   const tabs = [
+    { href: `/teacher/courses/${course.id}/schedules`,     icon: 'calendar_month',       label: t('teacher.schedules.title')     },
     { href: `/teacher/courses/${course.id}/grades`,        icon: 'grade',                label: t('teacher.grades.title')        },
     { href: `/teacher/courses/${course.id}/announcements`, icon: 'campaign',             label: t('teacher.announcements.title') },
     { href: `/teacher/courses/${course.id}/documents`,     icon: 'folder_open',          label: t('teacher.documents.title')     },
@@ -102,7 +103,7 @@ export function CourseOverview({ course, students }: CourseOverviewProps) {
       </div>
 
       {/* Quick action tabs */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {tabs.map(({ href, icon, label }) => (
           <Link
             key={href}

@@ -372,6 +372,15 @@
       "title": "Estudiantes",
       "progress": "Progreso",
       "noStudents": "Sin estudiantes inscritos aún"
+    },
+    "schedules": {
+      "title": "Horarios",
+      "addSchedule": "Agregar horario",
+      "noSchedules": "Sin horarios configurados",
+      "noSchedulesDesc": "Agrega un horario de clase y aparecerá automáticamente en el calendario de los alumnos inscritos.",
+      "propagatedNote": "Visible para alumnos inscritos",
+      "invalidTime": "La hora de fin debe ser mayor a la hora de inicio.",
+      "errorSaving": "Error al guardar el horario."
     }
   }
 }

@@ -84,21 +84,25 @@ export default function SubjectsPage() {
     if (!joinCode.trim()) return
     setJoinLoading(true)
     setJoinError('')
-    const res = await fetch('/api/subjects/join', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: joinCode }),
-    })
-    const data = await res.json() as { error?: string }
-    if (!res.ok) {
-      setJoinError(data.error || 'Error al unirse')
+    try {
+      const res = await fetch('/api/subjects/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: joinCode }),
+      })
+      const data = await res.json() as { error?: string }
+      if (!res.ok) {
+        setJoinError(data.error || 'Error al unirse')
+        return
+      }
+      setJoinOpen(false)
+      setJoinCode('')
+      fetchData()
+    } catch {
+      setJoinError('Error de conexión. Intenta de nuevo.')
+    } finally {
       setJoinLoading(false)
-      return
     }
-    setJoinOpen(false)
-    setJoinCode('')
-    setJoinLoading(false)
-    fetchData()
   }
 
   const handleDelete = async (id: string) => {
