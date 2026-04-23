@@ -36,6 +36,9 @@
     "signIn": "Sign in",
     "sendResetLink": "Send reset link",
     "backToLogin": "Back to login",
+    "roleSelect": "How will you use Skolar?",
+    "roleStudent": "Student",
+    "roleTeacher": "Teacher",
     "errors": {
       "invalidEmail": "Invalid email",
       "passwordMin": "At least 8 characters",
@@ -297,5 +300,66 @@
     "minutesAgo": "min ago",
     "hoursAgo": "h ago",
     "daysAgo": "days ago"
+  },
+  "teacher": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "courses": "Courses"
+    },
+    "dashboard": {
+      "title": "Teacher Dashboard",
+      "totalStudents": "Total students",
+      "totalCourses": "Active courses",
+      "noCourses": "No courses yet",
+      "createFirst": "Create your first course to get started"
+    },
+    "courses": {
+      "title": "My Courses",
+      "add": "New course",
+      "edit": "Edit course",
+      "name": "Course name",
+      "accessCode": "Access code",
+      "copyCode": "Copy code",
+      "codeCopied": "Copied!",
+      "students": "Students",
+      "noStudents": "No students enrolled",
+      "overview": "Overview",
+      "delete": "Delete course",
+      "shareCode": "Share this code with your students"
+    },
+    "grades": {
+      "title": "Grades",
+      "save": "Save",
+      "saved": "Saved",
+      "noExams": "No activities created",
+      "noStudents": "No students enrolled",
+      "student": "Student"
+    },
+    "announcements": {
+      "title": "Announcements",
+      "add": "New announcement",
+      "edit": "Edit announcement",
+      "titleField": "Title",
+      "contentField": "Content",
+      "priority": "Priority",
+      "urgent": "Urgent",
+      "normal": "Normal",
+      "expiresAt": "Expires on",
+      "noAnnouncements": "No announcements",
+      "delete": "Delete announcement"
+    },
+    "documents": {
+      "title": "Documents",
+      "upload": "Upload file",
+      "noDocuments": "No documents",
+      "download": "Download",
+      "delete": "Delete",
+      "uploading": "Uploading..."
+    },
+    "students": {
+      "title": "Students",
+      "progress": "Progress",
+      "noStudents": "No students enrolled yet"
+    }
   }
 }

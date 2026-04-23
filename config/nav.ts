@@ -1,3 +1,8 @@
+export const TEACHER_NAV_ITEMS = [
+  { key: 'teacher.nav.dashboard', href: '/teacher/dashboard', icon: 'home'      },
+  { key: 'teacher.nav.courses',   href: '/teacher/courses',   icon: 'menu_book' },
+]
+
 export const NAV_ITEMS = [
   { key: 'dashboard', href: '/dashboard', icon: 'home'           },
   { key: 'ai',        href: '/ai',        icon: 'auto_awesome'   },

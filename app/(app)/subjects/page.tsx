@@ -12,10 +12,15 @@ import { getSubjectIcon } from '@/features/subjects/utils'
 export default function SubjectsPage() {
   const { t } = useTranslation()
   const [subjects,         setSubjects]         = useState<Subject[]>([])
+  const [enrolledSubjects, setEnrolledSubjects] = useState<(Subject & { is_enrolled: true; teacher_name: string | null })[]>([])
   const [schedules,        setSchedules]        = useState<Schedule[]>([])
   const [examProgress,     setExamProgress]     = useState<Record<string, { earned: number; graded: number; total: number }>>({})
   const [loading,          setLoading]          = useState(true)
   const [modalOpen,        setModalOpen]        = useState(false)
+  const [joinOpen,         setJoinOpen]         = useState(false)
+  const [joinCode,         setJoinCode]         = useState('')
+  const [joinLoading,      setJoinLoading]      = useState(false)
+  const [joinError,        setJoinError]        = useState('')
   const [editingSubject,   setEditingSubject]   = useState<Subject | null>(null)
   const [expandedSubject,  setExpandedSubject]  = useState<string | null>(null)
   const [deleteConfirm,    setDeleteConfirm]    = useState<string | null>(null)
@@ -26,13 +31,37 @@ export default function SubjectsPage() {
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
-    const [{ data: subs }, { data: scheds }, { data: examData }] = await Promise.all([
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const [{ data: subs }, { data: scheds }, { data: examData }, { data: enrollmentData }] = await Promise.all([
       supabase.from('subjects').select('*').order('created_at', { ascending: true }),
       supabase.from('schedules').select('*'),
       supabase.from('exams').select('id,subject_id,percentage,grade,submission_status,activity_type').neq('activity_type', 'study_session'),
+      user ? supabase
+        .from('enrollments')
+        .select('subject_id, subjects(*, profiles!subjects_teacher_id_fkey(full_name))')
+        .eq('student_id', user.id)
+        .eq('status', 'active')
+        : Promise.resolve({ data: [] }),
     ])
+
     setSubjects(subs || [])
     setSchedules(scheds || [])
+
+    // Enrolled subjects from teacher courses
+    const rawEnrollments = (enrollmentData || []) as unknown as {
+      subject_id: string
+      subjects: (Subject & { profiles?: { full_name?: string } | null }) | null
+    }[]
+    const enrolled = rawEnrollments.map((e) => {
+      const s = e.subjects
+      if (!s) return null
+      const teacherName = s.profiles?.full_name ?? null
+      return { ...s, is_enrolled: true as const, teacher_name: teacherName }
+    }).filter(Boolean) as (Subject & { is_enrolled: true; teacher_name: string | null })[]
+
+    setEnrolledSubjects(enrolled)
+
     // build progress map per subject
     const progressMap: Record<string, { earned: number; graded: number; total: number }> = {}
     for (const e of (examData || [])) {
@@ -49,6 +78,28 @@ export default function SubjectsPage() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  const handleJoin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!joinCode.trim()) return
+    setJoinLoading(true)
+    setJoinError('')
+    const res = await fetch('/api/subjects/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: joinCode }),
+    })
+    const data = await res.json() as { error?: string }
+    if (!res.ok) {
+      setJoinError(data.error || 'Error al unirse')
+      setJoinLoading(false)
+      return
+    }
+    setJoinOpen(false)
+    setJoinCode('')
+    setJoinLoading(false)
+    fetchData()
+  }
 
   const handleDelete = async (id: string) => {
     const supabase = createClient()
@@ -80,19 +131,33 @@ export default function SubjectsPage() {
             {subjects.length} {subjects.length === 1 ? 'materia activa' : 'materias activas'}
           </p>
         </div>
-        <button
-          onClick={() => { setEditingSubject(null); setModalOpen(true) }}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
-            color: 'var(--color-primary)',
-            border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
-          }}
-          id="add-subject-btn"
-        >
-          <span className="material-symbols-outlined text-[16px]">add</span>
-          Nueva
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setJoinCode(''); setJoinError(''); setJoinOpen(true) }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
+            style={{
+              backgroundColor: 'var(--s-low)',
+              color: 'var(--on-surface)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            <span className="material-symbols-outlined text-[16px]">input</span>
+            {t('subjects.joinWithCode') || 'Unirme'}
+          </button>
+          <button
+            onClick={() => { setEditingSubject(null); setModalOpen(true) }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+              color: 'var(--color-primary)',
+              border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
+            }}
+            id="add-subject-btn"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            Nueva
+          </button>
+        </div>
       </div>
 
       {/* Loading */}
@@ -351,6 +416,124 @@ export default function SubjectsPage() {
           onClose={() => setDetailSubject(null)}
           initialTab={detailTab}
         />
+      )}
+
+      {/* Enrolled subjects section */}
+      {!loading && enrolledSubjects.length > 0 && (
+        <div className="mt-10">
+          <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1 font-medium"
+            style={{ color: 'var(--color-primary)' }}>
+            {t('subjects.enrolledSection') || 'Cursos inscritos'}
+          </p>
+          <h2 className="text-lg font-extrabold tracking-tight mb-4" style={{ color: 'var(--on-surface)' }}>
+            {t('subjects.enrolledTitle') || 'Cursos de profesores'}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {enrolledSubjects.map((subject) => {
+              const prog = examProgress[subject.id]
+              const isPassing = prog && prog.earned >= 10
+              return (
+                <div
+                  key={subject.id}
+                  className="group relative rounded-2xl p-5 transition-all duration-300 hover:shadow-xl"
+                  style={{
+                    backgroundColor: 'var(--s-base)',
+                    border: '1px solid var(--border-default)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  }}
+                >
+                  {/* Enrolled badge */}
+                  <div className="absolute top-3 right-3">
+                    <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+                        color: 'var(--color-primary)',
+                      }}>
+                      Inscrito
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: subject.color + '22' }}>
+                      <span className="material-symbols-outlined text-[20px]"
+                        style={{ color: subject.color, fontVariationSettings: "'FILL' 1" }}>
+                        {subject.icon || getSubjectIcon(subject.name)}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0 pr-14">
+                      <p className="font-bold text-sm truncate" style={{ color: 'var(--on-surface)' }}>
+                        {subject.name}
+                      </p>
+                      {subject.teacher_name && (
+                        <p className="text-xs truncate mt-0.5" style={{ color: 'var(--on-surface-variant)' }}>
+                          Prof. {subject.teacher_name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--s-low)' }}>
+                      <div className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min((prog?.earned ?? 0) / 20 * 100, 100)}%`,
+                          backgroundColor: isPassing ? 'var(--success)' : prog ? 'var(--color-primary)' : 'var(--border-strong)',
+                        }} />
+                    </div>
+                    <span className="mono text-[9px] font-bold flex-shrink-0"
+                      style={{ color: isPassing ? 'var(--success)' : prog ? 'var(--color-outline)' : 'var(--border-strong)' }}>
+                      {prog ? `${prog.earned.toFixed(1)}/20` : '—'}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Join with code modal */}
+      {joinOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setJoinOpen(false); setJoinError('') } }}
+        >
+          <div className="w-full max-w-sm rounded-2xl p-6 space-y-4"
+            style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold" style={{ color: 'var(--on-surface)' }}>
+                {t('subjects.joinTitle') || 'Unirme con código'}
+              </h2>
+              <button onClick={() => setJoinOpen(false)} className="p-1 rounded-lg" style={{ color: 'var(--color-outline)' }}>
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <p className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>
+              {t('subjects.joinDesc') || 'Ingresa el código de acceso que te dio tu profesor.'}
+            </p>
+            <form onSubmit={handleJoin} className="space-y-3">
+              <input
+                type="text"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="MAT-2026-XK3"
+                className="input font-mono tracking-widest text-center text-lg"
+                autoFocus
+                maxLength={12}
+              />
+              {joinError && (
+                <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg p-2.5">
+                  {joinError}
+                </p>
+              )}
+              <button type="submit" disabled={joinLoading || !joinCode.trim()} className="btn-primary w-full">
+                {joinLoading ? t('common.loading') : (t('subjects.joinBtn') || 'Inscribirme')}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )

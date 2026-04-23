@@ -122,13 +122,13 @@ export function AIChatHub({
     const supabase = createClient()
     Promise.all([
       supabase.from('subjects')
-        .select('id, name, color, icon, user_id, professor, room, credits, created_at')
+        .select('id, name, color, icon, user_id, professor, room, credits, created_at, access_code, teacher_id, evaluation_plan')
         .order('name'),
       supabase.from('ai_sessions')
         .select('id, subject_id, title, created_at, last_message_at')
         .order('last_message_at', { ascending: false }),
     ]).then(async ([sRes, sessRes]) => {
-      setSubjects(sRes.data ?? [])
+      setSubjects((sRes.data ?? []) as import('@/types').Subject[])
       const sess = sessRes.data ?? []
       setSessions(sess)
       setLoadingData(false)

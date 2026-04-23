@@ -8,6 +8,7 @@ import { useTranslation } from '@/hooks/useTranslation'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
+  const [role, setRole] = useState<'student' | 'teacher'>('student')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -43,6 +44,7 @@ export default function RegisterPage() {
         data: {
           full_name: fullName,
           language: browserLang,
+          role,
         },
       },
     })
@@ -115,6 +117,33 @@ export default function RegisterPage() {
 
         <div className="card">
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {/* Role selector */}
+            <div>
+              <p className="label mb-2">{t('auth.roleSelect')}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(['student', 'teacher'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRole(r)}
+                    className="flex flex-col items-center gap-1.5 rounded-xl p-3 border transition-all"
+                    style={{
+                      borderColor: role === r ? 'var(--color-primary)' : 'var(--border-default)',
+                      backgroundColor: role === r ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'var(--s-base)',
+                      color: role === r ? 'var(--color-primary)' : 'var(--on-surface-variant)',
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      {r === 'student' ? 'school' : 'cast_for_education'}
+                    </span>
+                    <span className="text-xs font-semibold">
+                      {r === 'student' ? t('auth.roleStudent') : t('auth.roleTeacher')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Full Name */}
             <div>
               <label htmlFor="fullName" className="label">{t('auth.fullName')}</label>

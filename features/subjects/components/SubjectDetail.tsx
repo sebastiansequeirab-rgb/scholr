@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import type { Subject, Exam } from '@/types'
+import type { Subject, Exam, Document } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
+import { formatFileSize } from '@/features/teacher/courses/utils'
 import { SubjectChat } from './SubjectChat'
 
-type DetailTab = 'progress' | 'chat'
+type DetailTab = 'progress' | 'chat' | 'documents'
 
 const PASS_SCORE = 10
 const MAX_SCORE  = 20
@@ -79,6 +80,7 @@ export function SubjectDetail({
   const [activeTab,  setActiveTab]  = useState<DetailTab>(initialTab)
   const [exams,      setExams]      = useState<Exam[]>([])
   const [noteCount,  setNoteCount]  = useState<number>(0)
+  const [documents,  setDocuments]  = useState<Document[]>([])
   const [loading,    setLoading]    = useState(true)
 
   const fetchExams = useCallback(async () => {
@@ -97,8 +99,19 @@ export function SubjectDetail({
     ])
     setExams(data || [])
     setNoteCount(count ?? 0)
+
+    // Fetch documents if this is a teacher-created course
+    if (subject.teacher_id) {
+      const { data: docs } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('subject_id', subject.id)
+        .order('created_at', { ascending: false })
+      setDocuments((docs ?? []) as Document[])
+    }
+
     setLoading(false)
-  }, [subject.id])
+  }, [subject.id, subject.teacher_id])
 
   useEffect(() => { fetchExams() }, [fetchExams])
 
@@ -187,9 +200,10 @@ export function SubjectDetail({
         {/* ── Tab bar ── */}
         <div className="flex gap-1 px-4 py-2" style={{ borderBottom: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-low)' }}>
           {([
-            { id: 'progress', icon: 'trending_up',  label_es: 'Progreso',  label_en: 'Progress' },
-            { id: 'chat',     icon: 'auto_awesome',  label_es: 'Chat IA',   label_en: 'AI Chat'  },
-          ] as const).map(tab => (
+            { id: 'progress',  icon: 'trending_up',  label_es: 'Progreso',   label_en: 'Progress',  show: true                     },
+            { id: 'documents', icon: 'folder_open',  label_es: 'Archivos',   label_en: 'Files',     show: !!subject.teacher_id     },
+            { id: 'chat',      icon: 'auto_awesome',  label_es: 'Chat IA',    label_en: 'AI Chat',   show: true                     },
+          ] as const).filter(tab => tab.show).map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
               style={{
@@ -204,6 +218,57 @@ export function SubjectDetail({
             </button>
           ))}
         </div>
+
+        {/* ── Documents tab ── */}
+        {activeTab === 'documents' && (
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {loading ? (
+              <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-14 rounded-xl" />)}</div>
+            ) : documents.length === 0 ? (
+              <div className="text-center py-12">
+                <span className="material-symbols-outlined text-4xl mb-3 block"
+                  style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
+                  folder_open
+                </span>
+                <p className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>
+                  {language === 'es' ? 'Sin archivos disponibles' : 'No files available'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl"
+                    style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}>
+                      <span className="material-symbols-outlined text-[16px]"
+                        style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                        insert_drive_file
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--on-surface)' }}>
+                        {doc.title}
+                      </p>
+                      <p className="text-[10px]" style={{ color: 'var(--on-surface-variant)' }}>
+                        {doc.size_bytes != null ? formatFileSize(doc.size_bytes) : '—'}
+                      </p>
+                    </div>
+                    <a
+                      href={doc.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 rounded-lg hover:bg-[var(--s-base)] transition-all flex-shrink-0"
+                      style={{ color: 'var(--color-primary)' }}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">download</span>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Chat tab ── */}
         {activeTab === 'chat' && (

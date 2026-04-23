@@ -19,13 +19,35 @@ export default async function DashboardPage() {
     { data: exams },
     { data: subjects },
     { data: schedules },
+    { data: enrollmentData },
   ] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', user.id).single(),
     supabase.from('tasks').select('*').eq('user_id', user.id).order('created_at'),
     supabase.from('exams').select('*').eq('user_id', user.id).order('exam_date'),
     supabase.from('subjects').select('*').eq('user_id', user.id),
     supabase.from('schedules').select('*').eq('user_id', user.id),
+    supabase.from('enrollments').select('subject_id').eq('student_id', user.id).eq('status', 'active'),
   ])
+
+  // Fetch announcements for enrolled subjects
+  const enrolledSubjectIds = (enrollmentData ?? []).map((e: { subject_id: string }) => e.subject_id)
+  const { data: announcementsData } = enrolledSubjectIds.length > 0
+    ? await supabase
+        .from('announcements')
+        .select('id, title, priority, created_at, subjects(name)')
+        .in('subject_id', enrolledSubjectIds)
+        .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(5)
+    : { data: [] }
+
+  const announcements = (announcementsData ?? []) as unknown as {
+    id: string
+    title: string
+    priority: 'normal' | 'urgent'
+    created_at: string
+    subjects: { name: string } | null
+  }[]
 
   const allTasks     = (tasks     || []) as Task[]
   const allExams     = (exams     || []) as Exam[]
@@ -195,6 +217,44 @@ export default async function DashboardPage() {
           <LiveClock />
         </div>
       </header>
+
+      {/* ── Announcements from enrolled courses ───────────────────────────── */}
+      {announcements.length > 0 && (
+        <div className="mb-3 lg:mb-4 space-y-2">
+          {announcements.map((a) => (
+            <div key={a.id} className="rounded-xl px-4 py-3 flex items-center gap-3"
+              style={{
+                backgroundColor: a.priority === 'urgent'
+                  ? 'color-mix(in srgb, #ef4444 10%, var(--s-low))'
+                  : 'color-mix(in srgb, var(--color-primary) 8%, var(--s-low))',
+                border: `1px solid ${a.priority === 'urgent' ? 'color-mix(in srgb, #ef4444 25%, transparent)' : 'color-mix(in srgb, var(--color-primary) 20%, transparent)'}`,
+              }}>
+              <span className="material-symbols-outlined text-[18px] flex-shrink-0"
+                style={{
+                  color: a.priority === 'urgent' ? '#ef4444' : 'var(--color-primary)',
+                  fontVariationSettings: "'FILL' 1",
+                }}>
+                campaign
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
+                  {a.title}
+                </p>
+                {a.subjects && (
+                  <p className="text-[10px]" style={{ color: 'var(--on-surface-variant)' }}>
+                    {a.subjects.name}
+                    {a.priority === 'urgent' && (
+                      <span className="ml-2 font-bold uppercase text-[9px]" style={{ color: '#ef4444' }}>
+                        · Urgente
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Tu foco ahora ─────────────────────────────────────────────────── */}
       <div className="mb-3 lg:mb-4 rounded-2xl px-4 py-3 lg:py-4 flex items-center gap-3"

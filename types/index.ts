@@ -7,6 +7,11 @@ export type Profile = {
   is_premium: boolean
   updated_at: string
   avatar_url: string | null
+  role: 'student' | 'teacher'
+}
+
+export type EvaluationPlan = {
+  items: { name: string; percentage: number }[]
 }
 
 export type Subject = {
@@ -19,6 +24,9 @@ export type Subject = {
   room: string | null
   credits: number | null
   created_at: string
+  access_code: string | null
+  teacher_id: string | null
+  evaluation_plan: EvaluationPlan | null
 }
 
 export type Schedule = {
@@ -76,6 +84,45 @@ export type Exam = {
   graded_at: string | null
   max_grade: number | null
   reminder_triggered: boolean | null
+  assigned_by: string | null
+}
+
+export type Enrollment = {
+  id: string
+  student_id: string
+  subject_id: string
+  joined_at: string
+  status: 'active' | 'dropped'
+}
+
+export type Announcement = {
+  id: string
+  subject_id: string
+  teacher_id: string
+  title: string
+  content: string | null
+  priority: 'normal' | 'urgent'
+  expires_at: string | null
+  created_at: string
+}
+
+export type Document = {
+  id: string
+  subject_id: string
+  uploaded_by: string
+  title: string
+  file_url: string
+  file_type: string | null
+  size_bytes: number | null
+  created_at: string
+}
+
+export type ExamGrade = {
+  id: string
+  exam_id: string
+  student_id: string
+  grade: number | null
+  graded_at: string
 }
 
 export const ACTIVITY_TYPES: Record<ActivityType, { label_es: string; label_en: string; icon: string; color: string; requiresPercentage: boolean }> = {

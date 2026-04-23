@@ -36,6 +36,9 @@
     "signIn": "Inicia sesión",
     "sendResetLink": "Enviar enlace",
     "backToLogin": "Volver al login",
+    "roleSelect": "¿Cómo usarás Skolar?",
+    "roleStudent": "Estudiante",
+    "roleTeacher": "Profesor",
     "errors": {
       "invalidEmail": "Correo no válido",
       "passwordMin": "Mínimo 8 caracteres",
@@ -297,5 +300,66 @@
     "minutesAgo": "min",
     "hoursAgo": "h",
     "daysAgo": "días"
+  },
+  "teacher": {
+    "nav": {
+      "dashboard": "Panel",
+      "courses": "Cursos"
+    },
+    "dashboard": {
+      "title": "Panel del Profesor",
+      "totalStudents": "Estudiantes totales",
+      "totalCourses": "Cursos activos",
+      "noCourses": "Aún no tienes cursos",
+      "createFirst": "Crea tu primer curso para comenzar"
+    },
+    "courses": {
+      "title": "Mis Cursos",
+      "add": "Nuevo curso",
+      "edit": "Editar curso",
+      "name": "Nombre del curso",
+      "accessCode": "Código de acceso",
+      "copyCode": "Copiar código",
+      "codeCopied": "¡Copiado!",
+      "students": "Estudiantes",
+      "noStudents": "Sin estudiantes inscritos",
+      "overview": "Resumen",
+      "delete": "Eliminar curso",
+      "shareCode": "Comparte este código con tus estudiantes"
+    },
+    "grades": {
+      "title": "Calificaciones",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "noExams": "Sin actividades creadas",
+      "noStudents": "Sin estudiantes inscritos",
+      "student": "Estudiante"
+    },
+    "announcements": {
+      "title": "Anuncios",
+      "add": "Nuevo anuncio",
+      "edit": "Editar anuncio",
+      "titleField": "Título",
+      "contentField": "Contenido",
+      "priority": "Prioridad",
+      "urgent": "Urgente",
+      "normal": "Normal",
+      "expiresAt": "Expira el",
+      "noAnnouncements": "Sin anuncios",
+      "delete": "Eliminar anuncio"
+    },
+    "documents": {
+      "title": "Documentos",
+      "upload": "Subir archivo",
+      "noDocuments": "Sin documentos",
+      "download": "Descargar",
+      "delete": "Eliminar",
+      "uploading": "Subiendo..."
+    },
+    "students": {
+      "title": "Estudiantes",
+      "progress": "Progreso",
+      "noStudents": "Sin estudiantes inscritos aún"
+    }
   }
 }
