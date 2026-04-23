@@ -12,6 +12,8 @@ export interface AIRequest {
   app_context: AppContext
   access_token: string         // Supabase JWT — used server-side to auth queries
   pdf_text?: string            // extracted text from an attached PDF (if any)
+  imageBase64?: string         // base64-encoded image for vision (no data: prefix)
+  imageMediaType?: string      // e.g. 'image/jpeg'
 }
 
 /** What the client knows about the current UI state */

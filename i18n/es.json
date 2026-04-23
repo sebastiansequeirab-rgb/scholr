@@ -158,6 +158,8 @@
     "noSubject": "Sin materia",
     "lastSaved": "Guardado hace",
     "insertImage": "Insertar imagen",
+    "voice_start": "Dictar",
+    "voice_stop": "Detener dictado",
     "uploadingImage": "Subiendo...",
     "sortRecent": "Recientes",
     "sortAlpha": "A-Z",
@@ -245,6 +247,9 @@
     "upgrade": "Mejorar a Premium",
     "placeholder": "¿En qué puedo ayudarte?",
     "send": "Enviar",
+    "voice_start": "Dictar",
+    "voice_stop": "Detener dictado",
+    "attach_image": "Adjuntar imagen",
     "suggestions": {
       "studyPlan": "Hazme un plan de estudio",
       "summarize": "Resume mis notas",

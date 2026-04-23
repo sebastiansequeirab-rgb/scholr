@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { callGroq, getText, getToolCall, CHAT_MODEL } from '@/features/ai/provider'
+import { callGroq, getText, getToolCall, CHAT_MODEL, VISION_MODEL } from '@/features/ai/provider'
+import type { GroqContentPart, GroqMessage } from '@/features/ai/provider'
 import { TOOL_DECLARATIONS, executeTool } from '@/features/ai/tools'
 import type { AIRequest, AIResponse } from '@/features/ai/types'
-import type { GroqMessage } from '@/features/ai/provider'
 import { buildChatSystemPrompt } from '@/features/ai/prompts/chatSystemPrompt'
 
 const MAX_HISTORY     = 8  // last N messages sent to model
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { message, history = [], app_context, access_token, pdf_text } = body
+  const { message, history = [], app_context, access_token, pdf_text, imageBase64, imageMediaType } = body
   if (!message?.trim()) return NextResponse.json({ error: 'message is required' },      { status: 400 })
   if (!access_token)    return NextResponse.json({ error: 'access_token is required' }, { status: 401 })
 
@@ -81,16 +81,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   })
 
   // ── 5. Build conversation ─────────────────────────────────────────────────
+  const hasImage    = !!(imageBase64 && imageMediaType)
+  const activeModel = hasImage ? VISION_MODEL : CHAT_MODEL
+  const aiProvider  = process.env.AI_PROVIDER || 'groq'
+
+  // Build user content — multimodal when image attached
+  const userContent: string | GroqContentPart[] = hasImage
+    ? (aiProvider === 'claude'
+        // Claude API format (migration-ready — not active yet)
+        ? ([
+            { type: 'image', source: { type: 'base64', media_type: imageMediaType, data: imageBase64 } },
+            { type: 'text',  text: message },
+          ] as unknown as GroqContentPart[])
+        // Groq / OpenAI-compatible vision format
+        : [
+            { type: 'image_url', image_url: { url: `data:${imageMediaType};base64,${imageBase64}` } },
+            { type: 'text',      text: message },
+          ])
+    : message
+
   let currentMessages: GroqMessage[] = [
     { role: 'system', content: systemPrompt },
     ...history.slice(-MAX_HISTORY).map(m => ({
       role:    m.role === 'user' ? 'user' as const : 'assistant' as const,
       content: m.content,
     })),
-    { role: 'user', content: message },
+    { role: 'user', content: userContent },
   ]
 
-  console.log(`[AI] user=${userId} subject="${activeSubjectName || '-'}" msg="${message.slice(0, 80)}"`)
+  console.log(`[AI] user=${userId} subject="${activeSubjectName || '-'}" model=${activeModel} img=${hasImage} msg="${message.slice(0, 80)}"`)
 
   // ── 6. First call ─────────────────────────────────────────────────────────
   const toolsUsed: string[] = []
@@ -98,7 +117,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let groqResp
   try {
     groqResp = await callGroq({
-      model:       CHAT_MODEL,
+      model:       activeModel,
       messages:    currentMessages,
       tools:       TOOL_DECLARATIONS,
       tool_choice: 'auto',

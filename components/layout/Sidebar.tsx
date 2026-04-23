@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { getInitials } from '@/lib/utils'
@@ -19,6 +21,8 @@ export function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { collapsed, toggle } = useSidebarCollapse()
+  const { resolvedTheme } = useTheme()
+  const logoSrc = resolvedTheme === 'light' ? '/logo-light.png' : '/logo-dark.png'
   const [mobileOpen, setMobileOpen] = useState(false)
   const [moreOpen,   setMoreOpen]   = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -55,23 +59,23 @@ export function Sidebar({ profile }: SidebarProps) {
       {/* Logo */}
       <div className={`mb-6 ${collapsed ? 'px-0 flex justify-center' : 'px-2'}`}>
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
-            <span className="material-symbols-outlined text-[18px]"
-              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
-              school
-            </span>
-          </div>
-          {!collapsed && (
-            <div>
-              <span className="text-base font-black tracking-tighter" style={{ color: 'var(--color-primary)' }}>
-                Skolar
+          {collapsed ? (
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
+              <span className="material-symbols-outlined text-[18px]"
+                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                school
               </span>
-              <p className="text-[9px] uppercase tracking-[0.2em] font-mono leading-none mt-0.5"
-                style={{ color: 'var(--color-outline)' }}>
-                Sanctuary
-              </p>
             </div>
+          ) : (
+            <Image
+              src={logoSrc}
+              alt="Skolar"
+              width={120}
+              height={32}
+              style={{ width: 'auto', height: '32px', objectFit: 'contain' }}
+              priority
+            />
           )}
         </Link>
       </div>

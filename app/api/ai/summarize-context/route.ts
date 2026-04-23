@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { callGroq, getText, CHAT_MODEL } from '@/features/ai/provider'
-
-const MSG_LIMIT = 30
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY not configured' }, { status: 500 })
-
   let body: { subject_id?: string; access_token?: string }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
   const { subject_id, access_token } = body
-  if (!subject_id)    return NextResponse.json({ error: 'subject_id required' }, { status: 400 })
-  if (!access_token)  return NextResponse.json({ error: 'access_token required' }, { status: 401 })
+  if (!subject_id)   return NextResponse.json({ error: 'subject_id required' },  { status: 400 })
+  if (!access_token) return NextResponse.json({ error: 'access_token required' }, { status: 401 })
 
-  // Auth
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -26,61 +19,83 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Fetch last N messages for this subject
-  const { data: msgs, error: msgsError } = await supabase
-    .from('subject_ai_messages')
-    .select('role, content')
-    .eq('subject_id', subject_id)
-    .order('created_at', { ascending: false })
-    .limit(MSG_LIMIT)
-  if (msgsError) return NextResponse.json({ error: msgsError.message }, { status: 500 })
-  if (!msgs || msgs.length === 0) return NextResponse.json({ summary: null })
+  // ── Fetch subject name, recent notes, upcoming exams, graded exams (parallel)
+  const [subjectRes, notesRes, upcomingRes, gradedRes] = await Promise.all([
+    supabase.from('subjects').select('name').eq('id', subject_id).single(),
+    supabase.from('notes')
+      .select('title, content')
+      .eq('subject_id', subject_id)
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(5),
+    supabase.from('exams')
+      .select('title, exam_date, percentage')
+      .eq('subject_id', subject_id)
+      .eq('user_id', user.id)
+      .neq('activity_type', 'study_session')
+      .gte('exam_date', new Date().toISOString().slice(0, 10))
+      .order('exam_date', { ascending: true })
+      .limit(3),
+    supabase.from('exams')
+      .select('grade, percentage')
+      .eq('subject_id', subject_id)
+      .eq('user_id', user.id)
+      .eq('submission_status', 'graded')
+      .not('grade', 'is', null),
+  ])
 
-  // Fetch subject name for context
-  const { data: subjectData } = await supabase
-    .from('subjects')
-    .select('name')
-    .eq('id', subject_id)
-    .single()
-  const subjectName = subjectData?.name ?? 'la materia'
+  const subjectName = subjectRes.data?.name ?? 'la materia'
 
-  // Build conversation text (reversed to chronological order)
-  const transcript = msgs.reverse().map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.content}`).join('\n')
+  // ── Build summary string ──────────────────────────────────────────────────
 
-  const prompt = `Eres un sistema de memoria académica. Analiza esta conversación sobre "${subjectName}" y genera un resumen conciso (máximo 300 palabras) que capture:
-- Temas académicos estudiados o discutidos
-- Evaluaciones, fechas o porcentajes mencionados
-- Conceptos clave o dudas recurrentes
-- Estrategias de estudio o preferencias del usuario
+  const lines: string[] = [`Contexto académico — ${subjectName}`]
 
-El resumen se usará como contexto en futuras conversaciones. Sé específico y útil.
-
-CONVERSACIÓN:
-${transcript}
-
-RESUMEN:`
-
-  try {
-    const groqResp = await callGroq({
-      model:       CHAT_MODEL,
-      messages:    [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens:  500,
+  // Recent notes
+  const notes = notesRes.data ?? []
+  if (notes.length > 0) {
+    lines.push('\nNotas recientes:')
+    notes.forEach((n, i) => {
+      const plainText = (n.content ?? '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 200)
+      const title = n.title && n.title.trim() ? n.title : 'Sin título'
+      lines.push(`${i + 1}. "${title}" — ${plainText}${plainText.length === 200 ? '…' : ''}`)
     })
-    const summary = getText(groqResp).trim()
-    if (!summary) return NextResponse.json({ summary: null })
-
-    // Upsert into subject_ai_contexts
-    await supabase.from('subject_ai_contexts').upsert({
-      user_id:         user.id,
-      subject_id,
-      summary,
-      last_updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,subject_id' })
-
-    return NextResponse.json({ summary })
-  } catch (err) {
-    console.error('[summarize-context]', err)
-    return NextResponse.json({ error: 'Failed to generate summary' }, { status: 500 })
   }
+
+  // Upcoming exams
+  const upcoming = upcomingRes.data ?? []
+  if (upcoming.length > 0) {
+    lines.push('\nPróximas evaluaciones:')
+    upcoming.forEach((e, i) => {
+      const pct = e.percentage != null ? ` — ${e.percentage}%` : ''
+      lines.push(`${i + 1}. ${e.title} — ${e.exam_date}${pct}`)
+    })
+  }
+
+  // Progress
+  const graded = gradedRes.data ?? []
+  const progress = graded.reduce((acc, e) => {
+    return acc + ((e.grade ?? 0) * ((e.percentage ?? 0) / 100))
+  }, 0)
+  lines.push(`\nProgreso actual: ${progress.toFixed(1)} / 20.0`)
+
+  const summary = lines.join('\n')
+
+  // ── Upsert into subject_ai_contexts ──────────────────────────────────────
+  const { error: upsertError } = await supabase.from('subject_ai_contexts').upsert({
+    user_id:         user.id,
+    subject_id,
+    summary,
+    last_updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,subject_id' })
+
+  if (upsertError) {
+    console.error('[summarize-context] upsert error', upsertError)
+    return NextResponse.json({ error: upsertError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ summary })
 }

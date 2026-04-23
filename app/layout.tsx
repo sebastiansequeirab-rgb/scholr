@@ -5,6 +5,15 @@ import { Providers } from '@/components/layout/Providers'
 export const metadata: Metadata = {
   title: 'Skolar — Tu productividad académica',
   description: 'La herramienta todo-en-uno para estudiantes. Gestiona materias, tareas, exámenes y notas.',
+  icons: {
+    icon: '/logo-dark.png',
+    apple: '/logo-dark.png',
+  },
+  openGraph: {
+    title: 'Skolar — Tu productividad académica',
+    description: 'La herramienta todo-en-uno para estudiantes. Gestiona materias, tareas, exámenes y notas.',
+    images: [{ url: '/logo-dark.png', width: 1200, height: 630, alt: 'Skolar' }],
+  },
 }
 
 export default function RootLayout({

@@ -49,18 +49,46 @@ function NoteEditor({
   const [subjectDropdown, setSubjectDropdown] = useState(false)
   const [uploadingImage,  setUploadingImage]  = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
   const supabase = createClient()
 
   const saveNote = useRef(
     debounce(async (noteId: string, newTitle: string, content: string) => {
       setSaveStatus('saving')
+
+      // Auto-title: derive from content when title is blank or placeholder
+      const DEFAULT_NOTE_TITLES = ['', 'Untitled', 'Sin título']
+      let finalTitle = newTitle.trim()
+      if (DEFAULT_NOTE_TITLES.includes(finalTitle)) {
+        // 1. First H1/H2/H3 heading text
+        const headingMatch = content.match(/<h[1-3][^>]*>(.*?)<\/h[1-3]>/i)
+        if (headingMatch) {
+          finalTitle = headingMatch[1].replace(/<[^>]+>/g, '').trim().slice(0, 80)
+        }
+        // 2. First 50 chars of plain text
+        if (!finalTitle) {
+          const plain = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+          finalTitle = plain.slice(0, 50).trim()
+        }
+        // 3. Date fallback: "Nota — 22 de abril" / "Note — April 22"
+        if (!finalTitle) {
+          const isEs = typeof document !== 'undefined'
+            ? (document.documentElement.lang || 'es').startsWith('es')
+            : true
+          const dateStr = new Date().toLocaleDateString(isEs ? 'es-ES' : 'en-US', { day: 'numeric', month: 'long' })
+          finalTitle = isEs ? `Nota — ${dateStr}` : `Note — ${dateStr}`
+        }
+        setTitle(finalTitle)
+      }
+
       await supabase.from('notes').update({
-        title: newTitle, content,
+        title: finalTitle, content,
         updated_at: new Date().toISOString(),
       }).eq('id', noteId)
       const now = new Date().toISOString()
       setLastSaved(now)
-      onUpdated(noteId, newTitle, content)
+      onUpdated(noteId, finalTitle, content)
       setSaveStatus('saved')
     }, 1000)
   ).current
@@ -119,6 +147,35 @@ function NoteEditor({
     onSubjectChanged(note.id, subjectId)
     setSubjectDropdown(false)
   }
+
+  const handleVoiceToggle = () => {
+    type SpeechRecognitionCtor = new () => SpeechRecognition
+    const SRCtor: SpeechRecognitionCtor | undefined =
+      (window as Window & { SpeechRecognition?: SpeechRecognitionCtor }).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: SpeechRecognitionCtor }).webkitSpeechRecognition
+    if (!SRCtor) return
+
+    if (isRecording) {
+      recognitionRef.current?.stop()
+      setIsRecording(false)
+      return
+    }
+    const recognition = new SRCtor()
+    recognition.lang = 'es-ES'
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = e.results[0]?.[0]?.transcript ?? ''
+      if (transcript) editor?.chain().focus().insertContent(transcript + ' ').run()
+    }
+    recognition.onend = () => setIsRecording(false)
+    recognitionRef.current = recognition
+    recognition.start()
+    setIsRecording(true)
+  }
+
+  const hasSpeechRecognition = typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
   const currentSubject = subjects.find(s => s.id === note.subject_id)
 
@@ -219,6 +276,31 @@ function NoteEditor({
             <span className="material-symbols-outlined text-[16px]">image</span>
           </button>
           <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+
+          {/* Voice input */}
+          {hasSpeechRecognition && (
+            <>
+              <span className="w-px h-4 mx-0.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: 'var(--border-default)' }} />
+              <button
+                onClick={handleVoiceToggle}
+                type="button"
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all relative"
+                style={{ color: isRecording ? 'var(--sc-error)' : 'var(--color-outline)' }}
+                title={isRecording ? t('notes.voice_stop') : t('notes.voice_start')}
+                aria-pressed={isRecording}
+              >
+                {isRecording && (
+                  <span className="absolute inset-0 rounded-lg animate-pulse"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--sc-error) 15%, transparent)' }} />
+                )}
+                <span className="material-symbols-outlined text-[16px] relative z-10"
+                  style={{ fontVariationSettings: isRecording ? "'FILL' 1" : "'FILL' 0" }}>
+                  mic
+                </span>
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">

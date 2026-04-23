@@ -158,6 +158,8 @@
     "noSubject": "No subject",
     "lastSaved": "Saved",
     "insertImage": "Insert image",
+    "voice_start": "Dictate",
+    "voice_stop": "Stop dictating",
     "uploadingImage": "Uploading...",
     "sortRecent": "Recent",
     "sortAlpha": "A-Z",
@@ -245,6 +247,9 @@
     "upgrade": "Upgrade to Premium",
     "placeholder": "How can I help you?",
     "send": "Send",
+    "voice_start": "Dictate",
+    "voice_stop": "Stop dictating",
+    "attach_image": "Attach image",
     "suggestions": {
       "studyPlan": "Make me a study plan",
       "summarize": "Summarize my notes",

@@ -5,12 +5,16 @@ const BASE_URL    = 'https://api.groq.com/openai/v1/chat/completions'
 export const CHAT_MODEL   = 'llama-3.3-70b-versatile'
 export const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'
 
+export type GroqContentPart =
+  | { type: 'text';      text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+
 export interface GroqMessage {
-  role:         'system' | 'user' | 'assistant' | 'tool'
-  content:      string | null
-  tool_calls?:  GroqToolCall[]
+  role:          'system' | 'user' | 'assistant' | 'tool'
+  content:       string | GroqContentPart[] | null
+  tool_calls?:   GroqToolCall[]
   tool_call_id?: string
-  name?:        string
+  name?:         string
 }
 
 export interface GroqToolCall {

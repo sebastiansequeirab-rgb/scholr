@@ -67,11 +67,45 @@ export function AIChatHub({
   const [pdfText,        setPdfText]        = useState<string | null>(null)
   const [pdfName,        setPdfName]        = useState<string | null>(null)
   const [pdfLoading,     setPdfLoading]     = useState(false)
+  const [imageFile,      setImageFile]      = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
 
   const currentSessionIdRef = useRef<string | null>(null)
   const pendingSubjectIdRef = useRef<string | null>(GENERAL_ID)
   const bottomRef           = useRef<HTMLDivElement>(null)
   const inputRef            = useRef<HTMLInputElement>(null)
+  const aiRecognitionRef    = useRef<SpeechRecognition | null>(null)
+  const imageInputRef       = useRef<HTMLInputElement>(null)
+  const [isAIRecording, setIsAIRecording] = useState(false)
+
+  const hasSpeechRecognition = typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+
+  const handleAIVoiceToggle = () => {
+    type SpeechRecognitionCtor = new () => SpeechRecognition
+    const SRCtor: SpeechRecognitionCtor | undefined =
+      (window as Window & { SpeechRecognition?: SpeechRecognitionCtor }).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: SpeechRecognitionCtor }).webkitSpeechRecognition
+    if (!SRCtor) return
+
+    if (isAIRecording) {
+      aiRecognitionRef.current?.stop()
+      setIsAIRecording(false)
+      return
+    }
+    const recognition = new SRCtor()
+    recognition.lang = 'es-ES'
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = e.results[0]?.[0]?.transcript ?? ''
+      if (transcript) setInput(prev => prev ? prev + ' ' + transcript : transcript)
+    }
+    recognition.onend = () => setIsAIRecording(false)
+    aiRecognitionRef.current = recognition
+    recognition.start()
+    setIsAIRecording(true)
+  }
 
   // ── Load data & auto-open General ─────────────────────────────────────────
   useEffect(() => {
@@ -111,6 +145,38 @@ export function AIChatHub({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
+
+  // ── Refresh subject_ai_contexts when switching to a subject chat ───────────
+  useEffect(() => {
+    if (activeSubjectId === GENERAL_ID) return
+
+    const refreshContext = async () => {
+      const supabase = createClient()
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      if (!authSession) return
+
+      const { data: ctx } = await supabase
+        .from('subject_ai_contexts')
+        .select('last_updated_at')
+        .eq('user_id', authSession.user.id)
+        .eq('subject_id', activeSubjectId)
+        .maybeSingle()
+
+      const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
+      const isStale = !ctx?.last_updated_at ||
+        (Date.now() - new Date(ctx.last_updated_at).getTime()) > TWENTY_FOUR_HOURS
+
+      if (isStale) {
+        await fetch('/api/ai/summarize-context', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ subject_id: activeSubjectId, access_token: authSession.access_token }),
+        }).catch(() => { /* non-blocking — context refresh is best-effort */ })
+      }
+    }
+
+    refreshContext()
+  }, [activeSubjectId])
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -224,6 +290,22 @@ export function AIChatHub({
       const currentPdfText = pdfText
       if (pdfText) { setPdfText(null); setPdfName(null) } // consume PDF on first message
 
+      // Convert attached image to base64
+      let imageBase64:     string | undefined
+      let imageMediaType:  string | undefined
+      if (imageFile) {
+        imageMediaType = imageFile.type || 'image/jpeg'
+        imageBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload  = () => resolve((reader.result as string).split(',')[1])
+          reader.onerror = reject
+          reader.readAsDataURL(imageFile)
+        })
+        setImageFile(null)
+        setImagePreviewUrl(null)
+        if (imageInputRef.current) imageInputRef.current.value = ''
+      }
+
       const res = await fetch('/api/ai', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -233,6 +315,8 @@ export function AIChatHub({
           app_context,
           access_token: authSession.access_token,
           pdf_text:     currentPdfText ?? undefined,
+          imageBase64,
+          imageMediaType,
         }),
       })
 
@@ -279,7 +363,7 @@ export function AIChatHub({
     } finally {
       setLoading(false)
     }
-  }, [loading, messages, activeSubjectId, language, ctxExtra])
+  }, [loading, messages, activeSubjectId, language, ctxExtra, imageFile])
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const isGeneral     = activeSubjectId === GENERAL_ID
@@ -554,6 +638,23 @@ export function AIChatHub({
             </button>
           </div>
         )}
+
+        {/* Image preview badge */}
+        {imagePreviewUrl && (
+          <div className="flex items-center gap-2 mb-1.5 px-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imagePreviewUrl} alt="preview" className="h-10 w-10 rounded-lg object-cover flex-shrink-0"
+              style={{ border: '1px solid var(--border-subtle)' }} />
+            <span className="text-[11px] flex-1 truncate" style={{ color: 'var(--color-secondary)' }}>
+              {imageFile?.name}
+            </span>
+            <button type="button" onClick={() => { setImageFile(null); setImagePreviewUrl(null) }}
+              style={{ color: 'var(--color-outline)' }}>
+              <span className="material-symbols-outlined text-[14px]">close</span>
+            </button>
+          </div>
+        )}
+
         <form onSubmit={e => { e.preventDefault(); sendMessage(input) }} className="flex gap-2">
           {/* PDF attach button */}
           <label className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl cursor-pointer transition-all hover:bg-black/10 dark:hover:bg-white/10"
@@ -581,6 +682,63 @@ export function AIChatHub({
               }}
             />
           </label>
+          {/* Image attach button */}
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={loading}
+            className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-all"
+            style={{
+              color:  imageFile ? 'var(--color-primary)' : 'var(--color-outline)',
+              border: `1px solid ${imageFile ? 'var(--color-primary)' : 'var(--border-subtle)'}`,
+            }}
+            title={language === 'es' ? 'Adjuntar imagen' : 'Attach image'}
+          >
+            <span className="material-symbols-outlined text-[18px]">image</span>
+          </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            disabled={loading}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setImageFile(file)
+              setImagePreviewUrl(URL.createObjectURL(file))
+            }}
+          />
+
+          {/* Voice input */}
+          {hasSpeechRecognition && (
+            <button
+              type="button"
+              onClick={handleAIVoiceToggle}
+              disabled={loading}
+              className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-all relative"
+              style={{
+                color:  isAIRecording ? 'var(--sc-error)' : 'var(--color-outline)',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: isAIRecording
+                  ? 'color-mix(in srgb, var(--sc-error) 12%, transparent)'
+                  : 'transparent',
+              }}
+              title={isAIRecording
+                ? (language === 'es' ? 'Detener dictado' : 'Stop dictating')
+                : (language === 'es' ? 'Dictar' : 'Dictate')}
+              aria-pressed={isAIRecording}
+            >
+              {isAIRecording && (
+                <span className="absolute inset-0 rounded-xl animate-pulse"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--sc-error) 10%, transparent)' }} />
+              )}
+              <span className="material-symbols-outlined text-[18px] relative z-10"
+                style={{ fontVariationSettings: isAIRecording ? "'FILL' 1" : "'FILL' 0" }}>
+                mic
+              </span>
+            </button>
+          )}
           <input
             ref={inputRef}
             value={input}

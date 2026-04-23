@@ -109,7 +109,7 @@ export function SubjectDetail({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const gradedExams    = exams.filter(e => e.grade != null && e.percentage != null)
+  const gradedExams    = exams.filter(e => e.submission_status === 'graded' && e.grade !== null && e.percentage != null)
   const submittedExams = exams.filter(e => e.submission_status === 'submitted' && e.grade == null)
   const ungradedExams  = exams.filter(e => e.grade == null && e.percentage != null)
   const noWeightExams  = exams.filter(e => e.percentage == null)

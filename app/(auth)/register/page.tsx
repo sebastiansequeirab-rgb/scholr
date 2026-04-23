@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 
@@ -97,9 +98,16 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold" style={{ color: 'var(--color-primary)' }}>
-            Skolar
-          </h1>
+          <div className="flex justify-center mb-3">
+            <Image
+              src="/logo-dark.png"
+              alt="Skolar"
+              width={140}
+              height={40}
+              style={{ width: 'auto', height: '40px', objectFit: 'contain' }}
+              priority
+            />
+          </div>
           <p className="text-sm mt-1" style={{ color: 'var(--color-muted)' }}>
             {t('auth.register')}
           </p>

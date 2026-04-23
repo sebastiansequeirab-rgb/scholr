@@ -29,7 +29,7 @@ export default function SubjectsPage() {
     const [{ data: subs }, { data: scheds }, { data: examData }] = await Promise.all([
       supabase.from('subjects').select('*').order('created_at', { ascending: true }),
       supabase.from('schedules').select('*'),
-      supabase.from('exams').select('id,subject_id,percentage,grade,activity_type').neq('activity_type', 'study_session'),
+      supabase.from('exams').select('id,subject_id,percentage,grade,submission_status,activity_type').neq('activity_type', 'study_session'),
     ])
     setSubjects(subs || [])
     setSchedules(scheds || [])
@@ -39,8 +39,8 @@ export default function SubjectsPage() {
       if (!e.subject_id || e.percentage == null) continue
       if (!progressMap[e.subject_id]) progressMap[e.subject_id] = { earned: 0, graded: 0, total: 0 }
       progressMap[e.subject_id].total++
-      if (e.grade != null) {
-        progressMap[e.subject_id].earned += (e.grade * e.percentage) / 100
+      if (e.submission_status === 'graded' && e.grade !== null) {
+        progressMap[e.subject_id].earned += (e.grade * (e.percentage ?? 0)) / 100
         progressMap[e.subject_id].graded++
       }
     }
