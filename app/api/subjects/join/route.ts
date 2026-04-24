@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
   try {
@@ -11,8 +12,10 @@ export async function POST(request: Request) {
     const code = body.code?.trim()
     if (!code) return NextResponse.json({ error: 'Access code is required' }, { status: 400 })
 
-    // RLS policy "Authenticated users can read teacher courses" allows this
-    const { data: subject, error: subjectError } = await supabase
+    // Use admin client to look up by access_code — RLS is intentionally bypassed here
+    // so we can validate the code before the student is enrolled
+    const admin = createAdminClient()
+    const { data: subject, error: subjectError } = await admin
       .from('subjects')
       .select('id, name, color, icon, teacher_id')
       .eq('access_code', code.toUpperCase())
