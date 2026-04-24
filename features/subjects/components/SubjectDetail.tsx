@@ -77,14 +77,17 @@ export function SubjectDetail({
   initialTab?: DetailTab
 }) {
   const { language } = useTranslation()
-  const [activeTab,  setActiveTab]  = useState<DetailTab>(initialTab)
-  const [exams,      setExams]      = useState<Exam[]>([])
-  const [noteCount,  setNoteCount]  = useState<number>(0)
-  const [documents,  setDocuments]  = useState<Document[]>([])
-  const [loading,    setLoading]    = useState(true)
+  const [activeTab,       setActiveTab]       = useState<DetailTab>(initialTab)
+  const [exams,           setExams]           = useState<Exam[]>([])
+  const [noteCount,       setNoteCount]       = useState<number>(0)
+  const [documents,       setDocuments]       = useState<Document[]>([])
+  const [teacherGrades,   setTeacherGrades]   = useState<Record<string, number | null>>({})
+  const [loading,         setLoading]         = useState(true)
 
   const fetchExams = useCallback(async () => {
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
     const [{ data }, { count }] = await Promise.all([
       supabase
         .from('exams')
@@ -99,6 +102,26 @@ export function SubjectDetail({
     ])
     setExams(data || [])
     setNoteCount(count ?? 0)
+
+    // Fetch teacher grades (exam_grades) for teacher-assigned exams in this subject
+    if (user && subject.teacher_id) {
+      const examIds = (data || [])
+        .filter(e => e.assigned_by != null)
+        .map(e => e.id as string)
+      if (examIds.length > 0) {
+        const { data: grades } = await supabase
+          .from('exam_grades')
+          .select('exam_id, grade')
+          .eq('student_id', user.id)
+          .in('exam_id', examIds)
+        const gradeMap: Record<string, number | null> = {}
+        for (const g of (grades || [])) {
+          const eg = g as { exam_id: string; grade: number | null }
+          gradeMap[eg.exam_id] = eg.grade
+        }
+        setTeacherGrades(gradeMap)
+      }
+    }
 
     // Fetch documents if this is a teacher-created course
     if (subject.teacher_id) {
@@ -122,14 +145,18 @@ export function SubjectDetail({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const gradedExams    = exams.filter(e => e.submission_status === 'graded' && e.grade !== null && e.percentage != null)
-  const submittedExams = exams.filter(e => e.submission_status === 'submitted' && e.grade == null)
-  const ungradedExams  = exams.filter(e => e.grade == null && e.percentage != null)
+  // Resolve effective grade: teacher exams use exam_grades; own exams use exam.grade
+  const effectiveGrade = (e: Exam): number | null =>
+    e.assigned_by ? (teacherGrades[e.id] ?? null) : e.grade
+
+  const gradedExams    = exams.filter(e => effectiveGrade(e) !== null && e.percentage != null)
+  const submittedExams = exams.filter(e => e.submission_status === 'submitted' && effectiveGrade(e) == null)
+  const ungradedExams  = exams.filter(e => effectiveGrade(e) == null && e.percentage != null)
   const noWeightExams  = exams.filter(e => e.percentage == null)
 
-  const earned    = gradedExams.reduce((sum, e) => sum + (e.grade! * e.percentage! / 100), 0)
+  const earned    = gradedExams.reduce((sum, e) => sum + (effectiveGrade(e)! * e.percentage! / 100), 0)
   const potential = ungradedExams.reduce((sum, e) => sum + (e.percentage! / 100 * MAX_SCORE), 0)
-  const totalWeight = exams.filter(e => e.percentage != null && e.grade != null).reduce((sum, e) => sum + e.percentage!, 0)
+  const totalWeight = gradedExams.reduce((sum, e) => sum + e.percentage!, 0)
   const remaining = Math.max(0, PASS_SCORE - earned)
   const isPassing = earned >= PASS_SCORE
 
@@ -395,9 +422,11 @@ export function SubjectDetail({
 
                   <div className="space-y-1.5">
                     {exams.map(exam => {
-                      const cfg = ACTIVITY_TYPES[exam.activity_type]
-                      const hasGrade = exam.grade != null && exam.percentage != null
-                      const contrib  = hasGrade ? (exam.grade! * exam.percentage! / 100) : null
+                      const cfg        = ACTIVITY_TYPES[exam.activity_type]
+                      const grade      = effectiveGrade(exam)
+                      const isTeacher  = exam.assigned_by != null
+                      const hasGrade   = grade !== null && exam.percentage != null
+                      const contrib    = hasGrade ? (grade! * exam.percentage! / 100) : null
                       const maxContrib = exam.percentage != null ? (exam.percentage / 100 * MAX_SCORE) : null
 
                       return (
@@ -406,7 +435,7 @@ export function SubjectDetail({
                           style={{
                             gridTemplateColumns: '1fr 56px 64px 72px',
                             backgroundColor: 'var(--s-base)',
-                            border: '1px solid var(--border-subtle)',
+                            border: `1px solid ${isTeacher ? 'color-mix(in srgb, var(--color-primary) 20%, transparent)' : 'var(--border-subtle)'}`,
                             opacity: hasGrade ? 1 : 0.7,
                           }}>
                           {/* Name + type */}
@@ -416,9 +445,18 @@ export function SubjectDetail({
                               {cfg.icon}
                             </span>
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
-                                {exam.title}
-                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
+                                  {exam.title}
+                                </p>
+                                {isTeacher && (
+                                  <span className="material-symbols-outlined text-[11px] flex-shrink-0"
+                                    style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}
+                                    title={language === 'es' ? 'Asignada por el profesor' : 'Assigned by teacher'}>
+                                    lock
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[9px]" style={{ color: 'var(--color-outline)' }}>
                                 {new Date(exam.exam_date + 'T12:00:00').toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' })}
                               </p>
@@ -434,7 +472,7 @@ export function SubjectDetail({
                           {/* Grade */}
                           <span className="text-xs font-bold text-right mono"
                             style={{ color: hasGrade ? 'var(--on-surface)' : 'var(--color-outline)' }}>
-                            {hasGrade ? `${exam.grade!.toFixed(1)}/20` : (language === 'es' ? 'Pend.' : 'Pend.')}
+                            {hasGrade ? `${grade!.toFixed(1)}/20` : (language === 'es' ? 'Pend.' : 'Pend.')}
                           </span>
 
                           {/* Contribution */}

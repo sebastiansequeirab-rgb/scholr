@@ -33,15 +33,20 @@ export default function SubjectsPage() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    const [{ data: subs }, { data: scheds }, { data: examData }, { data: enrollmentData }] = await Promise.all([
+    const [{ data: subs }, { data: scheds }, { data: examData }, { data: enrollmentData }, { data: gradeData }] = await Promise.all([
       supabase.from('subjects').select('*').order('created_at', { ascending: true }),
       supabase.from('schedules').select('*'),
-      supabase.from('exams').select('id,subject_id,percentage,grade,submission_status,activity_type').neq('activity_type', 'study_session'),
+      supabase.from('exams').select('id,subject_id,percentage,grade,submission_status,activity_type,assigned_by').neq('activity_type', 'study_session'),
       user ? supabase
         .from('enrollments')
         .select('subject_id, subjects(*, profiles!subjects_teacher_id_fkey(full_name))')
         .eq('student_id', user.id)
         .eq('status', 'active')
+        : Promise.resolve({ data: [] }),
+      user ? supabase
+        .from('exam_grades')
+        .select('exam_id, grade')
+        .eq('student_id', user.id)
         : Promise.resolve({ data: [] }),
     ])
 
@@ -62,14 +67,23 @@ export default function SubjectsPage() {
 
     setEnrolledSubjects(enrolled)
 
+    // build teacher grade lookup: exam_id → grade
+    const teacherGradeMap: Record<string, number | null> = {}
+    for (const g of (gradeData || [])) {
+      const eg = g as { exam_id: string; grade: number | null }
+      teacherGradeMap[eg.exam_id] = eg.grade
+    }
+
     // build progress map per subject
     const progressMap: Record<string, { earned: number; graded: number; total: number }> = {}
     for (const e of (examData || [])) {
       if (!e.subject_id || e.percentage == null) continue
       if (!progressMap[e.subject_id]) progressMap[e.subject_id] = { earned: 0, graded: 0, total: 0 }
       progressMap[e.subject_id].total++
-      if (e.submission_status === 'graded' && e.grade !== null) {
-        progressMap[e.subject_id].earned += (e.grade * (e.percentage ?? 0)) / 100
+      // Teacher exams: grade comes from exam_grades; student exams: grade on the exam itself
+      const grade = e.assigned_by ? (teacherGradeMap[e.id] ?? null) : e.grade
+      if (grade !== null && grade !== undefined) {
+        progressMap[e.subject_id].earned += (grade * (e.percentage ?? 0)) / 100
         progressMap[e.subject_id].graded++
       }
     }

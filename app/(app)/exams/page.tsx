@@ -17,7 +17,8 @@ interface ActivityFormProps {
 
 function ActivityForm({ exam, subjects, onClose, onSaved }: ActivityFormProps) {
   const { t, language } = useTranslation()
-  const isEditing = !!exam
+  const isEditing  = !!exam
+  const isTeacher  = exam?.assigned_by != null
 
   const [activityType, setActivityType] = useState<ActivityType>(exam?.activity_type || 'exam')
   const [title,        setTitle]        = useState(exam?.title || '')
@@ -161,42 +162,57 @@ function ActivityForm({ exam, subjects, onClose, onSaved }: ActivityFormProps) {
 
           {/* Percentage + Grade — only for types that require it */}
           {typeCfg.requiresPercentage && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="actPct" className="label">{t('activities.percentage')}</label>
-                <div className="relative">
-                  <input
-                    id="actPct"
-                    type="number"
-                    min="0" max="100" step="0.5"
-                    className="input pr-8"
-                    placeholder="0 – 100"
-                    value={percentage}
-                    onChange={e => setPercentage(e.target.value)}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
-                    style={{ color: 'var(--color-outline)' }}>%</span>
+            <>
+              {isTeacher && (
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', color: 'var(--color-primary)' }}>
+                  <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+                  {language === 'es'
+                    ? 'Porcentaje y nota los asigna el profesor'
+                    : 'Percentage and grade are set by the teacher'}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="actPct" className="label">{t('activities.percentage')}</label>
+                  <div className="relative">
+                    <input
+                      id="actPct"
+                      type="number"
+                      min="0" max="100" step="0.5"
+                      className="input pr-8"
+                      placeholder="0 – 100"
+                      value={percentage}
+                      onChange={e => setPercentage(e.target.value)}
+                      disabled={isTeacher}
+                      style={isTeacher ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
+                      style={{ color: 'var(--color-outline)' }}>%</span>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="actGrade" className="label">
+                    {language === 'es' ? 'Nota obtenida' : 'Grade obtained'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="actGrade"
+                      type="number"
+                      min="0" max="20" step="0.1"
+                      className="input pr-10"
+                      placeholder="0 – 20"
+                      value={grade}
+                      onChange={e => setGrade(e.target.value)}
+                      disabled={isTeacher}
+                      style={isTeacher ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold"
+                      style={{ color: 'var(--color-outline)' }}>/20</span>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label htmlFor="actGrade" className="label">
-                  {language === 'es' ? 'Nota obtenida' : 'Grade obtained'}
-                </label>
-                <div className="relative">
-                  <input
-                    id="actGrade"
-                    type="number"
-                    min="0" max="20" step="0.1"
-                    className="input pr-10"
-                    placeholder="0 – 20"
-                    value={grade}
-                    onChange={e => setGrade(e.target.value)}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold"
-                    style={{ color: 'var(--color-outline)' }}>/20</span>
-                </div>
-              </div>
-            </div>
+            </>
           )}
 
           <div>
@@ -238,14 +254,34 @@ export default function ExamsPage() {
 
   const { use12h } = useTimeFormat()
 
+  const [teacherGrades, setTeacherGrades] = useState<Record<string, number | null>>({})
+
   const fetchData = useCallback(async () => {
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
     const [{ data: es }, { data: ss }] = await Promise.all([
       supabase.from('exams').select('*').order('exam_date'),
       supabase.from('subjects').select('*').order('name'),
     ])
     setExams(es || [])
     setSubjects(uniqueByName(uniqueById(ss || [])))
+
+    // Fetch teacher grades for teacher-assigned exams
+    const teacherExamIds = (es || []).filter(e => e.assigned_by != null).map(e => e.id as string)
+    if (user && teacherExamIds.length > 0) {
+      const { data: grades } = await supabase
+        .from('exam_grades')
+        .select('exam_id, grade')
+        .eq('student_id', user.id)
+        .in('exam_id', teacherExamIds)
+      const gradeMap: Record<string, number | null> = {}
+      for (const g of (grades || [])) {
+        const eg = g as { exam_id: string; grade: number | null }
+        gradeMap[eg.exam_id] = eg.grade
+      }
+      setTeacherGrades(gradeMap)
+    }
+
     setLoading(false)
   }, [])
 
@@ -269,12 +305,14 @@ export default function ExamsPage() {
   const featured = filteredUpcoming[0] || null
 
   const ActivityCard = ({ exam, isFeatured = false }: { exam: Exam; isFeatured?: boolean }) => {
-    const subject  = subjects.find(s => s.id === exam.subject_id)
-    const days     = daysUntil(exam.exam_date)
-    const typeCfg  = ACTIVITY_TYPES[exam.activity_type || 'exam']
-    const typeColor = typeCfg.color
-    const date     = new Date(exam.exam_date + 'T00:00:00')
-    const typeLabel = language === 'es' ? typeCfg.label_es : typeCfg.label_en
+    const subject    = subjects.find(s => s.id === exam.subject_id)
+    const days       = daysUntil(exam.exam_date)
+    const typeCfg    = ACTIVITY_TYPES[exam.activity_type || 'exam']
+    const typeColor  = typeCfg.color
+    const date       = new Date(exam.exam_date + 'T00:00:00')
+    const typeLabel  = language === 'es' ? typeCfg.label_es : typeCfg.label_en
+    const isTeacher  = exam.assigned_by != null
+    const gradeValue = isTeacher ? teacherGrades[exam.id] : exam.grade
 
     if (isFeatured) {
       const urgency = days < 0 ? 'var(--color-outline)' : days < 3 ? 'var(--danger)' : days < 7 ? 'var(--warning)' : 'var(--color-primary)'
@@ -358,18 +396,33 @@ export default function ExamsPage() {
               </div>
             )}
 
-            <div className="flex gap-2.5 mt-4">
-              <button onClick={() => { setEditingExam(exam); setModalOpen(true) }}
-                className="btn-secondary flex items-center gap-1.5 text-sm">
-                <span className="material-symbols-outlined text-[15px]">edit</span>
-                {t('common.edit')}
-              </button>
-              <button onClick={() => setDeleteConfirm(exam.id)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110"
-                style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
-                <span className="material-symbols-outlined text-[15px]">delete</span>
-                {t('common.delete')}
-              </button>
+            <div className="flex gap-2.5 mt-4 items-center">
+              {isTeacher ? (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', color: 'var(--color-primary)' }}>
+                  <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+                  {language === 'es' ? 'Asignado por profesor' : 'Assigned by teacher'}
+                  {gradeValue != null && (
+                    <span className="ml-1 font-black" style={{ color: gradeValue >= 10 ? 'var(--success)' : 'var(--danger)' }}>
+                      · {gradeValue.toFixed(1)}/20
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <>
+                  <button onClick={() => { setEditingExam(exam); setModalOpen(true) }}
+                    className="btn-secondary flex items-center gap-1.5 text-sm">
+                    <span className="material-symbols-outlined text-[15px]">edit</span>
+                    {t('common.edit')}
+                  </button>
+                  <button onClick={() => setDeleteConfirm(exam.id)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110"
+                    style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
+                    <span className="material-symbols-outlined text-[15px]">delete</span>
+                    {t('common.delete')}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -436,19 +489,33 @@ export default function ExamsPage() {
                 {exam.location}
               </span>
             )}
+            {isTeacher && gradeValue != null && (
+              <span className="flex items-center gap-1 font-bold mono"
+                style={{ color: gradeValue >= 10 ? 'var(--success)' : 'var(--danger)' }}>
+                {gradeValue.toFixed(1)}/20
+              </span>
+            )}
           </div>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => { setEditingExam(exam); setModalOpen(true) }}
-              className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-              style={{ color: 'var(--color-outline)' }}>
-              <span className="material-symbols-outlined text-[14px]">edit</span>
-            </button>
-            <button onClick={() => setDeleteConfirm(exam.id)}
-              className="p-1.5 rounded-lg hover:bg-red-400/10 transition-colors"
-              style={{ color: 'var(--danger)' }}>
-              <span className="material-symbols-outlined text-[14px]">delete</span>
-            </button>
-          </div>
+          {isTeacher ? (
+            <span className="material-symbols-outlined text-[14px] opacity-40"
+              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}
+              title={language === 'es' ? 'Asignado por profesor' : 'Assigned by teacher'}>
+              lock
+            </span>
+          ) : (
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => { setEditingExam(exam); setModalOpen(true) }}
+                className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                style={{ color: 'var(--color-outline)' }}>
+                <span className="material-symbols-outlined text-[14px]">edit</span>
+              </button>
+              <button onClick={() => setDeleteConfirm(exam.id)}
+                className="p-1.5 rounded-lg hover:bg-red-400/10 transition-colors"
+                style={{ color: 'var(--danger)' }}>
+                <span className="material-symbols-outlined text-[14px]">delete</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     )
