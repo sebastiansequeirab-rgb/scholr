@@ -182,10 +182,10 @@ export async function executeTool(
       case 'get_upcoming_exams': {
         const limit = typeof args.limit === 'number' ? Math.min(args.limit, 10) : 5
         const today = new Date().toISOString().split('T')[0]
+        // RLS already handles filtering: own exams + enrolled teacher exams
         const { data, error } = await db
           .from('exams')
-          .select('id, title, exam_date, exam_time, activity_type, percentage, location, subjects(name)')
-          .eq('user_id', userId)
+          .select('id, title, exam_date, exam_time, activity_type, percentage, location, assigned_by, subjects(name)')
           .gte('exam_date', today)
           .order('exam_date')
           .limit(limit)
@@ -214,30 +214,59 @@ export async function executeTool(
         if (!subjectId) return { ok: false, error: 'subject_id required' }
         const { data, error } = await db
           .from('notes')
-          .select('id, title, updated_at')
+          .select('id, title, content, updated_at')
           .eq('user_id', userId)
           .eq('subject_id', subjectId)
           .order('updated_at', { ascending: false })
           .limit(10)
         if (error) return { ok: false, error: error.message }
-        return { ok: true, data: data ?? [] }
+        // Strip Tiptap JSON to plain text for the model
+        const notes = (data ?? []).map(n => {
+          let plain = n.title || ''
+          try {
+            const doc = JSON.parse(n.content || '{}')
+            const extract = (nodes: { type?: string; text?: string; content?: unknown[] }[]): string =>
+              nodes.map(node => node.text ?? (node.content ? extract(node.content as { type?: string; text?: string; content?: unknown[] }[]) : '')).join(' ')
+            if (doc.content) plain += '\n' + extract(doc.content)
+          } catch { plain += '\n' + (n.content || '') }
+          return { id: n.id, title: n.title, updated_at: n.updated_at, text: plain.slice(0, 2000) }
+        })
+        return { ok: true, data: notes }
       }
 
       case 'get_subject_progress': {
         const subjectId = String(args.subject_id ?? '')
         if (!subjectId) return { ok: false, error: 'subject_id required' }
+        // RLS handles access: own exams + enrolled teacher exams
         const { data, error } = await db
           .from('exams')
-          .select('title, activity_type, percentage, grade, exam_date')
-          .eq('user_id', userId)
+          .select('id, title, activity_type, percentage, grade, exam_date, assigned_by')
           .eq('subject_id', subjectId)
           .neq('activity_type', 'study_session')
           .order('exam_date')
         if (error) return { ok: false, error: error.message }
         const exams = data ?? []
-        const earned  = exams.filter(e => e.grade != null).reduce((s, e) => s + (e.grade * e.percentage / 100), 0)
-        const pending = exams.filter(e => e.grade == null).reduce((s, e) => s + (20 * e.percentage / 100), 0)
-        return { ok: true, data: { exams, earned: +earned.toFixed(2), max_possible: +(earned + pending).toFixed(2) } }
+        // Fetch teacher grades for teacher-assigned exams
+        const teacherExamIds = exams.filter(e => e.assigned_by != null).map(e => e.id as string)
+        const teacherGradeMap: Record<string, number | null> = {}
+        if (teacherExamIds.length > 0) {
+          const { data: grades } = await db
+            .from('exam_grades')
+            .select('exam_id, grade')
+            .eq('student_id', userId)
+            .in('exam_id', teacherExamIds)
+          for (const g of (grades ?? [])) {
+            const eg = g as { exam_id: string; grade: number | null }
+            teacherGradeMap[eg.exam_id] = eg.grade
+          }
+        }
+        const examsWithGrades = exams.map(e => ({
+          ...e,
+          effective_grade: e.assigned_by != null ? (teacherGradeMap[e.id as string] ?? null) : e.grade,
+        }))
+        const earned  = examsWithGrades.filter(e => e.effective_grade != null).reduce((s, e) => s + (e.effective_grade! * (e.percentage ?? 0) / 100), 0)
+        const pending = examsWithGrades.filter(e => e.effective_grade == null).reduce((s, e) => s + (20 * (e.percentage ?? 0) / 100), 0)
+        return { ok: true, data: { exams: examsWithGrades, earned: +earned.toFixed(2), max_possible: +(earned + pending).toFixed(2) } }
       }
 
       case 'create_task': {
@@ -306,39 +335,82 @@ export async function executeTool(
       case 'get_subject_evaluations': {
         const subjectId = String(args.subject_id ?? '')
         if (!subjectId) return { ok: false, error: 'subject_id required' }
+        // RLS handles access: own exams + enrolled teacher exams
         const { data, error } = await db
           .from('exams')
-          .select('id, title, activity_type, exam_date, exam_time, percentage, grade, submission_status, submitted_at, graded_at, location, notes')
-          .eq('user_id', userId)
+          .select('id, title, activity_type, exam_date, exam_time, percentage, grade, submission_status, location, assigned_by')
           .eq('subject_id', subjectId)
           .neq('activity_type', 'study_session')
           .order('exam_date')
         if (error) return { ok: false, error: error.message }
         const exams = data ?? []
-        const earned   = exams.filter(e => e.grade != null && e.percentage != null).reduce((s, e) => s + (e.grade * e.percentage / 100), 0)
-        const possible = exams.filter(e => e.grade == null && e.percentage != null).reduce((s, e) => s + (20 * e.percentage / 100), 0)
-        return { ok: true, data: { evaluations: exams, earned: +earned.toFixed(2), max_possible: +(earned + possible).toFixed(2) } }
+        // Fetch teacher grades for teacher-assigned exams
+        const teacherExamIds = exams.filter(e => e.assigned_by != null).map(e => e.id as string)
+        const teacherGradeMap: Record<string, number | null> = {}
+        if (teacherExamIds.length > 0) {
+          const { data: grades } = await db
+            .from('exam_grades')
+            .select('exam_id, grade')
+            .eq('student_id', userId)
+            .in('exam_id', teacherExamIds)
+          for (const g of (grades ?? [])) {
+            const eg = g as { exam_id: string; grade: number | null }
+            teacherGradeMap[eg.exam_id] = eg.grade
+          }
+        }
+        const examsWithGrades = exams.map(e => ({
+          ...e,
+          effective_grade: e.assigned_by != null ? (teacherGradeMap[e.id as string] ?? null) : e.grade,
+          assigned_by_teacher: e.assigned_by != null,
+        }))
+        const earned   = examsWithGrades.filter(e => e.effective_grade != null && e.percentage != null).reduce((s, e) => s + (e.effective_grade! * e.percentage! / 100), 0)
+        const possible = examsWithGrades.filter(e => e.effective_grade == null && e.percentage != null).reduce((s, e) => s + (20 * e.percentage! / 100), 0)
+        return { ok: true, data: { evaluations: examsWithGrades, earned: +earned.toFixed(2), max_possible: +(earned + possible).toFixed(2) } }
       }
 
       case 'get_all_subjects_summary': {
         const today = new Date().toISOString().split('T')[0]
-        const [subjectsRes, examsRes] = await Promise.all([
-          db.from('subjects').select('id, name, professor, color, credits').eq('user_id', userId).order('name'),
-          db.from('exams').select('subject_id, title, exam_date, percentage, grade, activity_type').eq('user_id', userId).neq('activity_type', 'study_session').order('exam_date'),
+        // RLS handles both own subjects and enrolled teacher courses
+        const [subjectsRes, examsRes, enrollmentsRes] = await Promise.all([
+          db.from('subjects').select('id, name, professor, color, credits').order('name'),
+          db.from('exams').select('id, subject_id, title, exam_date, percentage, grade, activity_type, assigned_by').neq('activity_type', 'study_session').order('exam_date'),
+          db.from('enrollments').select('subject_id').eq('student_id', userId).eq('status', 'active'),
         ])
         if (subjectsRes.error) return { ok: false, error: subjectsRes.error.message }
         const subjects = subjectsRes.data ?? []
         const allExams = examsRes.data ?? []
+        const enrolledIds = new Set((enrollmentsRes.data ?? []).map(e => e.subject_id))
+        // Fetch teacher grades for teacher-assigned exams
+        const teacherExamIds = allExams.filter(e => e.assigned_by != null).map(e => e.id as string)
+        const teacherGradeMap: Record<string, number | null> = {}
+        if (teacherExamIds.length > 0) {
+          const { data: grades } = await db
+            .from('exam_grades')
+            .select('exam_id, grade')
+            .eq('student_id', userId)
+            .in('exam_id', teacherExamIds)
+          for (const g of (grades ?? [])) {
+            const eg = g as { exam_id: string; grade: number | null }
+            teacherGradeMap[eg.exam_id] = eg.grade
+          }
+        }
         const summary = subjects.map(s => {
           const evals = allExams.filter(e => e.subject_id === s.id)
-          const graded = evals.filter(e => e.grade != null && e.percentage != null)
-          const earned = graded.reduce((sum, e) => sum + (e.grade * e.percentage / 100), 0)
+          const graded = evals.filter(e => {
+            const g = e.assigned_by != null ? teacherGradeMap[e.id as string] : e.grade
+            return g != null && e.percentage != null
+          })
+          const earned = graded.reduce((sum, e) => {
+            const g = e.assigned_by != null ? teacherGradeMap[e.id as string]! : e.grade
+            return sum + (g * e.percentage! / 100)
+          }, 0)
           const nextEval = evals.find(e => e.exam_date >= today)
           return {
             id: s.id,
             name: s.name,
             professor: s.professor,
             credits: s.credits,
+            is_enrolled: enrolledIds.has(s.id),
             earned: +earned.toFixed(2),
             graded_count: graded.length,
             total_evals: evals.length,
