@@ -66,6 +66,7 @@ export default async function GradesPage({ params }: { params: { id: string } })
       courseId={params.id}
       courseName={course.name as string}
       courseColor={course.color as string}
+      teacherId={user.id}
       exams={(exams ?? []).map((e) => ({
         id: e.id as string,
         title: e.title as string,

@@ -341,7 +341,17 @@
       "saved": "Saved",
       "noExams": "No activities created",
       "noStudents": "No students enrolled",
-      "student": "Student"
+      "student": "Student",
+      "addActivity": "Add activity",
+      "activityTitle": "Activity title",
+      "activityType": "Type",
+      "activityDate": "Date",
+      "activityPercentage": "Percentage (%)",
+      "activityPercentagePlaceholder": "e.g. 30",
+      "autoSaveNote": "Grades are saved automatically.",
+      "deleteActivity": "Delete activity",
+      "deleteActivityConfirm": "Delete this activity and all its grades?",
+      "noExamsHint": "Add an activity to start recording grades."
     },
     "announcements": {
       "title": "Announcements",

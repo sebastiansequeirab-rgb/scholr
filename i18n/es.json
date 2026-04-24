@@ -341,7 +341,17 @@
       "saved": "Guardado",
       "noExams": "Sin actividades creadas",
       "noStudents": "Sin estudiantes inscritos",
-      "student": "Estudiante"
+      "student": "Estudiante",
+      "addActivity": "Agregar actividad",
+      "activityTitle": "Título de la actividad",
+      "activityType": "Tipo",
+      "activityDate": "Fecha",
+      "activityPercentage": "Porcentaje (%)",
+      "activityPercentagePlaceholder": "Ej: 30",
+      "autoSaveNote": "Las notas se guardan automáticamente.",
+      "deleteActivity": "Eliminar actividad",
+      "deleteActivityConfirm": "¿Eliminar esta actividad y todas sus notas?",
+      "noExamsHint": "Agrega una actividad para comenzar a registrar notas."
     },
     "announcements": {
       "title": "Anuncios",
