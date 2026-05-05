@@ -124,12 +124,12 @@ export function AnnouncementsClient({ courseId, courseName, teacherId, initialAn
                       className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all"
                       style={{
                         backgroundColor: priority === p
-                          ? (p === 'urgent' ? 'color-mix(in srgb, #ef4444 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 12%, transparent)')
+                          ? (p === 'urgent' ? 'color-mix(in srgb, var(--danger) 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 12%, transparent)')
                           : 'var(--s-low)',
                         color: priority === p
-                          ? (p === 'urgent' ? '#ef4444' : 'var(--color-primary)')
+                          ? (p === 'urgent' ? 'var(--danger)' : 'var(--color-primary)')
                           : 'var(--on-surface)',
-                        border: `1px solid ${priority === p ? (p === 'urgent' ? '#ef4444' : 'var(--color-primary)') : 'var(--border-subtle)'}`,
+                        border: `1px solid ${priority === p ? (p === 'urgent' ? 'var(--danger)' : 'var(--color-primary)') : 'var(--border-subtle)'}`,
                       }}
                     >
                       {p === 'urgent' ? t('teacher.announcements.urgent') : t('teacher.announcements.normal')}
@@ -168,11 +168,11 @@ export function AnnouncementsClient({ courseId, courseName, teacherId, initialAn
             <div key={a.id} className="card p-4 flex items-start gap-3">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                 style={{
-                  backgroundColor: a.priority === 'urgent' ? '#fef2f2' : 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
+                  backgroundColor: a.priority === 'urgent' ? 'color-mix(in srgb, var(--danger) 10%, var(--s-low))' : 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
                 }}>
                 <span className="material-symbols-outlined text-[16px]"
                   style={{
-                    color: a.priority === 'urgent' ? '#ef4444' : 'var(--color-primary)',
+                    color: a.priority === 'urgent' ? 'var(--danger)' : 'var(--color-primary)',
                     fontVariationSettings: "'FILL' 1",
                   }}>
                   campaign
@@ -183,7 +183,7 @@ export function AnnouncementsClient({ courseId, courseName, teacherId, initialAn
                   <p className="font-semibold text-sm" style={{ color: 'var(--on-surface)' }}>{a.title}</p>
                   {a.priority === 'urgent' && (
                     <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full"
-                      style={{ backgroundColor: '#fef2f2', color: '#ef4444' }}>
+                      style={{ backgroundColor: 'color-mix(in srgb, var(--danger) 10%, var(--s-low))', color: 'var(--danger)' }}>
                       {t('teacher.announcements.urgent')}
                     </span>
                   )}

@@ -19,8 +19,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // ── Fetch subject name, recent notes, upcoming exams, graded exams (parallel)
-  const [subjectRes, notesRes, upcomingRes, gradedRes] = await Promise.all([
+  // ── Fetch subject name, recent notes, all subject exams (parallel)
+  // Notes stay user-scoped (private). Exams/upcoming rely on RLS — covers own
+  // exams + enrolled teacher exams. Teacher-exam grades come from exam_grades.
+  const [subjectRes, notesRes, upcomingRes, allExamsRes] = await Promise.all([
     supabase.from('subjects').select('name').eq('id', subject_id).single(),
     supabase.from('notes')
       .select('title, content')
@@ -31,18 +33,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     supabase.from('exams')
       .select('title, exam_date, percentage')
       .eq('subject_id', subject_id)
-      .eq('user_id', user.id)
       .neq('activity_type', 'study_session')
       .gte('exam_date', new Date().toISOString().slice(0, 10))
       .order('exam_date', { ascending: true })
       .limit(3),
     supabase.from('exams')
-      .select('grade, percentage')
+      .select('id, grade, percentage, submission_status, assigned_by')
       .eq('subject_id', subject_id)
-      .eq('user_id', user.id)
-      .eq('submission_status', 'graded')
-      .not('grade', 'is', null),
+      .neq('activity_type', 'study_session'),
   ])
+
+  // Overlay teacher-exam grades from exam_grades for this student
+  const allExams = allExamsRes.data ?? []
+  const teacherExamIds = allExams.filter(e => e.assigned_by != null).map(e => e.id as string)
+  const teacherGradeMap: Record<string, number | null> = {}
+  if (teacherExamIds.length > 0) {
+    const { data: grades } = await supabase
+      .from('exam_grades')
+      .select('exam_id, grade')
+      .eq('student_id', user.id)
+      .in('exam_id', teacherExamIds)
+    for (const g of (grades ?? []) as { exam_id: string; grade: number | null }[]) {
+      teacherGradeMap[g.exam_id] = g.grade
+    }
+  }
 
   const subjectName = subjectRes.data?.name ?? 'la materia'
 
@@ -75,10 +89,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   }
 
-  // Progress
-  const graded = gradedRes.data ?? []
-  const progress = graded.reduce((acc, e) => {
-    return acc + ((e.grade ?? 0) * ((e.percentage ?? 0) / 100))
+  // Progress — use exam_grades for teacher-assigned exams, exams.grade otherwise
+  const progress = allExams.reduce((acc, e) => {
+    const grade = e.assigned_by != null
+      ? teacherGradeMap[e.id as string] ?? null
+      : (e.submission_status === 'graded' ? e.grade : null)
+    if (grade == null || e.percentage == null) return acc
+    return acc + (grade * (e.percentage / 100))
   }, 0)
   lines.push(`\nProgreso actual: ${progress.toFixed(1)} / 20.0`)
 

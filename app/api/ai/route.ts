@@ -32,7 +32,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const userId   = user.id
   const language = app_context?.language ?? 'es'
-  const today    = new Date().toLocaleDateString('es-ES', {
+  const today    = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
 

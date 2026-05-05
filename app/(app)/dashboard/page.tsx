@@ -3,12 +3,17 @@ import Link from 'next/link'
 import { daysUntil } from '@/lib/utils'
 import type { Task, Exam, Subject, Schedule } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
+import { getTranslator } from '@/lib/i18n/server'
 import { LiveClock } from '@/features/home/components/LiveClock'
 import { ClientTime } from '@/features/home/components/ClientTime'
 import { TaskFeed } from '@/features/home/components/TaskFeed'
 import { ExamFeed } from '@/features/home/components/ExamFeed'
 
+const interp = (s: string, vars: Record<string, string | number>) =>
+  s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''))
+
 export default async function DashboardPage() {
+  const { t, lang } = getTranslator()
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -23,11 +28,31 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', user.id).single(),
     supabase.from('tasks').select('*').eq('user_id', user.id).order('created_at'),
-    supabase.from('exams').select('*').eq('user_id', user.id).order('exam_date'),
-    supabase.from('subjects').select('*').eq('user_id', user.id),
+    // exams + subjects: no user_id filter — RLS includes own rows + enrolled teacher rows
+    supabase.from('exams').select('*').order('exam_date'),
+    supabase.from('subjects').select('*'),
     supabase.from('schedules').select('*').eq('user_id', user.id),
     supabase.from('enrollments').select('subject_id').eq('student_id', user.id).eq('status', 'active'),
   ])
+
+  // For teacher-assigned exams the grade lives in exam_grades, not on the exam row.
+  // Fetch this user's grades and overlay onto exams so downstream code sees the right value.
+  const teacherExamIds = (exams ?? []).filter(e => e.assigned_by != null).map(e => e.id as string)
+  const teacherGradeMap: Record<string, number | null> = {}
+  if (teacherExamIds.length > 0) {
+    const { data: grades } = await supabase
+      .from('exam_grades')
+      .select('exam_id, grade')
+      .eq('student_id', user.id)
+      .in('exam_id', teacherExamIds)
+    for (const g of (grades ?? []) as { exam_id: string; grade: number | null }[]) {
+      teacherGradeMap[g.exam_id] = g.grade
+    }
+  }
+  const examsWithGrades = (exams ?? []).map(e => ({
+    ...e,
+    grade: e.assigned_by != null ? (teacherGradeMap[e.id as string] ?? null) : e.grade,
+  }))
 
   // Fetch announcements for enrolled subjects
   const enrolledSubjectIds = (enrollmentData ?? []).map((e: { subject_id: string }) => e.subject_id)
@@ -49,10 +74,10 @@ export default async function DashboardPage() {
     subjects: { name: string } | null
   }[]
 
-  const allTasks     = (tasks     || []) as Task[]
-  const allExams     = (exams     || []) as Exam[]
-  const allSubjects  = (subjects  || []) as Subject[]
-  const allSchedules = (schedules || []) as Schedule[]
+  const allTasks     = (tasks         || []) as Task[]
+  const allExams     = examsWithGrades as Exam[]
+  const allSubjects  = (subjects      || []) as Subject[]
+  const allSchedules = (schedules     || []) as Schedule[]
 
   const todayStr      = new Date().toISOString().split('T')[0]
   const upcomingExams = allExams.filter(e => e.exam_date >= todayStr).slice(0, 4)
@@ -68,12 +93,12 @@ export default async function DashboardPage() {
 
   const greet = () => {
     const h = nowDate.getHours()
-    if (h < 12) return 'Buenos días'
-    if (h < 18) return 'Buenas tardes'
-    return 'Buenas noches'
+    if (h < 12) return t('dashboard.morning')
+    if (h < 18) return t('dashboard.afternoon')
+    return t('dashboard.evening')
   }
 
-  const firstName = profile?.full_name?.split(' ')[0] || 'Estudiante'
+  const firstName = profile?.full_name?.split(' ')[0] || t('dashboard.studentFallback')
 
   const inClassNow = todaySchedules.find(s => currentTimeStr >= s.start_time && currentTimeStr <= s.end_time)
   const nextClass  = todaySchedules.find(s => s.start_time > currentTimeStr)
@@ -92,10 +117,14 @@ export default async function DashboardPage() {
   if (inClassNow) {
     const sub = allSubjects.find(s => s.id === inClassNow.subject_id)
     const color = sub?.color || 'var(--color-primary)'
+    const time = inClassNow.end_time.slice(0, 5)
+    const room = inClassNow.room || sub?.room
     focus = {
       icon:  'school',
-      title: sub?.name || 'Clase en curso',
-      desc:  `Termina a las ${inClassNow.end_time.slice(0, 5)}${(inClassNow.room || sub?.room) ? ` · Sala ${inClassNow.room || sub?.room}` : ''}`,
+      title: sub?.name || t('dashboard.focusInClass'),
+      desc:  room
+        ? interp(t('dashboard.focusInClassDescRoom'), { time, room })
+        : interp(t('dashboard.focusInClassDesc'),     { time }),
       color,
       bg:    `color-mix(in srgb, ${color} 10%, var(--s-low))`,
       live:  true,
@@ -103,10 +132,14 @@ export default async function DashboardPage() {
   } else if (nextClass) {
     const sub = allSubjects.find(s => s.id === nextClass.subject_id)
     const color = sub?.color || 'var(--color-primary)'
+    const time = nextClass.start_time.slice(0, 5)
+    const room = nextClass.room || sub?.room
     focus = {
       icon:  'schedule',
-      title: `Próxima: ${sub?.name || 'Clase'}`,
-      desc:  `A las ${nextClass.start_time.slice(0, 5)}${(nextClass.room || sub?.room) ? ` · Sala ${nextClass.room || sub?.room}` : ''}`,
+      title: interp(t('dashboard.focusNextClass'), { name: sub?.name || '' }),
+      desc:  room
+        ? interp(t('dashboard.focusNextClassDescRoom'), { time, room })
+        : interp(t('dashboard.focusNextClassDesc'),     { time }),
       color,
       bg:    `color-mix(in srgb, ${color} 8%, var(--s-low))`,
     }
@@ -114,47 +147,50 @@ export default async function DashboardPage() {
     const sub  = allSubjects.find(s => s.id === nextExam.subject_id)
     const days = daysUntil(nextExam.exam_date)
     const actCfg = ACTIVITY_TYPES[(nextExam.activity_type || 'exam') as keyof typeof ACTIVITY_TYPES]
+    const tplKey = days === 0 ? 'dashboard.focusExamToday'
+                 : days === 1 ? 'dashboard.focusExamTomorrow'
+                 :              'dashboard.focusExamInDays'
     focus = {
       icon:  actCfg?.icon || 'event_upcoming',
-      title: `${days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `En ${days} días`}: ${nextExam.title}`,
-      desc:  sub?.name || actCfg?.label_es || '',
+      title: interp(t(tplKey), { n: days, title: nextExam.title }),
+      desc:  sub?.name || (lang === 'es' ? actCfg?.label_es : actCfg?.label_en) || '',
       color: 'var(--danger)',
       bg:    'var(--priority-high-bg)',
     }
   } else if (pendingCount > 0) {
     focus = {
       icon:  'task_alt',
-      title: `${pendingCount} tarea${pendingCount !== 1 ? 's' : ''} pendiente${pendingCount !== 1 ? 's' : ''}`,
-      desc:  'Mantén el enfoque, vas bien',
+      title: interp(t(pendingCount === 1 ? 'dashboard.focusPending' : 'dashboard.focusPendingPlural'), { n: pendingCount }),
+      desc:  t('dashboard.focusPendingDesc'),
       color: 'var(--color-primary)',
       bg:    'color-mix(in srgb, var(--color-primary) 8%, var(--s-low))',
     }
   } else {
     focus = {
       icon:  'done_all',
-      title: 'Todo al día',
-      desc:  'Sin tareas pendientes ni clases en curso',
+      title: t('dashboard.focusAllDone'),
+      desc:  t('dashboard.focusAllDoneDesc'),
       color: 'var(--success)',
       bg:    'color-mix(in srgb, var(--success) 10%, var(--s-low))',
     }
   }
 
   const QUICK_ACTIONS = [
-    { href: '/planner?create=task', icon: 'add_task',          label: 'Nueva tarea',     color: 'var(--color-primary)'  },
-    { href: '/planner?create=exam', icon: 'event',             label: 'Nuevo examen',    color: '#ef4444'               },
-    { href: '/notes?new=1',          icon: 'edit_note',         label: 'Nota rápida',     color: 'var(--warning)'        },
-    { href: '/ai?tab=import',       icon: 'document_scanner',  label: 'Registrar horario con IA', color: '#10b981'      },
-    { href: '/ai',                  icon: 'auto_awesome',      label: 'Preguntar a IA',  color: '#c084fc'               },
+    { href: '/planner?create=task', icon: 'add_task',          label: t('dashboard.qaNewTask'),        color: 'var(--color-primary)'  },
+    { href: '/planner?create=exam', icon: 'event',             label: t('dashboard.qaNewExam'),        color: 'var(--danger)'         },
+    { href: '/notes?new=1',         icon: 'edit_note',         label: t('dashboard.qaQuickNote'),      color: 'var(--warning)'        },
+    { href: '/ai?tab=import',       icon: 'document_scanner',  label: t('dashboard.qaImportSchedule'), color: 'var(--success)'        },
+    { href: '/ai',                  icon: 'auto_awesome',      label: t('dashboard.qaAskAI'),          color: 'var(--color-tertiary)' },
   ]
 
   // Motivational messages by hour (for empty "Hoy" widget)
   const motivationalMsg = (() => {
     const h = nowDate.getHours()
-    if (h < 7)  return { text: 'Madrugador. Hoy va a ser un buen día.',   icon: 'nights_stay'     }
-    if (h < 12) return { text: 'Empieza con enfoque. Tienes el día libre.', icon: 'wb_sunny'       }
-    if (h < 15) return { text: 'Sin clases. Aprovecha para estudiar.',      icon: 'local_library'  }
-    if (h < 19) return { text: 'Tarde libre. Perfecto para avanzar.',       icon: 'self_improvement'}
-    return              { text: 'Noche tranquila. Descansa o repasa.',       icon: 'bedtime'        }
+    if (h < 7)  return { text: t('dashboard.motivEarly'),     icon: 'nights_stay'     }
+    if (h < 12) return { text: t('dashboard.motivMorning'),   icon: 'wb_sunny'        }
+    if (h < 15) return { text: t('dashboard.motivAfternoon'), icon: 'local_library'   }
+    if (h < 19) return { text: t('dashboard.motivEvening'),   icon: 'self_improvement'}
+    return              { text: t('dashboard.motivNight'),    icon: 'bedtime'         }
   })()
 
   return (
@@ -164,7 +200,7 @@ export default async function DashboardPage() {
       <header className="mb-3 lg:mb-5 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="mono text-[10px] tracking-[0.18em] uppercase font-medium mb-1"
-            style={{ color: 'var(--color-tertiary)' }}>Skolar Sanctuary</p>
+            style={{ color: 'var(--color-tertiary)' }}>{t('dashboard.brandTag')}</p>
 
           <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight leading-tight"
             style={{ color: 'var(--on-surface)' }}>
@@ -178,7 +214,7 @@ export default async function DashboardPage() {
                 style={{ color: 'var(--on-surface-variant)' }}>
                 <span className="material-symbols-outlined text-[13px]"
                   style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>today</span>
-                {todaySchedules.length} clase{todaySchedules.length !== 1 ? 's' : ''} hoy
+                {interp(t(todaySchedules.length === 1 ? 'dashboard.classCount' : 'dashboard.classCountPlural'), { n: todaySchedules.length })}
               </span>
             )}
             {pendingCount > 0 ? (
@@ -190,22 +226,25 @@ export default async function DashboardPage() {
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5"
                     style={{ backgroundColor: 'var(--danger)' }} />
                 </span>
-                {pendingCount} pendiente{pendingCount !== 1 ? 's' : ''}
+                {interp(t(pendingCount === 1 ? 'dashboard.pendingCount' : 'dashboard.pendingCountPlural'), { n: pendingCount })}
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--success)' }}>
                 <span className="material-symbols-outlined text-[13px]"
                   style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                Al día
+                {t('dashboard.allCaughtUp')}
               </span>
             )}
             {upcomingExams.length > 0 && (() => {
               const d = daysUntil(upcomingExams[0].exam_date)
               const c = d < 3 ? 'var(--danger)' : d < 7 ? 'var(--warning)' : 'var(--color-outline)'
+              const label = d === 0 ? t('dashboard.activityToday')
+                          : d === 1 ? t('dashboard.activityTomorrow')
+                          :           interp(t('dashboard.activityInDays'), { n: d })
               return (
                 <span className="flex items-center gap-1.5 text-[11px]" style={{ color: c }}>
                   <span className="material-symbols-outlined text-[13px]">event_upcoming</span>
-                  {d === 0 ? 'Actividad hoy' : d === 1 ? 'Actividad mañana' : `Actividad en ${d}d`}
+                  {label}
                 </span>
               )
             })()}
@@ -221,38 +260,38 @@ export default async function DashboardPage() {
       {/* ── Announcements from enrolled courses ───────────────────────────── */}
       {announcements.length > 0 && (
         <div className="mb-3 lg:mb-4 space-y-2">
-          {announcements.map((a) => (
-            <div key={a.id} className="rounded-xl px-4 py-3 flex items-center gap-3"
-              style={{
-                backgroundColor: a.priority === 'urgent'
-                  ? 'color-mix(in srgb, #ef4444 10%, var(--s-low))'
-                  : 'color-mix(in srgb, var(--color-primary) 8%, var(--s-low))',
-                border: `1px solid ${a.priority === 'urgent' ? 'color-mix(in srgb, #ef4444 25%, transparent)' : 'color-mix(in srgb, var(--color-primary) 20%, transparent)'}`,
-              }}>
-              <span className="material-symbols-outlined text-[18px] flex-shrink-0"
+          {announcements.map((a) => {
+            const accent = a.priority === 'urgent' ? 'var(--danger)' : 'var(--color-primary)'
+            const bgPct  = a.priority === 'urgent' ? 10 : 8
+            const brdPct = a.priority === 'urgent' ? 25 : 20
+            return (
+              <div key={a.id} className="rounded-xl px-4 py-3 flex items-center gap-3"
                 style={{
-                  color: a.priority === 'urgent' ? '#ef4444' : 'var(--color-primary)',
-                  fontVariationSettings: "'FILL' 1",
+                  backgroundColor: `color-mix(in srgb, ${accent} ${bgPct}%, var(--s-low))`,
+                  border: `1px solid color-mix(in srgb, ${accent} ${brdPct}%, transparent)`,
                 }}>
-                campaign
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
-                  {a.title}
-                </p>
-                {a.subjects && (
-                  <p className="text-[10px]" style={{ color: 'var(--on-surface-variant)' }}>
-                    {a.subjects.name}
-                    {a.priority === 'urgent' && (
-                      <span className="ml-2 font-bold uppercase text-[9px]" style={{ color: '#ef4444' }}>
-                        · Urgente
-                      </span>
-                    )}
+                <span className="material-symbols-outlined text-[18px] flex-shrink-0"
+                  style={{ color: accent, fontVariationSettings: "'FILL' 1" }}>
+                  campaign
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
+                    {a.title}
                   </p>
-                )}
+                  {a.subjects && (
+                    <p className="text-[10px]" style={{ color: 'var(--on-surface-variant)' }}>
+                      {a.subjects.name}
+                      {a.priority === 'urgent' && (
+                        <span className="ml-2 font-bold uppercase text-[9px]" style={{ color: 'var(--danger)' }}>
+                          · {t('dashboard.urgentLabel')}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -291,7 +330,7 @@ export default async function DashboardPage() {
         </div>
         <span className="mono text-[9px] uppercase tracking-[0.15em] font-bold flex-shrink-0 hidden sm:block"
           style={{ color: focus.color }}>
-          Tu foco ahora
+          {t('dashboard.focusLabel')}
         </span>
       </div>
 
@@ -302,13 +341,13 @@ export default async function DashboardPage() {
           <h2 className="font-bold flex items-center gap-1.5 text-sm" style={{ color: 'var(--on-surface)' }}>
             <span className="material-symbols-outlined text-[16px]"
               style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>today</span>
-            Hoy
+            {t('dashboard.todayHeader')}
           </h2>
           {todaySchedules.length > 4 && (
             <Link href="/calendar"
               className="mono text-[10px] uppercase tracking-widest transition-opacity hover:opacity-60"
               style={{ color: 'var(--color-primary)' }}>
-              Ver todo
+              {t('dashboard.viewAll')}
             </Link>
           )}
         </div>
@@ -379,7 +418,7 @@ export default async function DashboardPage() {
       {/* ── Quick Access ─────────────────────────────────────────────────── */}
       <div className="mt-3 lg:mt-4">
         <p className="mono text-[9px] uppercase tracking-[0.18em] mb-2 font-medium"
-          style={{ color: 'var(--color-outline)' }}>Acciones rápidas</p>
+          style={{ color: 'var(--color-outline)' }}>{t('dashboard.quickAccess')}</p>
         <div className="grid grid-cols-5 gap-2">
           {QUICK_ACTIONS.map(({ href, icon, label, color }) => (
             <Link

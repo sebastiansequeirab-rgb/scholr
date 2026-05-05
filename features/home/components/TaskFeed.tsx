@@ -1,14 +1,9 @@
 'use client'
 import { useState } from 'react'
 import type { Task, Subject } from '@/types'
+import { useTranslation } from '@/hooks/useTranslation'
 
 type FilterMode = 'due' | 'subject' | 'recent'
-
-const MODES: { key: FilterMode; label: string }[] = [
-  { key: 'due',     label: 'Próximas'  },
-  { key: 'subject', label: 'Materia'   },
-  { key: 'recent',  label: 'Recientes' },
-]
 
 const PRIORITY_COLOR: Record<string, string> = {
   high: 'var(--priority-high)',
@@ -16,15 +11,22 @@ const PRIORITY_COLOR: Record<string, string> = {
   low:  'var(--priority-low)',
 }
 
-const todayStr = new Date().toISOString().split('T')[0]
-
 function daysUntilDate(dateStr: string) {
+  // Recompute today on each call so the component stays correct across midnight
+  const todayStr = new Date().toISOString().split('T')[0]
   return Math.round((new Date(dateStr).getTime() - new Date(todayStr).getTime()) / 86400000)
 }
 
 export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject[] }) {
+  const { t } = useTranslation()
   const [mode,           setMode]           = useState<FilterMode>('due')
   const [subjectChip,    setSubjectChip]    = useState<string>('')
+
+  const MODES: { key: FilterMode; label: string }[] = [
+    { key: 'due',     label: t('feeds.filterDue')     },
+    { key: 'subject', label: t('feeds.filterSubject') },
+    { key: 'recent',  label: t('feeds.filterRecent')  },
+  ]
 
   const pending = tasks.filter(t => !t.is_done)
 
@@ -58,7 +60,7 @@ export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject
         <h2 className="font-bold flex items-center gap-2 text-sm" style={{ color: 'var(--on-surface)' }}>
           <span className="material-symbols-outlined text-[18px]"
             style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>task_alt</span>
-          Tareas
+          {t('feeds.tasks')}
           {pending.length > 0 && (
             <span className="mono text-[9px] px-1.5 py-0.5 rounded-full"
               style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)', color: 'var(--color-primary)' }}>
@@ -69,7 +71,7 @@ export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject
         <a href="/planner"
           className="mono text-[10px] uppercase tracking-widest transition-opacity hover:opacity-60"
           style={{ color: 'var(--color-primary)' }}>
-          Ver todo
+          {t('dashboard.viewAll')}
         </a>
       </div>
 
@@ -101,7 +103,7 @@ export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject
               color:           !subjectChip ? 'var(--color-primary)' : 'var(--color-outline)',
               borderColor:     !subjectChip ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'var(--border-subtle)',
             }}>
-            Todas
+            {t('feeds.allChip')}
           </button>
           {activeSubjects.map(s => (
             <button
@@ -125,7 +127,7 @@ export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject
         <div className="flex flex-col items-center justify-center py-5">
           <span className="material-symbols-outlined text-2xl mb-1"
             style={{ color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-          <p className="text-xs" style={{ color: 'var(--color-outline)' }}>Sin tareas pendientes</p>
+          <p className="text-xs" style={{ color: 'var(--color-outline)' }}>{t('feeds.noTasks')}</p>
         </div>
       ) : (
         <div className="space-y-1.5">
@@ -151,7 +153,7 @@ export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject
                 </div>
                 {days !== null && (
                   <span className="mono text-[10px] font-bold flex-shrink-0 mt-0.5" style={{ color: dueColor }}>
-                    {days <= 0 ? 'Hoy' : days === 1 ? 'Mañ' : `${days}d`}
+                    {days <= 0 ? t('feeds.today') : days === 1 ? t('feeds.tmrwShort') : `${days}d`}
                   </span>
                 )}
               </div>
@@ -159,7 +161,7 @@ export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject
           })}
           {extra > 0 && (
             <p className="text-center mono text-[10px] pt-0.5" style={{ color: 'var(--color-outline)' }}>
-              +{extra} más
+              {t('feeds.moreCount').replace('{n}', String(extra))}
             </p>
           )}
         </div>

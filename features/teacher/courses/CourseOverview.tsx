@@ -88,9 +88,9 @@ export function CourseOverview({ course, students }: CourseOverviewProps) {
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
               style={{
                 backgroundColor: copied
-                  ? 'color-mix(in srgb, #10b981 15%, transparent)'
+                  ? 'color-mix(in srgb, var(--success) 15%, transparent)'
                   : 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
-                color: copied ? '#10b981' : 'var(--color-primary)',
+                color: copied ? 'var(--success)' : 'var(--color-primary)',
               }}
             >
               <span className="material-symbols-outlined text-[16px]">

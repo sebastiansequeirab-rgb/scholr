@@ -197,7 +197,7 @@ export default function SettingsPage() {
               {!profile?.is_premium && (
                 <button
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 hover:scale-105 flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: 'white' }}
+                  style={{ background: 'linear-gradient(135deg, var(--color-tertiary-container), var(--color-tertiary))', color: 'var(--on-primary)' }}
                 >
                   <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>upgrade</span>
                   Upgrade

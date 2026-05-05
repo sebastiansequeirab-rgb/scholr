@@ -212,11 +212,11 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
   }
 
   const activityColors: Record<ActivityType, string> = {
-    exam:          '#ef4444',
-    workshop:      '#f59e0b',
-    activity:      '#8b5cf6',
-    task:          '#3b82f6',
-    study_session: '#10b981',
+    exam:          'var(--danger)',
+    workshop:      'var(--warning)',
+    activity:      'var(--color-tertiary-container)',
+    task:          'var(--color-primary)',
+    study_session: 'var(--success)',
   }
 
   /* ─── STEP: input ─────────────────────────────────────────────────────── */
@@ -359,7 +359,7 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
           </div>
           {dupCount > 0 && (
             <div className="flex items-start gap-2 text-xs px-3 py-2.5 rounded-xl"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent)', color: '#b45309' }}>
+              style={{ backgroundColor: 'color-mix(in srgb, var(--warning) 10%, transparent)', color: 'var(--warning)' }}>
               <span className="material-symbols-outlined text-[14px] flex-shrink-0 mt-0.5">warning</span>
               <span>
                 {t(
@@ -379,7 +379,7 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
             <div key={ev._key} className="rounded-2xl overflow-hidden transition-opacity"
               style={{
                 border: ev._duplicateWarning
-                  ? '1px solid color-mix(in srgb, #f59e0b 40%, transparent)'
+                  ? '1px solid color-mix(in srgb, var(--warning) 40%, transparent)'
                   : '1px solid var(--border-subtle)',
                 opacity: ev._included ? 1 : 0.45,
               }}>
@@ -410,7 +410,7 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
                   <button
                     onClick={() => patchEval(ev._key, { _duplicateWarning: false })}
                     className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-110"
-                    style={{ backgroundColor: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#b45309' }}
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--warning) 15%, transparent)', color: 'var(--warning)' }}
                     title={t('Ya existe. Toca para incluir de todas formas', 'Already exists. Tap to include anyway')}>
                     <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                       warning

@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
+import { useTranslation } from '@/hooks/useTranslation'
 
 export function LiveClock() {
   const [now, setNow] = useState<Date | null>(null)
   const { use12h } = useTimeFormat()
+  const { language } = useTranslation()
 
   useEffect(() => {
     setNow(new Date())
@@ -29,7 +31,7 @@ export function LiveClock() {
     hh = rawHours.toString().padStart(2, '0')
   }
 
-  const dateStr = now.toLocaleDateString('es-ES', {
+  const dateStr = now.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

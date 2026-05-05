@@ -531,7 +531,7 @@ export default function CalendarPage() {
     const subject = subjects.find(s => s.id === task.subject_id)
     // Use subject color if available, otherwise priority color
     const color = subject?.color
-      || (task.priority === 'high' ? '#ef4444' : task.priority === 'mid' ? '#f59e0b' : '#60a5fa')
+      || (task.priority === 'high' ? 'var(--danger)' : task.priority === 'mid' ? 'var(--warning)' : 'var(--priority-low)')
     events.push({
       id:              `task-${task.id}`,
       title:           task.text,

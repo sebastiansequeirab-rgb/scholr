@@ -139,8 +139,8 @@ function CreateSheet({
           <div className="grid grid-cols-3 gap-2">
             {([
               { key: 'task',       label: t('planner.tasks'),       icon: 'task_alt',   color: 'var(--color-primary)' },
-              { key: 'exam',       label: t('planner.exams'),       icon: 'school',     color: '#ef4444'              },
-              { key: 'assignment', label: t('planner.assignments'), icon: 'assignment', color: '#8b5cf6'              },
+              { key: 'exam',       label: t('planner.exams'),       icon: 'school',     color: 'var(--danger)'        },
+              { key: 'assignment', label: t('planner.assignments'), icon: 'assignment', color: 'var(--color-tertiary-container)' },
             ] as const).map(({ key, label, icon, color }) => (
               <button
                 key={key}

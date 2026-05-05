@@ -2,25 +2,28 @@
 import { useState } from 'react'
 import type { Exam, Subject } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
+import { useTranslation } from '@/hooks/useTranslation'
 
 type FilterMode = 'due' | 'subject' | 'recent'
 
-const MODES: { key: FilterMode; label: string }[] = [
-  { key: 'due',     label: 'Próximas'  },
-  { key: 'subject', label: 'Materia'   },
-  { key: 'recent',  label: 'Recientes' },
-]
-
-const todayStr = new Date().toISOString().split('T')[0]
-
 function daysUntilDate(dateStr: string) {
+  // Recompute today on each call so the component stays correct across midnight
+  const todayStr = new Date().toISOString().split('T')[0]
   return Math.round((new Date(dateStr).getTime() - new Date(todayStr).getTime()) / 86400000)
 }
 
 export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject[] }) {
+  const { t, language } = useTranslation()
   const [mode,        setMode]        = useState<FilterMode>('due')
   const [subjectChip, setSubjectChip] = useState<string>('')
 
+  const MODES: { key: FilterMode; label: string }[] = [
+    { key: 'due',     label: t('feeds.filterDue')     },
+    { key: 'subject', label: t('feeds.filterSubject') },
+    { key: 'recent',  label: t('feeds.filterRecent')  },
+  ]
+
+  const todayStr = new Date().toISOString().split('T')[0]
   const upcoming = exams.filter(e => e.exam_date >= todayStr)
 
   // Subjects that have upcoming exams/assignments
@@ -47,11 +50,11 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-bold flex items-center gap-2 text-sm" style={{ color: 'var(--on-surface)' }}>
           <span className="material-symbols-outlined text-[18px]"
-            style={{ color: '#ef4444', fontVariationSettings: "'FILL' 1" }}>event_upcoming</span>
-          Actividades
+            style={{ color: 'var(--danger)', fontVariationSettings: "'FILL' 1" }}>event_upcoming</span>
+          {t('feeds.activities')}
           {upcoming.length > 0 && (
             <span className="mono text-[9px] px-1.5 py-0.5 rounded-full"
-              style={{ backgroundColor: 'color-mix(in srgb, #ef4444 12%, transparent)', color: '#ef4444' }}>
+              style={{ backgroundColor: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)' }}>
               {upcoming.length}
             </span>
           )}
@@ -59,7 +62,7 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
         <a href="/planner"
           className="mono text-[10px] uppercase tracking-widest transition-opacity hover:opacity-60"
           style={{ color: 'var(--color-primary)' }}>
-          Ver todo
+          {t('dashboard.viewAll')}
         </a>
       </div>
 
@@ -71,9 +74,9 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
             onClick={() => { setMode(m.key); setSubjectChip('') }}
             className="flex-1 py-1 rounded-full text-[10px] font-semibold border transition-all"
             style={{
-              backgroundColor: mode === m.key ? 'color-mix(in srgb, #ef4444 12%, transparent)' : 'transparent',
-              color:           mode === m.key ? '#ef4444' : 'var(--color-outline)',
-              borderColor:     mode === m.key ? 'color-mix(in srgb, #ef4444 28%, transparent)' : 'var(--border-subtle)',
+              backgroundColor: mode === m.key ? 'color-mix(in srgb, var(--danger) 12%, transparent)' : 'transparent',
+              color:           mode === m.key ? 'var(--danger)' : 'var(--color-outline)',
+              borderColor:     mode === m.key ? 'color-mix(in srgb, var(--danger) 28%, transparent)' : 'var(--border-subtle)',
             }}>
             {m.label}
           </button>
@@ -87,11 +90,11 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
             onClick={() => setSubjectChip('')}
             className="flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all whitespace-nowrap"
             style={{
-              backgroundColor: !subjectChip ? 'color-mix(in srgb, #ef4444 12%, transparent)' : 'transparent',
-              color:           !subjectChip ? '#ef4444' : 'var(--color-outline)',
-              borderColor:     !subjectChip ? 'color-mix(in srgb, #ef4444 28%, transparent)' : 'var(--border-subtle)',
+              backgroundColor: !subjectChip ? 'color-mix(in srgb, var(--danger) 12%, transparent)' : 'transparent',
+              color:           !subjectChip ? 'var(--danger)' : 'var(--color-outline)',
+              borderColor:     !subjectChip ? 'color-mix(in srgb, var(--danger) 28%, transparent)' : 'var(--border-subtle)',
             }}>
-            Todas
+            {t('feeds.allChip')}
           </button>
           {activeSubjects.map(s => (
             <button
@@ -115,7 +118,7 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
         <div className="flex flex-col items-center justify-center py-5">
           <span className="material-symbols-outlined text-2xl mb-1"
             style={{ color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>event_available</span>
-          <p className="text-xs" style={{ color: 'var(--color-outline)' }}>Sin actividades próximas</p>
+          <p className="text-xs" style={{ color: 'var(--color-outline)' }}>{t('feeds.noActivities')}</p>
         </div>
       ) : (
         <div className="space-y-1.5">
@@ -150,10 +153,10 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
                 </div>
                 <div className="flex-shrink-0 text-right mt-0.5">
                   <p className="mono text-[12px] font-black leading-none" style={{ color: urgency }}>
-                    {days === 0 ? 'Hoy' : days === 1 ? 'Mañ' : `${days}d`}
+                    {days === 0 ? t('feeds.today') : days === 1 ? t('feeds.tmrwShort') : `${days}d`}
                   </p>
                   <p className="mono text-[9px] mt-0.5" style={{ color: 'var(--color-outline)' }}>
-                    {new Date(exam.exam_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                    {new Date(exam.exam_date + 'T00:00:00').toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short' })}
                   </p>
                 </div>
               </div>
@@ -161,7 +164,7 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
           })}
           {extra > 0 && (
             <p className="text-center mono text-[10px] pt-0.5" style={{ color: 'var(--color-outline)' }}>
-              +{extra} más
+              {t('feeds.moreCount').replace('{n}', String(extra))}
             </p>
           )}
         </div>

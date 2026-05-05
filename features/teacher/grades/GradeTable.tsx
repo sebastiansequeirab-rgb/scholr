@@ -143,7 +143,7 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
       </div>
       <button onClick={openModal}
         className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-        style={{ backgroundColor: courseColor, color: '#fff' }}>
+        style={{ backgroundColor: courseColor, color: 'white' }}>
         <span className="material-symbols-outlined text-[18px]">add</span>
         {t('teacher.grades.addActivity')}
       </button>
@@ -186,7 +186,7 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
           </p>
           <button onClick={openModal}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold mx-auto transition-all"
-            style={{ backgroundColor: courseColor, color: '#fff' }}>
+            style={{ backgroundColor: courseColor, color: 'white' }}>
             <span className="material-symbols-outlined text-[18px]">add</span>
             {t('teacher.grades.addActivity')}
           </button>
@@ -236,7 +236,7 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                       style={{
                         background: newType === type ? cfg.color : 'var(--s-low)',
-                        color: newType === type ? '#fff' : 'var(--on-surface-variant)',
+                        color: newType === type ? 'white' : 'var(--on-surface-variant)',
                         border: `1px solid ${newType === type ? cfg.color : 'var(--border-subtle)'}`,
                       }}>
                       <span className="material-symbols-outlined text-[13px]"
@@ -294,7 +294,7 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
               </button>
               <button type="submit" disabled={modalLoading}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-                style={{ backgroundColor: courseColor, color: '#fff' }}>
+                style={{ backgroundColor: courseColor, color: 'white' }}>
                 {modalLoading ? '...' : t('common.save')}
               </button>
             </div>
@@ -399,9 +399,9 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
                             className="w-16 text-center text-sm font-mono py-1.5 px-2 rounded-lg outline-none transition-all"
                             style={{
                               backgroundColor: isSaved
-                                ? 'color-mix(in srgb, #10b981 12%, transparent)'
+                                ? 'color-mix(in srgb, var(--success) 12%, transparent)'
                                 : 'var(--s-base)',
-                              border: `1px solid ${isSaved ? '#10b981' : 'var(--border-subtle)'}`,
+                              border: `1px solid ${isSaved ? 'var(--success)' : 'var(--border-subtle)'}`,
                               color: currentGrade !== null && currentGrade !== undefined
                                 ? (currentGrade >= 10 ? 'var(--success)' : 'var(--danger)')
                                 : 'var(--on-surface)',
@@ -449,7 +449,7 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
               </button>
               <button onClick={() => handleDeleteActivity(deleteId)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: 'var(--danger)', color: '#fff' }}>
+                style={{ background: 'var(--danger)', color: 'white' }}>
                 {t('common.delete')}
               </button>
             </div>

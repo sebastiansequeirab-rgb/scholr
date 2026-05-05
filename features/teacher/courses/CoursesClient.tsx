@@ -115,9 +115,9 @@ export function CoursesClient({ initialCourses, teacherId }: CoursesClientProps)
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                     style={{
                       backgroundColor: copiedId === course.id
-                        ? 'color-mix(in srgb, #10b981 15%, transparent)'
+                        ? 'color-mix(in srgb, var(--success) 15%, transparent)'
                         : 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
-                      color: copiedId === course.id ? '#10b981' : 'var(--color-primary)',
+                      color: copiedId === course.id ? 'var(--success)' : 'var(--color-primary)',
                     }}
                   >
                     <span className="material-symbols-outlined text-[14px]">

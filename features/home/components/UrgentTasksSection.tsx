@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { isToday, isTomorrow, daysUntil } from '@/lib/utils'
 import type { Task, Subject } from '@/types'
+import { useTranslation } from '@/hooks/useTranslation'
 
 export function UrgentTasksSection({
   initialTasks,
@@ -13,16 +14,22 @@ export function UrgentTasksSection({
   initialTasks: Task[]
   subjects: Subject[]
 }) {
+  const { t } = useTranslation()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const router = useRouter()
 
   const toggle = async (task: Task) => {
-    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_done: !t.is_done } : t))
+    const nextDone = !task.is_done
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_done: nextDone } : t))
     const supabase = createClient()
-    await supabase.from('tasks').update({
-      is_done: !task.is_done,
-      done_at: !task.is_done ? new Date().toISOString() : null,
+    const { error } = await supabase.from('tasks').update({
+      is_done: nextDone,
+      done_at: nextDone ? new Date().toISOString() : null,
     }).eq('id', task.id)
+    // Rollback on failure so the UI matches reality
+    if (error) {
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, is_done: task.is_done } : t))
+    }
   }
 
   const urgencyScore = (task: Task): number => {
@@ -47,7 +54,7 @@ export function UrgentTasksSection({
           done_all
         </span>
         <p className="text-sm font-medium" style={{ color: 'var(--color-outline)' }}>
-          Sin tareas pendientes ✓
+          {t('feeds.noTasksDone')}
         </p>
       </div>
     )
@@ -64,8 +71,8 @@ export function UrgentTasksSection({
 
         const timeLabel = !task.due_date
           ? null
-          : isToday_    ? 'Hoy'
-          : isTomorrow_ ? 'Mañana'
+          : isToday_    ? t('feeds.today')
+          : isTomorrow_ ? t('feeds.tomorrow')
           : `${days}d`
 
         const urgencyColor = !task.due_date
@@ -112,7 +119,7 @@ export function UrgentTasksSection({
                 borderColor:     priorityColor,
                 backgroundColor: task.is_done ? priorityColor : 'transparent',
               }}
-              aria-label={task.is_done ? 'Marcar pendiente' : 'Marcar hecha'}
+              aria-label={task.is_done ? t('feeds.markPending') : t('feeds.markDone')}
             >
               {task.is_done && (
                 <span className="material-symbols-outlined text-[10px]"
@@ -144,7 +151,7 @@ export function UrgentTasksSection({
                       backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)',
                       color: 'var(--color-tertiary)',
                     }}>
-                    En progreso
+                    {t('feeds.inProgress')}
                   </span>
                 )}
               </div>
