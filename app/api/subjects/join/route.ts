@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       .from('subjects')
       .select('id, name, color, icon, teacher_id')
       .eq('access_code', code.toUpperCase())
+      .not('teacher_id', 'is', null)
       .single()
 
     if (subjectError || !subject) {
