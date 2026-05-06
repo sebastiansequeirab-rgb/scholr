@@ -1,6 +1,6 @@
 # Skolar — Rediseño visual v2 (Swiss editorial académica)
 
-> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane), `f9427c5` (AI bubbles).
+> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane), `f9427c5` (AI bubbles), `311bc5d` (teacher pages internas + feeds + SubjectModal/IconPicker).
 
 ---
 
@@ -256,13 +256,23 @@ Mobile: las carpetas se colapsan en un bloque al tope del pane de lista, manteni
 - Composer: ya tiene attach PDF + image + voice + send; podría agregarse `graphic_eq` para waveform (decorativo, opcional)
 - Suggestions row al iniciar: hoy son cards 2-col, podrían convertirse en `.ai-chip` rounded-full estilo canvas
 
-**5) Pages internas del profesor** — `app/(teacher)/teacher/courses/[id]/{grades,announcements,documents,schedules,students}/page.tsx`.
-Aplicar `screen-head` con kicker + serif italic title. El cuerpo de cada una usar `.card`, `.row`, `.btn-*`.
+**5) Pages internas del profesor** — ✅ HECHO (commit `311bc5d`, 2026-05-06).
+Migradas con `screen-head + kicker + serif italic` y body con `.card`/`.row`/`.btn-*`/`modal-overlay`:
+- `app/(teacher)/teacher/courses/[id]/students/page.tsx` — header + .row con avatar y meta
+- `features/teacher/grades/GradeTable.tsx` — header con courseColor accent, ActivityModal y delete confirm a kicker+serif+.label/.input/.chip; tabla interior intacta (queda como pendiente bajo riesgo si se quiere refactor)
+- `features/teacher/announcements/AnnouncementsClient.tsx` — header con conteo de urgentes, items con barra lateral 2px y `.badge--danger`
+- `features/teacher/documents/DocumentsClient.tsx` — header con tamaño total, `.row` por archivo, `.btn-icon`
+- `features/teacher/courses/CourseScheduleManager.tsx` — header con courseColor + sync, `.row` con día y hora tabular, form en `.card` editorial
 
-**6) Componentes auxiliares**:
-- `features/home/components/{TaskFeed,ExamFeed,UrgentTasksSection}.tsx` — los feeds del dashboard. Visualmente OK pero podrían mejorar con `.row` pattern con tag por subject.
-- `features/subjects/components/{SubjectModal,IconPicker,SubjectChat,ScheduleManager}.tsx`
-- `features/ai/components/{ScheduleImportWizard,EvaluationImportWizard}.tsx`
+**6) Componentes auxiliares** — ✅ PARCIAL (commit `311bc5d`, 2026-05-06).
+- `features/home/components/{TaskFeed,ExamFeed}.tsx` — ✅ ahora usan `.row` con accent del color de la materia, prio dot en `row__time`, due chip en `row__right`
+- `features/subjects/components/SubjectModal.tsx` — ✅ kicker+serif italic en header, color picker con check blanco, submit con accent del color elegido; ScheduleManager interno ahora con `.row`
+- `features/subjects/components/IconPicker.tsx` — ✅ popover con kicker, radius-xl, outline color-mix más Swiss
+
+**Pendientes 6 que quedan** (bajo riesgo):
+- `features/home/components/UrgentTasksSection.tsx` — sigue con look viejo de tarjetas; portar a `.card` con `.row` items con accent rojo
+- `features/subjects/components/SubjectChat.tsx` — aún no migrado (usado dentro del tab "Chat IA" del SubjectDetail)
+- `features/ai/components/{ScheduleImportWizard,EvaluationImportWizard}.tsx` — wizards modales del AI; aplicar kicker+serif+`.label`/`.input`
 
 ### Baja prioridad
 
