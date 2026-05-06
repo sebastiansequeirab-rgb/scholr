@@ -125,6 +125,13 @@ const progress = exams
 **Sprint 3 📋 PLANNED** → active/execution/SPRINT3.md
 Goal: Analytics, study sessions, Pomodoro timer, advanced AI features
 
+**Visual Rebuild v2 ✅ FASES 1+2 DEPLOYED** (2026-05-06, commits ef1439e/1a71889/88d8ea4)
+- Direction: Swiss editorial académica · Inter + Instrument Serif italic + JetBrains Mono · warm slate dark / warm bone light · royal blue + lavender AI
+- Foundations done (globals.css completo + tailwind.config + Sidebar narrow + Topbar nuevo)
+- 6 hero screens migradas: Login (dual-role hero), Register, Forgot, Dashboard, Subjects, AI, SubjectDetail con calculadora editable persistente
+- All other screens have new headers (screen-head + kicker + serif italic) but body interno not yet migrated
+- **Para retomar**: leé `active/execution/REDESIGN_HANDOFF.md` — tiene design system completo, prioridades, files críticos, canvas original
+
 ## ⚠️ Pending manual action
 
 Supabase Dashboard → Authentication → Password Strength → Enable (never done automatically)
