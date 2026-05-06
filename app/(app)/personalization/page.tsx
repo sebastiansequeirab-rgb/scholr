@@ -61,17 +61,17 @@ export default function PersonalizationPage() {
   }
 
   const Section = ({ children, title, icon }: { children: React.ReactNode; title: string; icon: string }) => (
-    <section className="rounded-2xl overflow-hidden"
-      style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-      <div className="flex items-center gap-2.5 px-5 py-3.5"
-        style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <span className="material-symbols-outlined text-[16px]"
-          style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
-          {icon}
-        </span>
-        <h2 className="text-sm font-bold tracking-tight" style={{ color: 'var(--on-surface)' }}>{title}</h2>
-      </div>
-      <div className="p-5">{children}</div>
+    <section className="card overflow-hidden" style={{ padding: 0 }}>
+      <header className="section-head" style={{ padding: '12px 18px', marginBottom: 0 }}>
+        <div className="section-head__left">
+          <span className="material-symbols-outlined text-[16px]"
+            style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+            {icon}
+          </span>
+          <span className="section-head__title">{title}</span>
+        </div>
+      </header>
+      <div className="p-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>{children}</div>
     </section>
   )
 
@@ -99,35 +99,36 @@ export default function PersonalizationPage() {
                 <button
                   key={th.key}
                   onClick={() => setColorTheme(th.key)}
-                  className="relative rounded-2xl overflow-hidden text-left transition-all duration-200 hover:-translate-y-0.5"
+                  className="relative overflow-hidden text-left transition-all duration-200 hover:-translate-y-0.5"
                   style={{
-                    border: `2px solid ${isActive ? th.primary : 'var(--border-default)'}`,
-                    boxShadow: isActive ? `0 4px 24px ${th.primary}30` : 'none',
+                    border: `1px solid ${isActive ? th.primary : 'var(--border-default)'}`,
+                    boxShadow: isActive ? `0 4px 18px color-mix(in srgb, ${th.primary} 22%, transparent)` : 'none',
+                    borderRadius: 'var(--radius-lg)',
                   }}
                   aria-pressed={isActive}
                 >
                   <div className="h-16 w-full relative" style={{ background: th.gradient }}>
                     <div className="absolute bottom-2 left-3 flex gap-1.5">
                       {[th.primary, th.secondary, th.tertiary].map((c, i) => (
-                        <div key={i} className="w-5 h-5 rounded-full border-2 border-white/30 shadow-sm"
+                        <div key={i} className="w-4 h-4 rounded-full border border-white/30"
                           style={{ backgroundColor: c }} />
                       ))}
                     </div>
                     {isActive && (
                       <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}>
+                        style={{ backgroundColor: 'rgba(255,255,255,0.92)' }}>
                         <span className="material-symbols-outlined text-[12px]"
                           style={{ color: th.primary, fontVariationSettings: "'wght' 700" }}>check</span>
                       </div>
                     )}
                   </div>
-                  <div className="p-3"
-                    style={{ backgroundColor: isActive ? `color-mix(in srgb, ${th.primary} 6%, var(--s-low))` : 'var(--s-low)' }}>
-                    <p className="text-sm font-bold" style={{ color: isActive ? th.primary : 'var(--on-surface)' }}>
-                      {th.desc}
-                    </p>
-                    <p className="text-[10px] mt-0.5 mono tracking-wide" style={{ color: 'var(--color-outline)' }}>
-                      {isActive ? (language === 'es' ? 'Tema activo' : 'Active theme') : (language === 'es' ? 'Seleccionar' : 'Select')}
+                  <div className="px-3 py-2.5"
+                    style={{ backgroundColor: isActive ? `color-mix(in srgb, ${th.primary} 7%, var(--s-low))` : 'var(--s-low)' }}>
+                    <span className="kicker block" style={{ color: isActive ? th.primary : 'var(--color-outline)' }}>
+                      {isActive ? (language === 'es' ? 'Activo' : 'Active') : (language === 'es' ? 'Seleccionar' : 'Select')}
+                    </span>
+                    <p className="text-sm font-bold mt-0.5" style={{ color: isActive ? th.primary : 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+                      <span className="serif">{th.desc.toLowerCase()}</span>
                     </p>
                   </div>
                 </button>
@@ -149,10 +150,11 @@ export default function PersonalizationPage() {
               }
               return (
                 <button key={m} onClick={() => setTheme(m)}
-                  className="flex flex-col items-center gap-2 py-3.5 rounded-2xl transition-all duration-150"
+                  className="flex flex-col items-center gap-2 py-3.5 transition-all duration-150"
                   style={{
                     backgroundColor: isActive ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'var(--s-base)',
-                    border: `2px solid ${isActive ? 'var(--color-primary)' : 'transparent'}`,
+                    border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--border-subtle)'}`,
+                    borderRadius: 'var(--radius-lg)',
                   }}
                   aria-pressed={isActive}
                 >
@@ -180,10 +182,11 @@ export default function PersonalizationPage() {
               const isActive = language === lang
               return (
                 <button key={lang} onClick={() => changeLanguage(lang)}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-150"
+                  className="flex items-center gap-3 px-4 py-3 transition-all duration-150"
                   style={{
                     backgroundColor: isActive ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'var(--s-base)',
-                    border: `2px solid ${isActive ? 'var(--color-primary)' : 'transparent'}`,
+                    border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--border-subtle)'}`,
+                    borderRadius: 'var(--radius-lg)',
                   }}
                   aria-pressed={isActive}
                 >
@@ -208,14 +211,15 @@ export default function PersonalizationPage() {
               const isActive = (use12h ? '12h' : '24h') === fmt
               return (
                 <button key={fmt} onClick={() => setFormat(fmt)}
-                  className="flex flex-col items-center gap-1.5 py-3.5 rounded-2xl transition-all duration-150"
+                  className="flex flex-col items-center gap-1.5 py-3 transition-all duration-150"
                   style={{
                     backgroundColor: isActive ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'var(--s-base)',
-                    border: `2px solid ${isActive ? 'var(--color-primary)' : 'transparent'}`,
+                    border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--border-subtle)'}`,
+                    borderRadius: 'var(--radius-lg)',
                   }}
                   aria-pressed={isActive}
                 >
-                  <span className="mono text-lg font-black leading-none"
+                  <span className="mono tabular text-lg font-black leading-none"
                     style={{ color: isActive ? 'var(--color-primary)' : 'var(--on-surface)' }}>
                     {fmt === '24h' ? '13:30' : '1:30'}
                   </span>
@@ -232,15 +236,15 @@ export default function PersonalizationPage() {
         </Section>
 
         {/* Save */}
-        <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-3 text-base">
+        <button onClick={handleSave} disabled={saving} className="btn btn-primary w-full" style={{ height: 40 }}>
           {saving ? (
-            <><span className="material-symbols-outlined text-[18px] animate-pulse-slow">sync</span>
+            <><span className="material-symbols-outlined animate-pulse-slow">sync</span>
             {language === 'es' ? 'Guardando…' : 'Saving…'}</>
           ) : saved ? (
-            <><span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            <><span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
             {language === 'es' ? '¡Guardado!' : 'Saved!'}</>
           ) : (
-            <><span className="material-symbols-outlined text-[18px]">save</span>
+            <><span className="material-symbols-outlined">save</span>
             {language === 'es' ? 'Guardar' : 'Save'}</>
           )}
         </button>

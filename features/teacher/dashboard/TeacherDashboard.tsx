@@ -34,91 +34,104 @@ export function TeacherDashboard({ profile, courses, totalStudents }: TeacherDas
         </div>
       </header>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="card p-5">
-          <p className="text-[11px] uppercase tracking-widest font-semibold mb-2"
-            style={{ color: 'var(--color-outline)' }}>
-            {t('teacher.dashboard.totalCourses')}
-          </p>
-          <p className="text-4xl font-black" style={{ color: 'var(--color-primary)' }}>
+      {/* Stats — KPI ribbon */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="kpi">
+          <span className="kpi__sub">{t('teacher.dashboard.totalCourses')}</span>
+          <p className="kpi__num tabular" style={{ color: 'var(--color-primary)' }}>
             {courses.length}
           </p>
+          <span className="kpi__hint">
+            {courses.length === 1 ? 'curso activo' : 'cursos activos'}
+          </span>
         </div>
-        <div className="card p-5">
-          <p className="text-[11px] uppercase tracking-widest font-semibold mb-2"
-            style={{ color: 'var(--color-outline)' }}>
-            {t('teacher.dashboard.totalStudents')}
-          </p>
-          <p className="text-4xl font-black" style={{ color: 'var(--color-primary)' }}>
+        <div className="kpi">
+          <span className="kpi__sub">{t('teacher.dashboard.totalStudents')}</span>
+          <p className="kpi__num tabular" style={{ color: 'var(--color-primary)' }}>
             {totalStudents}
           </p>
+          <span className="kpi__hint">
+            inscritos en total
+          </span>
         </div>
       </div>
 
       {/* Courses list */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold" style={{ color: 'var(--on-surface)' }}>
-            {t('teacher.courses.title')}
-          </h2>
-          <Link
-            href="/teacher/courses"
-            className="text-sm font-semibold hover:underline"
-            style={{ color: 'var(--color-primary)' }}
-          >
+        <header className="section-head">
+          <div className="section-head__left">
+            <span className="material-symbols-outlined text-[16px]"
+              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>menu_book</span>
+            <span className="section-head__title">{t('teacher.courses.title')}</span>
+            {courses.length > 0 && (
+              <span className="section-head__count tabular">{courses.length}</span>
+            )}
+          </div>
+          <Link href="/teacher/courses" className="section-head__link">
             {t('common.seeAll')}
+            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
           </Link>
-        </div>
+        </header>
 
         {courses.length === 0 ? (
           <div className="card p-10 text-center">
-            <span className="material-symbols-outlined text-5xl mb-3 block"
+            <span className="material-symbols-outlined text-4xl mb-2 block"
               style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
               menu_book
             </span>
-            <p className="font-semibold" style={{ color: 'var(--on-surface)' }}>
-              {t('teacher.dashboard.noCourses')}
+            <span className="kicker">Comienza aquí</span>
+            <p className="text-base font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+              <span className="serif">{t('teacher.dashboard.noCourses').toLowerCase()}</span>
             </p>
-            <p className="text-sm mt-1 mb-4" style={{ color: 'var(--on-surface-variant)' }}>
+            <p className="text-xs mt-1 mb-4" style={{ color: 'var(--color-outline)' }}>
               {t('teacher.dashboard.createFirst')}
             </p>
-            <Link href="/teacher/courses" className="btn-primary inline-flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">add</span>
+            <Link href="/teacher/courses" className="btn btn-primary inline-flex">
+              <span className="material-symbols-outlined">add</span>
               {t('teacher.courses.add')}
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="card" style={{ padding: 6 }}>
             {courses.map((course) => (
               <Link
                 key={course.id}
                 href={`/teacher/courses/${course.id}`}
-                className="card p-4 flex items-center gap-4 hover:shadow-md transition-all duration-150 active:scale-[0.99]"
+                className="row"
+                style={{ ['--accent-color' as string]: course.color }}
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: course.color + '22' }}>
-                  <span className="material-symbols-outlined text-[20px]"
-                    style={{ color: course.color, fontVariationSettings: "'FILL' 1" }}>
-                    {course.icon || 'menu_book'}
+                <div className="row__time flex items-center justify-center">
+                  <div className="w-9 h-9 flex items-center justify-center"
+                    style={{
+                      backgroundColor: `color-mix(in srgb, ${course.color} 14%, transparent)`,
+                      borderRadius: 'var(--radius-lg)',
+                    }}>
+                    <span className="material-symbols-outlined text-[18px]"
+                      style={{ color: course.color, fontVariationSettings: "'FILL' 1" }}>
+                      {course.icon || 'menu_book'}
+                    </span>
+                  </div>
+                </div>
+                <div className="row__main">
+                  <div className="row__title">{course.name}</div>
+                  <div className="row__meta">
+                    <span className="font-mono tabular">{course.student_count}</span>
+                    <span>{t('teacher.courses.students').toLowerCase()}</span>
+                    {course.access_code && (
+                      <>
+                        <span>·</span>
+                        <span className="font-mono tabular" style={{ color: course.color }}>
+                          {course.access_code}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="row__right">
+                  <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>
+                    chevron_right
                   </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate" style={{ color: 'var(--on-surface)' }}>
-                    {course.name}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--on-surface-variant)' }}>
-                    {course.student_count} {t('teacher.courses.students').toLowerCase()}
-                    {course.access_code && (
-                      <span className="ml-2 font-mono" style={{ color: 'var(--color-primary)' }}>
-                        · {course.access_code}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <span className="material-symbols-outlined text-[18px]" style={{ color: 'var(--color-outline)' }}>
-                  chevron_right
-                </span>
               </Link>
             ))}
           </div>

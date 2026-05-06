@@ -19,23 +19,30 @@ export default function AISettingsPage() {
       </header>
 
       {/* Placeholder card */}
-      <section className="rounded-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-        <div className="flex items-center gap-2.5 px-5 py-3.5"
-          style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-          <span className="material-symbols-outlined text-[16px]"
-            style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-          <h2 className="text-sm font-bold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-            {language === 'es' ? 'Asistente IA' : 'AI Assistant'}
-          </h2>
-        </div>
-        <div className="p-5 space-y-4">
+      <section className="card overflow-hidden" style={{ padding: 0 }}>
+        <header className="section-head" style={{ padding: '12px 18px', marginBottom: 0 }}>
+          <div className="section-head__left">
+            <span className="material-symbols-outlined text-[16px]"
+              style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+            <span className="section-head__title">
+              {language === 'es' ? 'Asistente IA' : 'AI Assistant'}
+            </span>
+          </div>
+          <span className="badge badge--ai">
+            llama-3.3-70b
+          </span>
+        </header>
+        <div className="p-5 space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
 
           {/* Info */}
-          <div className="flex items-start gap-3 p-3 rounded-xl"
-            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary) 15%, transparent)' }}>
-            <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5"
-              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>info</span>
+          <div className="flex items-start gap-3 p-3"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 6%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-tertiary) 18%, transparent)',
+              borderRadius: 'var(--radius)',
+            }}>
+            <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5"
+              style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>info</span>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--on-surface)' }}>
               {language === 'es'
                 ? 'La IA de Skolar utiliza el modelo llama-3.3-70b y responde en el idioma configurado en Personalización. Las conversaciones por materia acumulan contexto automáticamente.'
@@ -44,11 +51,16 @@ export default function AISettingsPage() {
           </div>
 
           {/* Coming soon */}
-          <div className="py-6 flex flex-col items-center gap-2 text-center">
-            <span className="material-symbols-outlined text-[32px]"
+          <div className="py-8 flex flex-col items-center gap-2 text-center">
+            <span className="material-symbols-outlined text-[28px] mb-1"
               style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 1" }}>auto_fix_high</span>
-            <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>
-              {language === 'es' ? 'Más configuraciones próximamente' : 'More settings coming soon'}
+            <span className="kicker">
+              {language === 'es' ? 'En camino' : 'Coming soon'}
+            </span>
+            <p className="text-base font-bold" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+              <span className="serif">
+                {language === 'es' ? 'más configuraciones' : 'more settings'}
+              </span>
             </p>
             <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
               {language === 'es'

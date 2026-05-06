@@ -225,10 +225,10 @@ function NoteEditor({
 
         {/* Format tools */}
         <div className="flex items-center gap-0.5 flex-1 flex-wrap">
-          {/* Notion-style text size selector */}
+          {/* Group: text size selector */}
           {editor && (
-            <div className="flex items-end gap-px mr-1 rounded-lg overflow-hidden"
-              style={{ border: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-base)' }}>
+            <div className="flex items-end gap-px overflow-hidden"
+              style={{ border: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-base)', borderRadius: 'var(--radius-sm)' }}>
               {HEADING_SIZES.map(({ level, label, size, weight, title: t2, active }) => {
                 const handleClick = () => {
                   if (level === 0) editor.chain().focus().setParagraph().run()
@@ -252,64 +252,83 @@ function NoteEditor({
             </div>
           )}
 
-          {/* Separator */}
-          <span className="w-px h-4 mx-0.5 rounded-full flex-shrink-0"
+          {/* Divider */}
+          <span aria-hidden className="w-px h-5 mx-1.5 flex-shrink-0"
             style={{ backgroundColor: 'var(--border-default)' }} />
 
-          {editor && TOOLBAR.map(({ icon, title, action, active }, i) => (
-            <React.Fragment key={icon}>
-              {i === 4 && (
-                <span className="w-px h-4 mx-0.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: 'var(--border-default)' }} />
-              )}
-              <button onClick={action} type="button" title={title}
-                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                style={{
-                  backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
-                  color:           active ? 'var(--color-primary)' : 'var(--color-outline)',
-                }}
-                aria-pressed={active}>
-                <span className="material-symbols-outlined text-[16px]">{icon}</span>
-              </button>
-            </React.Fragment>
+          {/* Group: format (bold/italic/strike/code) */}
+          {editor && TOOLBAR.slice(0, 4).map(({ icon, title, action, active }) => (
+            <button key={icon} onClick={action} type="button" title={title}
+              className="w-7 h-7 flex items-center justify-center transition-all"
+              style={{
+                backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                color:           active ? 'var(--color-primary)' : 'var(--color-outline)',
+                borderRadius: 'var(--radius-sm)',
+              }}
+              aria-pressed={active}>
+              <span className="material-symbols-outlined text-[16px]">{icon}</span>
+            </button>
           ))}
 
-          {/* Image upload */}
+          {/* Divider */}
+          <span aria-hidden className="w-px h-5 mx-1.5 flex-shrink-0"
+            style={{ backgroundColor: 'var(--border-default)' }} />
+
+          {/* Group: lists & blocks (bullet/numbered/checklist/quote) */}
+          {editor && TOOLBAR.slice(4).map(({ icon, title, action, active }) => (
+            <button key={icon} onClick={action} type="button" title={title}
+              className="w-7 h-7 flex items-center justify-center transition-all"
+              style={{
+                backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'transparent',
+                color:           active ? 'var(--color-primary)' : 'var(--color-outline)',
+                borderRadius: 'var(--radius-sm)',
+              }}
+              aria-pressed={active}>
+              <span className="material-symbols-outlined text-[16px]">{icon}</span>
+            </button>
+          ))}
+
+          {/* Divider */}
+          <span aria-hidden className="w-px h-5 mx-1.5 flex-shrink-0"
+            style={{ backgroundColor: 'var(--border-default)' }} />
+
+          {/* Group: attachments (image, voice) */}
           <button
             onClick={() => imageInputRef.current?.click()}
             type="button"
             disabled={uploadingImage}
-            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-            style={{ color: 'var(--color-outline)' }}
+            className="w-7 h-7 flex items-center justify-center transition-all"
+            style={{ color: 'var(--color-outline)', borderRadius: 'var(--radius-sm)' }}
             title={t('notes.insertImage')}
           >
             <span className="material-symbols-outlined text-[16px]">image</span>
           </button>
           <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
-          {/* Voice input */}
           {hasSpeechRecognition && (
-            <>
-              <span className="w-px h-4 mx-0.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: 'var(--border-default)' }} />
-              <button
-                onClick={handleVoiceToggle}
-                type="button"
-                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all relative"
-                style={{ color: isRecording ? 'var(--sc-error)' : 'var(--color-outline)' }}
-                title={isRecording ? t('notes.voice_stop') : t('notes.voice_start')}
-                aria-pressed={isRecording}
-              >
-                {isRecording && (
-                  <span className="absolute inset-0 rounded-lg animate-pulse"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--sc-error) 15%, transparent)' }} />
-                )}
-                <span className="material-symbols-outlined text-[16px] relative z-10"
-                  style={{ fontVariationSettings: isRecording ? "'FILL' 1" : "'FILL' 0" }}>
-                  mic
-                </span>
-              </button>
-            </>
+            <button
+              onClick={handleVoiceToggle}
+              type="button"
+              className="w-7 h-7 flex items-center justify-center transition-all relative"
+              style={{
+                color: isRecording ? 'var(--sc-error)' : 'var(--color-outline)',
+                borderRadius: 'var(--radius-sm)',
+              }}
+              title={isRecording ? t('notes.voice_stop') : t('notes.voice_start')}
+              aria-pressed={isRecording}
+            >
+              {isRecording && (
+                <span className="absolute inset-0 animate-pulse"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--sc-error) 15%, transparent)',
+                    borderRadius: 'var(--radius-sm)',
+                  }} />
+              )}
+              <span className="material-symbols-outlined text-[16px] relative z-10"
+                style={{ fontVariationSettings: isRecording ? "'FILL' 1" : "'FILL' 0" }}>
+                mic
+              </span>
+            </button>
           )}
         </div>
 

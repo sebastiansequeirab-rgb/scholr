@@ -73,18 +73,17 @@ export function CourseModal({ open, onClose, onSaved, teacherId }: CourseModalPr
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="w-full max-w-md rounded-2xl p-6 space-y-5"
-        style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold" style={{ color: 'var(--on-surface)' }}>
-            {t('teacher.courses.add')}
-          </h2>
-          <button onClick={onClose} className="p-1 rounded-lg" style={{ color: 'var(--color-outline)' }}>
-            <span className="material-symbols-outlined text-[20px]">close</span>
+    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <span className="kicker" style={{ color }}>Nuevo</span>
+            <h2 className="text-[22px] font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+              <span className="serif">{t('teacher.courses.add').toLowerCase()}</span>
+            </h2>
+          </div>
+          <button onClick={onClose} className="btn btn-icon btn-ghost" aria-label="Cerrar">
+            <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
@@ -104,33 +103,44 @@ export function CourseModal({ open, onClose, onSaved, teacherId }: CourseModalPr
           <div>
             <label className="label">{t('subjects.color')}</label>
             <div className="flex flex-wrap gap-2 mt-1">
-              {SUBJECT_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className="w-7 h-7 rounded-full transition-all"
-                  style={{
-                    backgroundColor: c,
-                    outline: color === c ? `3px solid ${c}` : '3px solid transparent',
-                    outlineOffset: '2px',
-                  }}
-                />
-              ))}
+              {SUBJECT_COLORS.map((c) => {
+                const active = color === c
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className="relative w-8 h-8 rounded-full transition-transform hover:scale-110 flex items-center justify-center"
+                    style={{
+                      backgroundColor: c,
+                      boxShadow: active ? `0 0 0 2px var(--s-base), 0 0 0 4px ${c}` : 'none',
+                    }}
+                    aria-label={`Color ${c}`}
+                    aria-pressed={active}
+                  >
+                    {active && (
+                      <span className="material-symbols-outlined text-[14px]" style={{ color: 'white', fontVariationSettings: "'FILL' 1" }}>
+                        check
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
           {error && (
-            <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg p-2.5">
+            <p className="text-xs" style={{ color: 'var(--danger)' }}>
               {error}
             </p>
           )}
 
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">
+            <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
               {t('common.cancel')}
             </button>
-            <button type="submit" disabled={loading} className="btn-primary flex-1">
+            <button type="submit" disabled={loading} className="btn btn-primary flex-1"
+              style={{ background: color, color: 'white', borderColor: color }}>
               {loading ? t('common.loading') : t('common.save')}
             </button>
           </div>

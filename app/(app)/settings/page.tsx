@@ -89,23 +89,27 @@ export default function SettingsPage() {
       <div className="space-y-4">
 
         {/* ── Profile ── */}
-        <section className="rounded-2xl overflow-hidden"
-          style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-          <div className="flex items-center gap-2.5 px-5 py-3.5"
-            style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <span className="material-symbols-outlined text-[16px]"
-              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>person</span>
-            <h2 className="text-sm font-bold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-              {language === 'es' ? 'Perfil' : 'Profile'}
-            </h2>
-          </div>
-          <div className="p-5 space-y-4">
+        <section className="card overflow-hidden" style={{ padding: 0 }}>
+          <header className="section-head" style={{ padding: '12px 18px' }}>
+            <div className="section-head__left">
+              <span className="material-symbols-outlined text-[16px]"
+                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>person</span>
+              <span className="section-head__title">
+                {language === 'es' ? 'Perfil' : 'Profile'}
+              </span>
+            </div>
+          </header>
+          <div className="p-5 pt-4 space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
 
             {/* Avatar */}
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)', border: '2px solid var(--border-default)' }}>
+                <div className="w-16 h-16 overflow-hidden flex items-center justify-center"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-lg)',
+                  }}>
                   {avatarUrl
                     ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                     : <span className="text-xl font-black" style={{ color: 'var(--color-primary)' }}>
@@ -114,26 +118,26 @@ export default function SettingsPage() {
                   }
                 </div>
                 {avatarUploading && (
-                  <div className="absolute inset-0 rounded-2xl flex items-center justify-center"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="absolute inset-0 flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 'var(--radius-lg)' }}>
                     <span className="material-symbols-outlined text-white text-[18px] animate-spin" style={{ animationDuration: '1s' }}>sync</span>
                   </div>
                 )}
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--on-surface)' }}>
+                <span className="kicker block">
                   {language === 'es' ? 'Foto de perfil' : 'Profile photo'}
-                </p>
-                <p className="text-xs mb-2" style={{ color: 'var(--color-outline)' }}>
-                  {language === 'es' ? 'JPG, PNG o WebP · máx. 5 MB' : 'JPG, PNG or WebP · max 5 MB'}
+                </span>
+                <p className="text-xs mt-1 mb-2" style={{ color: 'var(--color-outline)' }}>
+                  JPG · PNG · WebP · máx 5 MB
                 </p>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={avatarUploading}
-                  className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                  className="btn btn-secondary text-xs"
                 >
-                  <span className="material-symbols-outlined text-[13px]">upload</span>
+                  <span className="material-symbols-outlined">upload</span>
                   {language === 'es' ? 'Cambiar foto' : 'Change photo'}
                 </button>
                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
@@ -163,29 +167,35 @@ export default function SettingsPage() {
         </section>
 
         {/* ── Plan ── */}
-        <section className="rounded-2xl overflow-hidden"
-          style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-          <div className="flex items-center gap-2.5 px-5 py-3.5"
-            style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <span className="material-symbols-outlined text-[16px]"
-              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-            <h2 className="text-sm font-bold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-              {language === 'es' ? 'Plan' : 'Plan'}
-            </h2>
-          </div>
-          <div className="p-5">
+        <section className="card overflow-hidden" style={{ padding: 0 }}>
+          <header className="section-head" style={{ padding: '12px 18px' }}>
+            <div className="section-head__left">
+              <span className="material-symbols-outlined text-[16px]"
+                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+              <span className="section-head__title">
+                {language === 'es' ? 'Plan' : 'Plan'}
+              </span>
+            </div>
+          </header>
+          <div className="p-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: profile?.is_premium ? 'color-mix(in srgb, var(--warning) 15%, transparent)' : 'var(--s-high)' }}>
+                <div className="w-10 h-10 flex items-center justify-center flex-shrink-0"
+                  style={{
+                    backgroundColor: profile?.is_premium ? 'color-mix(in srgb, var(--warning) 15%, transparent)' : 'var(--s-high)',
+                    borderRadius: 'var(--radius-lg)',
+                  }}>
                   <span className="material-symbols-outlined text-[18px]"
                     style={{ color: profile?.is_premium ? 'var(--warning)' : 'var(--color-outline)', fontVariationSettings: "'FILL' 1" }}>
                     {profile?.is_premium ? 'star' : 'workspace_premium'}
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-bold" style={{ color: 'var(--on-surface)' }}>
-                    {profile?.is_premium ? 'Skolar Premium' : 'Skolar Free'}
+                  <span className="kicker block">
+                    {profile?.is_premium ? 'Premium' : 'Free'}
+                  </span>
+                  <p className="text-sm font-bold" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+                    <span className="serif">Skolar </span>{profile?.is_premium ? 'premium' : 'free'}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
                     {profile?.is_premium
@@ -195,11 +205,8 @@ export default function SettingsPage() {
                 </div>
               </div>
               {!profile?.is_premium && (
-                <button
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 hover:scale-105 flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, var(--color-tertiary-container), var(--color-tertiary))', color: 'var(--on-primary)' }}
-                >
-                  <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>upgrade</span>
+                <button className="btn btn-tertiary flex-shrink-0">
+                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>upgrade</span>
                   Upgrade
                 </button>
               )}
@@ -209,20 +216,20 @@ export default function SettingsPage() {
 
         {/* Save button — only shown when dirty */}
         {dirty && (
-          <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-3 text-base animate-slide-up">
+          <button onClick={handleSave} disabled={saving} className="btn btn-primary w-full animate-slide-up" style={{ height: 40 }}>
             {saving ? (
               <>
-                <span className="material-symbols-outlined text-[18px] animate-pulse-slow">sync</span>
+                <span className="material-symbols-outlined animate-pulse-slow">sync</span>
                 {language === 'es' ? 'Guardando…' : 'Saving…'}
               </>
             ) : saved ? (
               <>
-                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                 {language === 'es' ? '¡Guardado!' : 'Saved!'}
               </>
             ) : (
               <>
-                <span className="material-symbols-outlined text-[18px]">save</span>
+                <span className="material-symbols-outlined">save</span>
                 {language === 'es' ? 'Guardar cambios' : 'Save changes'}
               </>
             )}
