@@ -1,6 +1,6 @@
 # Skolar — Rediseño visual v2 (Swiss editorial académica)
 
-> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Está fechado al 2026-05-06 después de los commits `ef1439e`, `1a71889`, `88d8ea4`.
+> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban).
 
 ---
 
@@ -210,12 +210,15 @@ import {
 
 ### Alta prioridad
 
-**1) `/planner` body (kanban)** — `app/(app)/planner/page.tsx` (1440 líneas).
-El header ya tiene screen-head. El interior tiene tres columnas con cards, drag-and-drop probablemente. Para migrarlo al estilo editorial:
-- Cada `.kan-col` → `.card` con padding 12px, `min-height: 360px`, header `.section-head` con título mono uppercase
-- Cards de tarea: usar `.row` pattern con barra lateral por subject color, badge de prioridad, progress bar, footer con icon + tiempo
-- Headers de columna: títulos de status en su color (`Pendientes` rojo, `En curso` primary, `Hechas` success)
-- Reference visual en canvas: `re design/_src/skolar-2/project/components/Screens3.js` (sección Tasks/Kanban)
+**1) `/planner` body (kanban)** — ✅ HECHO (commit `9d3ea24`, 2026-05-06).
+- Toggle Kanban/Lista en `screen-head__actions` con clase `.seg` (mono uppercase)
+- Tres columnas `.kan-col` (todo/doing/done) con título coloreado (danger/primary/success) y `.section-head__count`
+- `TaskKanCard` compacto (badge materia + prio + título + due chip); click expande inline al `TaskCard` completo (subtareas/notas) con botón "compactar" para volver
+- `ExamKanCard` compacto (badge materia + tipo + peso + nota); click abre `EditExamModal` existente. Footer marca submitted/graded
+- Buckets independientes de los del list view, respetan filtros de tipo + materia
+- CSS nuevo en `globals.css`: `.kanban`, `.kan-col`, `.kan-card`, `.add-row`, `.seg`
+- i18n: `planner.viewKanban/viewList/col_todo/col_doing/col_done/addTask/collapse/emptyTodo/emptyDoing/emptyDone`
+- **No se implementó drag-and-drop** — las tareas cambian de columna mediante el `cycleStatus` ya existente al expandir. Si más adelante se quiere DnD: usar `@dnd-kit/core` + actualizar `tasks.status`/`is_done` desde el handler
 
 **2) `/calendar` body (week grid)** — `app/(app)/calendar/page.tsx` (944 líneas).
 Header migrado. El grid:
