@@ -2,18 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { daysUntil } from '@/lib/utils'
 import type { Task, Exam, Subject, Schedule } from '@/types'
-import { ACTIVITY_TYPES } from '@/types'
 import { getTranslator } from '@/lib/i18n/server'
 import { LiveClock } from '@/features/home/components/LiveClock'
 import { ClientTime } from '@/features/home/components/ClientTime'
 import { TaskFeed } from '@/features/home/components/TaskFeed'
 import { ExamFeed } from '@/features/home/components/ExamFeed'
 
-const interp = (s: string, vars: Record<string, string | number>) =>
-  s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''))
-
 export default async function DashboardPage() {
-  const { t, lang } = getTranslator()
+  const { t } = getTranslator()
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -28,15 +24,13 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', user.id).single(),
     supabase.from('tasks').select('*').eq('user_id', user.id).order('created_at'),
-    // exams + subjects: no user_id filter — RLS includes own rows + enrolled teacher rows
     supabase.from('exams').select('*').order('exam_date'),
     supabase.from('subjects').select('*'),
     supabase.from('schedules').select('*').eq('user_id', user.id),
     supabase.from('enrollments').select('subject_id').eq('student_id', user.id).eq('status', 'active'),
   ])
 
-  // For teacher-assigned exams the grade lives in exam_grades, not on the exam row.
-  // Fetch this user's grades and overlay onto exams so downstream code sees the right value.
+  // Overlay teacher-assigned grades from exam_grades
   const teacherExamIds = (exams ?? []).filter(e => e.assigned_by != null).map(e => e.id as string)
   const teacherGradeMap: Record<string, number | null> = {}
   if (teacherExamIds.length > 0) {
@@ -54,7 +48,7 @@ export default async function DashboardPage() {
     grade: e.assigned_by != null ? (teacherGradeMap[e.id as string] ?? null) : e.grade,
   }))
 
-  // Fetch announcements for enrolled subjects
+  // Announcements for enrolled subjects
   const enrolledSubjectIds = (enrollmentData ?? []).map((e: { subject_id: string }) => e.subject_id)
   const { data: announcementsData } = enrolledSubjectIds.length > 0
     ? await supabase
@@ -63,7 +57,7 @@ export default async function DashboardPage() {
         .in('subject_id', enrolledSubjectIds)
         .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(3)
     : { data: [] }
 
   const announcements = (announcementsData ?? []) as unknown as {
@@ -74,14 +68,28 @@ export default async function DashboardPage() {
     subjects: { name: string } | null
   }[]
 
-  const allTasks     = (tasks         || []) as Task[]
-  const allExams     = examsWithGrades as Exam[]
-  const allSubjects  = (subjects      || []) as Subject[]
-  const allSchedules = (schedules     || []) as Schedule[]
+  const allTasks    = (tasks     || []) as Task[]
+  const allExams    = examsWithGrades as Exam[]
+  const allSubjects = (subjects  || []) as Subject[]
+  const allSchedules= (schedules || []) as Schedule[]
 
   const todayStr      = new Date().toISOString().split('T')[0]
   const upcomingExams = allExams.filter(e => e.exam_date >= todayStr).slice(0, 4)
-  const pendingCount  = allTasks.filter(t => !t.is_done).length
+  const completedCount= allTasks.filter(t => t.is_done).length
+
+  // Tasks due in next 24h
+  const urgentTasks = allTasks.filter(task => {
+    if (task.is_done || !task.due_date) return false
+    const d = Math.round((new Date(task.due_date).getTime() - new Date(todayStr).getTime()) / 86400000)
+    return d <= 1
+  })
+
+  // Tasks this week
+  const weekTasks = allTasks.filter(task => {
+    if (task.is_done || !task.due_date) return false
+    const d = Math.round((new Date(task.due_date).getTime() - new Date(todayStr).getTime()) / 86400000)
+    return d >= 0 && d <= 7
+  }).length
 
   const nowDate        = new Date()
   const todayDow       = nowDate.getDay()
@@ -100,194 +108,214 @@ export default async function DashboardPage() {
 
   const firstName = profile?.full_name?.split(' ')[0] || t('dashboard.studentFallback')
 
-  const inClassNow = todaySchedules.find(s => currentTimeStr >= s.start_time && currentTimeStr <= s.end_time)
-  const nextClass  = todaySchedules.find(s => s.start_time > currentTimeStr)
-  const nextExam   = upcomingExams[0]
+  const nextExam = upcomingExams[0]
 
-  type FocusState = {
-    icon: string
-    title: string
-    desc: string
-    color: string
-    bg: string
-    live?: boolean
-  }
-
-  let focus: FocusState
-  if (inClassNow) {
-    const sub = allSubjects.find(s => s.id === inClassNow.subject_id)
-    const color = sub?.color || 'var(--color-primary)'
-    const time = inClassNow.end_time.slice(0, 5)
-    const room = inClassNow.room || sub?.room
-    focus = {
-      icon:  'school',
-      title: sub?.name || t('dashboard.focusInClass'),
-      desc:  room
-        ? interp(t('dashboard.focusInClassDescRoom'), { time, room })
-        : interp(t('dashboard.focusInClassDesc'),     { time }),
-      color,
-      bg:    `color-mix(in srgb, ${color} 10%, var(--s-low))`,
-      live:  true,
+  // Urgent banner: only show if there's a real urgency
+  const urgentBanner = (() => {
+    if (urgentTasks.length > 0) {
+      const top = urgentTasks[0]
+      const sub = allSubjects.find(s => s.id === top.subject_id)
+      const days = top.due_date ? Math.round((new Date(top.due_date).getTime() - new Date(todayStr).getTime()) / 86400000) : 99
+      return {
+        kind: 'task' as const,
+        title: top.text,
+        meta:  sub ? sub.name : '',
+        daysLabel: days <= 0 ? t('feeds.today') : t('feeds.tmrwShort'),
+        href: '/planner',
+      }
     }
-  } else if (nextClass) {
-    const sub = allSubjects.find(s => s.id === nextClass.subject_id)
-    const color = sub?.color || 'var(--color-primary)'
-    const time = nextClass.start_time.slice(0, 5)
-    const room = nextClass.room || sub?.room
-    focus = {
-      icon:  'schedule',
-      title: interp(t('dashboard.focusNextClass'), { name: sub?.name || '' }),
-      desc:  room
-        ? interp(t('dashboard.focusNextClassDescRoom'), { time, room })
-        : interp(t('dashboard.focusNextClassDesc'),     { time }),
-      color,
-      bg:    `color-mix(in srgb, ${color} 8%, var(--s-low))`,
+    if (nextExam && daysUntil(nextExam.exam_date) <= 2) {
+      const sub = allSubjects.find(s => s.id === nextExam.subject_id)
+      const days = daysUntil(nextExam.exam_date)
+      return {
+        kind: 'exam' as const,
+        title: nextExam.title,
+        meta:  sub ? sub.name : '',
+        daysLabel: days === 0 ? t('feeds.today') : days === 1 ? t('feeds.tmrwShort') : `${days}d`,
+        href: '/planner',
+      }
     }
-  } else if (nextExam && daysUntil(nextExam.exam_date) <= 3) {
-    const sub  = allSubjects.find(s => s.id === nextExam.subject_id)
-    const days = daysUntil(nextExam.exam_date)
-    const actCfg = ACTIVITY_TYPES[(nextExam.activity_type || 'exam') as keyof typeof ACTIVITY_TYPES]
-    const tplKey = days === 0 ? 'dashboard.focusExamToday'
-                 : days === 1 ? 'dashboard.focusExamTomorrow'
-                 :              'dashboard.focusExamInDays'
-    focus = {
-      icon:  actCfg?.icon || 'event_upcoming',
-      title: interp(t(tplKey), { n: days, title: nextExam.title }),
-      desc:  sub?.name || (lang === 'es' ? actCfg?.label_es : actCfg?.label_en) || '',
-      color: 'var(--danger)',
-      bg:    'var(--priority-high-bg)',
-    }
-  } else if (pendingCount > 0) {
-    focus = {
-      icon:  'task_alt',
-      title: interp(t(pendingCount === 1 ? 'dashboard.focusPending' : 'dashboard.focusPendingPlural'), { n: pendingCount }),
-      desc:  t('dashboard.focusPendingDesc'),
-      color: 'var(--color-primary)',
-      bg:    'color-mix(in srgb, var(--color-primary) 8%, var(--s-low))',
-    }
-  } else {
-    focus = {
-      icon:  'done_all',
-      title: t('dashboard.focusAllDone'),
-      desc:  t('dashboard.focusAllDoneDesc'),
-      color: 'var(--success)',
-      bg:    'color-mix(in srgb, var(--success) 10%, var(--s-low))',
-    }
-  }
-
-  const QUICK_ACTIONS = [
-    { href: '/planner?create=task', icon: 'add_task',          label: t('dashboard.qaNewTask'),        color: 'var(--color-primary)'  },
-    { href: '/planner?create=exam', icon: 'event',             label: t('dashboard.qaNewExam'),        color: 'var(--danger)'         },
-    { href: '/notes?new=1',         icon: 'edit_note',         label: t('dashboard.qaQuickNote'),      color: 'var(--warning)'        },
-    { href: '/ai?tab=import',       icon: 'document_scanner',  label: t('dashboard.qaImportSchedule'), color: 'var(--success)'        },
-    { href: '/ai',                  icon: 'auto_awesome',      label: t('dashboard.qaAskAI'),          color: 'var(--color-tertiary)' },
-  ]
-
-  // Motivational messages by hour (for empty "Hoy" widget)
-  const motivationalMsg = (() => {
-    const h = nowDate.getHours()
-    if (h < 7)  return { text: t('dashboard.motivEarly'),     icon: 'nights_stay'     }
-    if (h < 12) return { text: t('dashboard.motivMorning'),   icon: 'wb_sunny'        }
-    if (h < 15) return { text: t('dashboard.motivAfternoon'), icon: 'local_library'   }
-    if (h < 19) return { text: t('dashboard.motivEvening'),   icon: 'self_improvement'}
-    return              { text: t('dashboard.motivNight'),    icon: 'bedtime'         }
+    return null
   })()
 
   return (
-    <div className="max-w-6xl mx-auto animate-fade-in">
+    <div className="max-w-[1240px] mx-auto reveal-stagger">
 
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <header className="mb-3 lg:mb-5 flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <p className="mono text-[10px] tracking-[0.18em] uppercase font-medium mb-1"
-            style={{ color: 'var(--color-tertiary)' }}>{t('dashboard.brandTag')}</p>
-
-          <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight leading-tight"
-            style={{ color: 'var(--on-surface)' }}>
-            {greet()}, <span style={{ color: 'var(--color-primary)' }}>{firstName}</span>.
-          </h1>
-
-          {/* Context strip */}
-          <div className="mt-2 flex items-center gap-3 flex-wrap">
-            {todaySchedules.length > 0 && (
-              <span className="flex items-center gap-1.5 text-[11px]"
-                style={{ color: 'var(--on-surface-variant)' }}>
-                <span className="material-symbols-outlined text-[13px]"
-                  style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>today</span>
-                {interp(t(todaySchedules.length === 1 ? 'dashboard.classCount' : 'dashboard.classCountPlural'), { n: todaySchedules.length })}
+      {/* ─────────── GREETING HERO ─────────── */}
+      <section
+        className="card mb-3"
+        style={{ background: 'var(--s-low)', padding: '20px' }}
+      >
+        <div className="grid lg:grid-cols-[1fr_auto] gap-5 items-start">
+          {/* LEFT: greeting + stats */}
+          <div className="min-w-0">
+            {/* Status row */}
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="live-dot" />
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: 9.5,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-outline)',
+                  fontWeight: 600,
+                }}
+              >
+                {t('dashboard.brandTag')} · {greet().toLowerCase()}
               </span>
-            )}
-            {pendingCount > 0 ? (
-              <span className="flex items-center gap-1.5 text-[11px]"
-                style={{ color: 'var(--on-surface-variant)' }}>
-                <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
-                    style={{ backgroundColor: 'var(--danger)' }} />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5"
-                    style={{ backgroundColor: 'var(--danger)' }} />
+            </div>
+
+            {/* Headline */}
+            <h1 className="headline">
+              {greet()}, <span className="serif">{firstName}</span>.
+            </h1>
+
+            {/* KPI ribbon */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              <div className="stat">
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>
+                  check_circle
                 </span>
-                {interp(t(pendingCount === 1 ? 'dashboard.pendingCount' : 'dashboard.pendingCountPlural'), { n: pendingCount })}
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--success)' }}>
-                <span className="material-symbols-outlined text-[13px]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                {t('dashboard.allCaughtUp')}
-              </span>
-            )}
-            {upcomingExams.length > 0 && (() => {
-              const d = daysUntil(upcomingExams[0].exam_date)
-              const c = d < 3 ? 'var(--danger)' : d < 7 ? 'var(--warning)' : 'var(--color-outline)'
-              const label = d === 0 ? t('dashboard.activityToday')
-                          : d === 1 ? t('dashboard.activityTomorrow')
-                          :           interp(t('dashboard.activityInDays'), { n: d })
-              return (
-                <span className="flex items-center gap-1.5 text-[11px]" style={{ color: c }}>
-                  <span className="material-symbols-outlined text-[13px]">event_upcoming</span>
-                  {label}
+                <span className="stat__num">{completedCount}</span>
+                <div className="flex flex-col">
+                  <span className="stat__label">{t('dashboard.statCompleted')}</span>
+                </div>
+              </div>
+
+              {urgentTasks.length > 0 ? (
+                <div className="stat urgent">
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--priority-high)' }}>
+                    bolt
+                  </span>
+                  <span className="stat__num">{urgentTasks.length}</span>
+                  <div className="flex flex-col">
+                    <span className="stat__label">{t('dashboard.statUrgent')}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="stat">
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-outline)' }}>
+                    bolt
+                  </span>
+                  <span className="stat__num" style={{ color: 'var(--color-outline)' }}>0</span>
+                  <div className="flex flex-col">
+                    <span className="stat__label">{t('dashboard.statUrgent')}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="stat">
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-primary)' }}>
+                  date_range
                 </span>
-              )
-            })()}
+                <span className="stat__num">{weekTasks}</span>
+                <div className="flex flex-col">
+                  <span className="stat__label">{t('dashboard.statWeek')}</span>
+                </div>
+              </div>
+
+              <div className="stat">
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-tertiary)' }}>
+                  event_upcoming
+                </span>
+                <span className="stat__num">{upcomingExams.length}</span>
+                <div className="flex flex-col">
+                  <span className="stat__label">{t('dashboard.statUpcoming')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: clock */}
+          <div className="hidden lg:block">
+            <LiveClock />
           </div>
         </div>
+      </section>
 
-        {/* Clock — desktop only */}
-        <div className="hidden lg:block w-48 flex-shrink-0">
-          <LiveClock />
-        </div>
-      </header>
+      {/* ─────────── URGENT BANNER ─────────── */}
+      {urgentBanner && (
+        <Link
+          href={urgentBanner.href}
+          className="block mb-3 transition-transform active:scale-[0.99]"
+        >
+          <div
+            className="flex items-center gap-3 rounded-[14px] px-3.5 py-3"
+            style={{
+              background: 'var(--priority-high-bg)',
+              border: '1px solid color-mix(in srgb, var(--priority-high) 25%, transparent)',
+            }}
+          >
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-mono"
+              style={{
+                background: 'var(--priority-high)',
+                color: '#fff',
+                fontSize: 9.5,
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>flag</span>
+              {t('dashboard.urgentLabel')}
+            </span>
+            <span
+              className="font-mono font-bold tabular"
+              style={{ color: 'var(--priority-high)', fontSize: 13 }}
+            >
+              {urgentBanner.daysLabel}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: 'var(--on-surface)' }}>
+                {urgentBanner.title}
+              </p>
+              {urgentBanner.meta && (
+                <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--on-surface-variant)' }}>
+                  {urgentBanner.meta}
+                </p>
+              )}
+            </div>
+            <span
+              className="material-symbols-outlined hidden sm:flex items-center justify-center"
+              style={{ fontSize: 18, color: 'var(--priority-high)' }}
+            >
+              arrow_forward
+            </span>
+          </div>
+        </Link>
+      )}
 
-      {/* ── Announcements from enrolled courses ───────────────────────────── */}
+      {/* ─────────── ANNOUNCEMENTS ─────────── */}
       {announcements.length > 0 && (
-        <div className="mb-3 lg:mb-4 space-y-2">
+        <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2">
           {announcements.map((a) => {
             const accent = a.priority === 'urgent' ? 'var(--danger)' : 'var(--color-primary)'
-            const bgPct  = a.priority === 'urgent' ? 10 : 8
-            const brdPct = a.priority === 'urgent' ? 25 : 20
             return (
-              <div key={a.id} className="rounded-xl px-4 py-3 flex items-center gap-3"
-                style={{
-                  backgroundColor: `color-mix(in srgb, ${accent} ${bgPct}%, var(--s-low))`,
-                  border: `1px solid color-mix(in srgb, ${accent} ${brdPct}%, transparent)`,
-                }}>
-                <span className="material-symbols-outlined text-[18px] flex-shrink-0"
-                  style={{ color: accent, fontVariationSettings: "'FILL' 1" }}>
+              <div
+                key={a.id}
+                className="card flex items-start gap-2.5"
+                style={{ padding: '11px 12px' }}
+              >
+                <span
+                  className="material-symbols-outlined flex-shrink-0 mt-0.5"
+                  style={{ fontSize: 16, color: accent, fontVariationSettings: "'FILL' 1" }}
+                >
                   campaign
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="badge" style={{ background: 'transparent', padding: 0, color: 'var(--color-outline)' }}>
+                      {a.subjects?.name || t('common.general')}
+                    </span>
+                    {a.priority === 'urgent' && (
+                      <span className="badge badge--danger">{t('dashboard.urgentLabel')}</span>
+                    )}
+                  </div>
+                  <p className="text-[12px] font-semibold leading-snug" style={{ color: 'var(--on-surface)' }}>
                     {a.title}
                   </p>
-                  {a.subjects && (
-                    <p className="text-[10px]" style={{ color: 'var(--on-surface-variant)' }}>
-                      {a.subjects.name}
-                      {a.priority === 'urgent' && (
-                        <span className="ml-2 font-bold uppercase text-[9px]" style={{ color: 'var(--danger)' }}>
-                          · {t('dashboard.urgentLabel')}
-                        </span>
-                      )}
-                    </p>
-                  )}
                 </div>
               </div>
             )
@@ -295,158 +323,160 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ── Tu foco ahora ─────────────────────────────────────────────────── */}
-      <div className="mb-3 lg:mb-4 rounded-2xl px-4 py-3 lg:py-4 flex items-center gap-3"
-        style={{
-          backgroundColor: focus.bg,
-          border: `1px solid color-mix(in srgb, ${focus.color} 20%, transparent)`,
-        }}>
-        <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `color-mix(in srgb, ${focus.color} 16%, transparent)` }}>
-          <span className="material-symbols-outlined text-[18px] lg:text-[20px]"
-            style={{ color: focus.color, fontVariationSettings: "'FILL' 1" }}>
-            {focus.icon}
-          </span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            {focus.live && (
-              <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-70"
-                  style={{ backgroundColor: focus.color }} />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5"
-                  style={{ backgroundColor: focus.color }} />
-              </span>
-            )}
-            <p className="text-sm font-bold leading-tight truncate" style={{ color: 'var(--on-surface)' }}>
-              {focus.title}
-            </p>
-          </div>
-          {focus.desc && (
-            <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--color-outline)' }}>
-              {focus.desc}
-            </p>
-          )}
-        </div>
-        <span className="mono text-[9px] uppercase tracking-[0.15em] font-bold flex-shrink-0 hidden sm:block"
-          style={{ color: focus.color }}>
-          {t('dashboard.focusLabel')}
-        </span>
-      </div>
+      {/* ─────────── 3-column grid: Today / Tasks / Upcoming ─────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
-      {/* ── Today's schedule ──────────────────────────────────────────────── */}
-      <div className="mb-3 lg:mb-4 rounded-2xl p-3 lg:p-4"
-        style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-        <div className="flex items-center justify-between mb-2.5">
-          <h2 className="font-bold flex items-center gap-1.5 text-sm" style={{ color: 'var(--on-surface)' }}>
-            <span className="material-symbols-outlined text-[16px]"
-              style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>today</span>
-            {t('dashboard.todayHeader')}
-          </h2>
-          {todaySchedules.length > 4 && (
-            <Link href="/calendar"
-              className="mono text-[10px] uppercase tracking-widest transition-opacity hover:opacity-60"
-              style={{ color: 'var(--color-primary)' }}>
-              {t('dashboard.viewAll')}
-            </Link>
-          )}
-        </div>
-
-        {todaySchedules.length === 0 ? (
-          <div className="py-1 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}>
-              <span className="material-symbols-outlined text-[16px]"
-                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
-                {motivationalMsg.icon}
+        {/* Today's classes */}
+        <section className="card">
+          <div className="section-head">
+            <div className="section-head__left">
+              <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                today
               </span>
+              <span className="section-head__title">{t('dashboard.todayHeader')}</span>
+              {todaySchedules.length > 0 && (
+                <span className="section-head__count tabular">{todaySchedules.length}</span>
+              )}
             </div>
-            <p className="text-[11px] italic leading-snug" style={{ color: 'var(--on-surface-variant)' }}>
-              {motivationalMsg.text}
-            </p>
+            <Link href="/calendar" className="section-head__link">
+              {t('dashboard.viewAll')}
+              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>chevron_right</span>
+            </Link>
           </div>
-        ) : (
-          <div className="space-y-1.5">
-            {todaySchedules.map(s => {
-              const subject = allSubjects.find(sub => sub.id === s.subject_id)
-              if (!subject) return null
-              const isNow  = currentTimeStr >= s.start_time && currentTimeStr <= s.end_time
-              const isDone = currentTimeStr > s.end_time
-              return (
-                <div key={s.id}
-                  className="flex items-center gap-2 px-2.5 py-2 rounded-xl"
-                  style={{
-                    backgroundColor: isNow
-                      ? `color-mix(in srgb, ${subject.color} 10%, var(--s-base))`
-                      : 'var(--s-base)',
-                    border: isNow
-                      ? `1px solid color-mix(in srgb, ${subject.color} 25%, transparent)`
-                      : '1px solid var(--border-subtle)',
-                    opacity: isDone ? 0.45 : 1,
-                  }}>
-                  <div className="w-1 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: subject.color }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
-                      {subject.name}
-                    </p>
-                    <p className="mono text-[10px]" style={{ color: 'var(--color-outline)' }}>
-                      <ClientTime time24={s.start_time.slice(0, 5)} />–<ClientTime time24={s.end_time.slice(0, 5)} />
-                      {(s.room || subject.room) ? ` · ${s.room || subject.room}` : ''}
-                    </p>
-                  </div>
-                  {isNow && (
-                    <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                        style={{ backgroundColor: subject.color }} />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5"
-                        style={{ backgroundColor: subject.color }} />
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
 
-      {/* ── Animated feeds ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
+          {todaySchedules.length === 0 ? (
+            <EmptyToday t={t} h={nowDate.getHours()} />
+          ) : (
+            <div className="flex flex-col gap-1">
+              {todaySchedules.slice(0, 5).map(s => {
+                const subject = allSubjects.find(sub => sub.id === s.subject_id)
+                if (!subject) return null
+                const isNow  = currentTimeStr >= s.start_time && currentTimeStr <= s.end_time
+                const isDone = currentTimeStr > s.end_time
+                return (
+                  <div
+                    key={s.id}
+                    className="row"
+                    style={{
+                      ['--accent-color' as never]: subject.color,
+                      opacity: isDone ? 0.45 : 1,
+                    }}
+                  >
+                    <div className="row__time">
+                      <ClientTime time24={s.start_time.slice(0, 5)} />
+                    </div>
+                    <div className="row__main">
+                      <div className="row__title flex items-center gap-1.5">
+                        {isNow && <span className="live-dot" style={{ ['--success' as never]: subject.color }} />}
+                        <span className="truncate">{subject.name}</span>
+                      </div>
+                      <div className="row__meta">
+                        {(s.room || subject.room) && (
+                          <>
+                            <span className="material-symbols-outlined">place</span>
+                            {s.room || subject.room}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="row__right">
+                      <ClientTime time24={s.end_time.slice(0, 5)} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Tasks */}
         <TaskFeed tasks={allTasks} subjects={allSubjects} />
+
+        {/* Upcoming exams */}
         <ExamFeed exams={allExams} subjects={allSubjects} />
       </div>
 
-      {/* ── Quick Access ─────────────────────────────────────────────────── */}
-      <div className="mt-3 lg:mt-4">
-        <p className="mono text-[9px] uppercase tracking-[0.18em] mb-2 font-medium"
-          style={{ color: 'var(--color-outline)' }}>{t('dashboard.quickAccess')}</p>
-        <div className="grid grid-cols-5 gap-2">
-          {QUICK_ACTIONS.map(({ href, icon, label, color }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl transition-all duration-200 hover:scale-[1.04] active:scale-[0.97]"
-              style={{
-                backgroundColor: `color-mix(in srgb, ${color} 9%, var(--s-low))`,
-                border: `1px solid color-mix(in srgb, ${color} 22%, transparent)`,
-              }}
-            >
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 group-hover:scale-110"
-                style={{ backgroundColor: `color-mix(in srgb, ${color} 20%, transparent)` }}
-              >
-                <span className="material-symbols-outlined text-[19px]"
-                  style={{ color, fontVariationSettings: "'FILL' 1" }}>
-                  {icon}
-                </span>
-              </div>
-              <span className="text-[10px] font-semibold text-center leading-tight"
-                style={{ color }}>
-                {label}
-              </span>
-            </Link>
-          ))}
+      {/* ─────────── Quick Access ─────────── */}
+      <section className="mt-4">
+        <div className="section-head">
+          <div className="section-head__left">
+            <span className="kicker">{t('dashboard.quickAccess')}</span>
+          </div>
         </div>
-      </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          <QuickAction href="/planner?create=task" icon="add_task"          label={t('dashboard.qaNewTask')}        color="var(--color-primary)"  />
+          <QuickAction href="/planner?create=exam" icon="event"             label={t('dashboard.qaNewExam')}        color="var(--danger)"         />
+          <QuickAction href="/notes?new=1"         icon="edit_note"         label={t('dashboard.qaQuickNote')}      color="var(--warning)"        />
+          <QuickAction href="/ai?tab=import"       icon="document_scanner"  label={t('dashboard.qaImportSchedule')} color="var(--success)"        />
+          <QuickAction href="/ai"                  icon="auto_awesome"      label={t('dashboard.qaAskAI')}          color="var(--color-tertiary)" />
+        </div>
+      </section>
     </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Sub-components
+// ──────────────────────────────────────────────────────────────────
+
+function EmptyToday({ t, h }: { t: (k: string) => string; h: number }) {
+  const motiv = h < 7
+    ? { text: t('dashboard.motivEarly'),     icon: 'nights_stay'      }
+    : h < 12
+      ? { text: t('dashboard.motivMorning'),   icon: 'wb_sunny'        }
+      : h < 15
+        ? { text: t('dashboard.motivAfternoon'), icon: 'local_library'  }
+        : h < 19
+          ? { text: t('dashboard.motivEvening'),   icon: 'self_improvement'}
+          : { text: t('dashboard.motivNight'),     icon: 'bedtime'         }
+  return (
+    <div className="flex items-start gap-3 py-2">
+      <div
+        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}
+      >
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: 18, color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}
+        >
+          {motiv.icon}
+        </span>
+      </div>
+      <p
+        className="text-[12px] leading-snug serif italic"
+        style={{ color: 'var(--on-surface-variant)', fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}
+      >
+        {motiv.text}
+      </p>
+    </div>
+  )
+}
+
+function QuickAction({ href, icon, label, color }: { href: string; icon: string; label: string; color: string }) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-2.5 py-3 px-3 rounded-[12px] transition-all hover:translate-y-[-1px]"
+      style={{
+        background: `color-mix(in srgb, ${color} 8%, var(--s-low))`,
+        border: `1px solid color-mix(in srgb, ${color} 18%, transparent)`,
+      }}
+    >
+      <div
+        className="w-8 h-8 rounded-[8px] flex items-center justify-center flex-shrink-0"
+        style={{ background: `color-mix(in srgb, ${color} 18%, transparent)` }}
+      >
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: 17, color, fontVariationSettings: "'FILL' 1" }}
+        >
+          {icon}
+        </span>
+      </div>
+      <span className="text-[11.5px] font-semibold leading-tight" style={{ color }}>
+        {label}
+      </span>
+    </Link>
   )
 }

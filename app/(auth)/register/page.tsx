@@ -1,14 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 
+type Role = 'student' | 'teacher'
+
 export default function RegisterPage() {
-  const { t } = useTranslation()
-  const [role, setRole] = useState<'student' | 'teacher'>('student')
+  const { t, language } = useTranslation()
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  const [role, setRole] = useState<Role>('student')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -40,13 +47,7 @@ export default function RegisterPage() {
     const { error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          full_name: fullName,
-          language: browserLang,
-          role,
-        },
-      },
+      options: { data: { full_name: fullName, language: browserLang, role } },
     })
 
     if (authError) {
@@ -58,175 +59,266 @@ export default function RegisterPage() {
     setSent(true)
   }
 
+  const isLight = mounted && resolvedTheme === 'light'
+
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" data-theme="indigo">
-        <div className="w-full max-w-sm text-center">
-          <div className="relative inline-block mb-6">
-            <div className="absolute inset-0 rounded-full blur-[40px] opacity-20"
-              style={{ backgroundColor: 'var(--color-primary)' }} />
-            <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
-              style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-default)' }}>
-              <span className="material-symbols-outlined text-3xl" style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
-                mark_email_unread
-              </span>
-            </div>
+      <div data-theme="indigo" className="min-h-screen w-full flex items-center justify-center p-6" style={{ background: 'var(--s-bg)' }}>
+        <div className="card text-center max-w-sm w-full" style={{ padding: 28 }}>
+          <div className="inline-flex w-14 h-14 rounded-[14px] items-center justify-center mb-4"
+            style={{ background: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 28, color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+              mark_email_unread
+            </span>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight mb-2" style={{ color: 'var(--on-surface)' }}>
-            Revisa tu correo
+          <h1 className="text-[22px] font-bold mb-2" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+            <span className="serif">Revisá tu correo</span>
           </h1>
-          <p className="text-sm mb-2" style={{ color: 'var(--on-surface-variant)' }}>
-            Enviamos un enlace de confirmación a
+          <p className="text-[13px]" style={{ color: 'var(--on-surface-variant)' }}>
+            {language === 'es' ? 'Enviamos un enlace de confirmación a' : 'We sent a confirmation link to'}
           </p>
-          <p className="text-sm font-semibold mb-6" style={{ color: 'var(--color-primary)' }}>
+          <p className="font-mono text-[13px] font-semibold my-2" style={{ color: 'var(--color-primary)' }}>
             {email}
           </p>
-          <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
-            Abre el correo y haz click en el enlace para activar tu cuenta.
+          <p className="text-[12px] mt-4" style={{ color: 'var(--color-outline)' }}>
+            {language === 'es'
+              ? 'Abrí el correo y hacé click en el enlace para activar tu cuenta.'
+              : 'Open the email and click the link to activate your account.'}
           </p>
-          <p className="text-xs mt-4" style={{ color: 'var(--color-outline)' }}>
-            ¿Ya confirmaste?{' '}
-            <Link href="/login" className="font-semibold hover:underline" style={{ color: 'var(--color-primary)' }}>
-              Iniciar sesión
+          <div className="mt-6 pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <Link href="/login" className="text-[12.5px] font-semibold hover:underline" style={{ color: 'var(--color-primary)' }}>
+              {language === 'es' ? '← Volver al login' : '← Back to login'}
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" data-theme="indigo">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-3">
-            <Image
-              src="/logo-dark.png"
-              alt="Skolar"
-              width={140}
-              height={40}
-              style={{ width: 'auto', height: '40px', objectFit: 'contain' }}
-              priority
-            />
+    <div data-theme="indigo" className="min-h-screen w-full relative" style={{ backgroundColor: 'var(--s-bg)' }}>
+      {/* Theme toggle */}
+      <div className="absolute top-5 right-5 z-20" suppressHydrationWarning>
+        <div className="theme-toggle">
+          <button className={isLight ? 'active' : ''} onClick={() => setTheme('light')} aria-label="Light mode">
+            <span className="material-symbols-outlined">light_mode</span>
+          </button>
+          <button className={!isLight ? 'active' : ''} onClick={() => setTheme('dark')} aria-label="Dark mode">
+            <span className="material-symbols-outlined">dark_mode</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="register-grid grid min-h-screen">
+        {/* Hero */}
+        <div
+          className="register-hero relative overflow-hidden hidden flex-col p-12"
+          style={{
+            background:
+              'radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--color-tertiary) 32%, transparent), transparent 40%),' +
+              'radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--color-primary) 50%, transparent), transparent 55%),' +
+              'linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 92%, #000) 0%, color-mix(in srgb, var(--color-primary) 55%, #1a1a2e) 100%)',
+            color: '#fff',
+          }}
+        >
+          <div className="relative z-10 flex items-center gap-3">
+            <Image src="/logo-icon-white.png" alt="Skolar" width={44} height={44} priority style={{ width: 44, height: 44, objectFit: 'contain' }} />
+            <div>
+              <div className="text-[22px] font-bold leading-none" style={{ letterSpacing: '-0.02em' }}>Skolar</div>
+              <div className="font-mono text-[9.5px] mt-1 leading-none" style={{ letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.7 }}>
+                {t('auth.tag')}
+              </div>
+            </div>
           </div>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-muted)' }}>
-            {t('auth.register')}
+
+          <h1 className="display relative z-10 mt-10 max-w-[480px]" style={{ color: '#fff' }}>
+            {language === 'es' ? (
+              <>Empezá tu <em className="serif">primer ciclo</em> con Skolar.</>
+            ) : (
+              <>Start your <em className="serif">first term</em> with Skolar.</>
+            )}
+          </h1>
+
+          <p className="relative z-10 mt-4 text-[14px] leading-[1.55] max-w-[460px]" style={{ color: 'rgba(255,255,255,0.78)' }}>
+            {language === 'es'
+              ? 'Creá tu cuenta institucional y arrancá a usar tu copiloto académico hoy mismo. Es gratis para estudiantes.'
+              : 'Create your institutional account and start using your academic copilot today. Free for students.'}
           </p>
+
+          <div className="relative z-10 mt-auto flex flex-col gap-2.5">
+            {[
+              { icon: 'auto_awesome', text: t('auth.feat1') },
+              { icon: 'calendar_month', text: t('auth.feat2') },
+              { icon: 'trending_up', text: t('auth.feat3') },
+            ].map((f, i) => (
+              <div key={i}
+                className="inline-flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[12.5px]"
+                style={{
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.92)',
+                  width: 'fit-content',
+                }}>
+                <span className="material-symbols-outlined text-[16px]" style={{ opacity: 0.95 }}>{f.icon}</span>
+                {f.text}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Role selector */}
-            <div>
-              <p className="label mb-2">{t('auth.roleSelect')}</p>
-              <div className="grid grid-cols-2 gap-2">
-                {(['student', 'teacher'] as const).map((r) => (
+        {/* Form */}
+        <div className="flex items-center justify-center p-6 lg:p-12 overflow-y-auto" style={{ background: 'var(--s-bg)' }}>
+          <div className="w-full" style={{ maxWidth: 380 }}>
+            <div className="lg:hidden flex justify-center mb-6">
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-[10px]"
+                style={{ background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}>
+                <Image src={isLight ? '/logo-icon-blue.png' : '/logo-icon-white.png'} alt="Skolar" width={22} height={22} />
+                <div className="text-[15px] font-bold" style={{ letterSpacing: '-0.018em', color: 'var(--on-surface)' }}>Skolar</div>
+              </div>
+            </div>
+
+            {/* Role switch */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-[12px] mb-5"
+              style={{ background: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
+              {(['student', 'teacher'] as Role[]).map(r => {
+                const active = role === r
+                return (
                   <button
                     key={r}
                     type="button"
                     onClick={() => setRole(r)}
-                    className="flex flex-col items-center gap-1.5 rounded-xl p-3 border transition-all"
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-[9px] transition-all"
                     style={{
-                      borderColor: role === r ? 'var(--color-primary)' : 'var(--border-default)',
-                      backgroundColor: role === r ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'var(--s-base)',
-                      color: role === r ? 'var(--color-primary)' : 'var(--on-surface-variant)',
+                      background: active ? 'color-mix(in srgb, var(--color-primary) 14%, transparent)' : 'transparent',
+                      color: active ? 'var(--color-primary)' : 'var(--on-surface-variant)',
                     }}
                   >
-                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      {r === 'student' ? 'school' : 'cast_for_education'}
+                    <span className="material-symbols-outlined text-[19px]"
+                      style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
+                      {r === 'student' ? 'school' : 'co_present'}
                     </span>
-                    <span className="text-xs font-semibold">
-                      {r === 'student' ? t('auth.roleStudent') : t('auth.roleTeacher')}
-                    </span>
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="text-[12.5px] font-bold leading-tight">
+                        {t(`auth.role${r === 'student' ? 'Student' : 'Teacher'}`)}
+                      </div>
+                      <div className="text-[10.5px] leading-tight mt-0.5 truncate"
+                        style={{ color: active ? 'var(--color-primary)' : 'var(--color-outline)', opacity: 0.85 }}>
+                        {t(`auth.${r}Sub`)}
+                      </div>
+                    </div>
                   </button>
-                ))}
+                )
+              })}
+            </div>
+
+            <h2 className="text-[24px] font-bold leading-tight" style={{ color: 'var(--on-surface)', letterSpacing: '-0.025em' }}>
+              <span className="serif">{language === 'es' ? 'Crea tu cuenta.' : 'Create your account.'}</span>
+            </h2>
+            <p className="text-[12.5px] mt-1.5 mb-5" style={{ color: 'var(--on-surface-variant)' }}>
+              {language === 'es' ? 'Solo te pedimos lo esencial.' : 'We only ask for what we need.'}
+            </p>
+
+            <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
+              <div>
+                <label htmlFor="fullName" className="label">{t('auth.fullName')}</label>
+                <input
+                  id="fullName"
+                  type="text"
+                  autoComplete="name"
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  className="input"
+                  style={{ height: 40 }}
+                  aria-required="true"
+                />
               </div>
-            </div>
 
-            {/* Full Name */}
-            <div>
-              <label htmlFor="fullName" className="label">{t('auth.fullName')}</label>
-              <input
-                id="fullName"
-                type="text"
-                autoComplete="name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="input"
-                aria-required="true"
-              />
-            </div>
+              <div>
+                <label htmlFor="email" className="label">{language === 'es' ? 'Correo' : 'Email'}</label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="input"
+                  style={{ height: 40 }}
+                  placeholder="tu@universidad.edu"
+                  aria-required="true"
+                />
+              </div>
 
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="label">{t('auth.email')}</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="input"
-                placeholder="tu@correo.com"
-                aria-required="true"
-              />
-            </div>
+              <div>
+                <label htmlFor="password" className="label">{t('auth.password')}</label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="input"
+                  style={{ height: 40 }}
+                  aria-required="true"
+                />
+              </div>
 
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="label">{t('auth.password')}</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input"
-                aria-required="true"
-              />
-            </div>
+              <div>
+                <label htmlFor="confirmPassword" className="label">{t('auth.confirmPassword')}</label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="input"
+                  style={{ height: 40 }}
+                  aria-required="true"
+                />
+              </div>
 
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="label">{t('auth.confirmPassword')}</label>
-              <input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="input"
-                aria-required="true"
-              />
-            </div>
+              {error && (
+                <div role="alert" className="text-[12px] rounded-[10px] px-3 py-2.5"
+                  style={{
+                    background: 'color-mix(in srgb, var(--danger) 14%, transparent)',
+                    color: 'var(--danger)',
+                    border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)',
+                  }}>
+                  {error}
+                </div>
+              )}
 
-            {/* Error */}
-            {error && (
-              <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg p-2.5" role="alert">
-                {error}
-              </p>
-            )}
+              <button type="submit" disabled={loading} className="btn btn-primary w-full mt-1" style={{ height: 44, fontSize: 13.5 }}>
+                {loading ? (
+                  <>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>hourglass_top</span>
+                    {language === 'es' ? 'Creando…' : 'Creating…'}
+                  </>
+                ) : (
+                  <>
+                    {t('auth.register')}
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+                  </>
+                )}
+              </button>
+            </form>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full"
-            >
-              {loading ? t('common.loading') : t('auth.register')}
-            </button>
-          </form>
-
-          {/* Link to login */}
-          <p className="text-center text-sm mt-4" style={{ color: 'var(--color-muted)' }}>
-            {t('auth.haveAccount')}{' '}
-            <Link href="/login" className="font-semibold hover:underline" style={{ color: 'var(--color-primary)' }}>
-              {t('auth.signIn')}
-            </Link>
-          </p>
+            <p className="text-center text-[12px] mt-5" style={{ color: 'var(--on-surface-variant)' }}>
+              {t('auth.haveAccount')}{' '}
+              <Link href="/login" className="font-semibold hover:underline" style={{ color: 'var(--color-primary)' }}>
+                {t('auth.signIn')}
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
+
+      <style>{`
+        .register-grid { grid-template-columns: 1fr; }
+        @media (min-width: 900px) {
+          .register-grid { grid-template-columns: 1.05fr 1fr; }
+          .register-hero { display: flex !important; }
+        }
+      `}</style>
     </div>
   )
 }

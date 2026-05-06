@@ -15,7 +15,15 @@ export function LiveClock() {
     return () => clearInterval(id)
   }, [])
 
-  if (!now) return null
+  if (!now) {
+    return (
+      <div className="flex flex-col items-end justify-center" style={{ minHeight: 56 }}>
+        <div className="font-mono text-[44px] leading-[0.95] font-light tabular" style={{ color: 'var(--on-surface)', opacity: 0.4 }}>
+          --:--
+        </div>
+      </div>
+    )
+  }
 
   const rawHours = now.getHours()
   const mm = now.getMinutes().toString().padStart(2, '0')
@@ -33,37 +41,40 @@ export function LiveClock() {
 
   const dateStr = now.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
     weekday: 'long',
-    year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
   })
 
   return (
-    <div className="relative p-5 rounded-2xl overflow-hidden"
-      style={{
-        backgroundColor: 'var(--s-low)',
-        border: '1px solid color-mix(in srgb, var(--color-primary) 12%, transparent)',
-        boxShadow: '0 0 40px color-mix(in srgb, var(--color-primary) 4%, transparent)',
-      }}>
-      {/* Glow decoration */}
-      <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full blur-[40px] opacity-15 pointer-events-none"
-        style={{ backgroundColor: 'var(--color-primary)' }} />
-
+    <div className="flex flex-col items-end justify-center text-right">
       {/* Time display */}
-      <div className="relative flex items-baseline gap-0.5 mono font-black tracking-tight leading-none"
-        style={{ color: 'var(--on-surface)' }}>
-        <span className="text-4xl">{hh}</span>
-        <span className="text-4xl animate-pulse-slow" style={{ color: 'var(--color-primary)' }}>:</span>
-        <span className="text-4xl">{mm}</span>
-        <span className="text-xl ml-1 opacity-40">:{ss}</span>
+      <div
+        className="font-mono leading-[0.95] font-light tabular"
+        style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}
+      >
+        <span className="text-[44px]">{hh}</span>
+        <span className="text-[44px]" style={{ color: 'var(--color-primary)' }}>:</span>
+        <span className="text-[44px]">{mm}</span>
+        <span className="text-[18px] ml-1" style={{ color: 'var(--color-outline)' }}>
+          :{ss}
+        </span>
         {period && (
-          <span className="text-base ml-1 font-bold" style={{ color: 'var(--color-outline)' }}>{period}</span>
+          <span className="text-[15px] ml-1 font-medium" style={{ color: 'var(--color-outline)' }}>
+            {period}
+          </span>
         )}
       </div>
 
       {/* Date */}
-      <p className="relative mono text-[10px] uppercase tracking-[0.18em] mt-2 capitalize"
-        style={{ color: 'var(--color-outline)' }}>
+      <p
+        className="font-mono text-[10px] mt-2 capitalize"
+        style={{
+          color: 'var(--color-outline)',
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          fontWeight: 500,
+        }}
+      >
         {dateStr}
       </p>
     </div>
