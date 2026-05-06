@@ -236,54 +236,19 @@ export default async function DashboardPage() {
 
       {/* ─────────── URGENT BANNER ─────────── */}
       {urgentBanner && (
-        <Link
-          href={urgentBanner.href}
-          className="block mb-3 transition-transform active:scale-[0.99]"
-        >
-          <div
-            className="flex items-center gap-3 rounded-[14px] px-3.5 py-3"
-            style={{
-              background: 'var(--priority-high-bg)',
-              border: '1px solid color-mix(in srgb, var(--priority-high) 25%, transparent)',
-            }}
-          >
-            <span
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-mono"
-              style={{
-                background: 'var(--priority-high)',
-                color: '#fff',
-                fontSize: 9.5,
-                fontWeight: 700,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>flag</span>
-              {t('dashboard.urgentLabel')}
-            </span>
-            <span
-              className="font-mono font-bold tabular"
-              style={{ color: 'var(--priority-high)', fontSize: 13 }}
-            >
-              {urgentBanner.daysLabel}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: 'var(--on-surface)' }}>
-                {urgentBanner.title}
-              </p>
-              {urgentBanner.meta && (
-                <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--on-surface-variant)' }}>
-                  {urgentBanner.meta}
-                </p>
-              )}
-            </div>
-            <span
-              className="material-symbols-outlined hidden sm:flex items-center justify-center"
-              style={{ fontSize: 18, color: 'var(--priority-high)' }}
-            >
-              arrow_forward
-            </span>
+        <Link href={urgentBanner.href} className="urgent-banner mb-3 active:scale-[0.99]">
+          <span className="urgent-banner__pill">
+            <span className="material-symbols-outlined">flag</span>
+            {t('dashboard.urgentLabel')}
+          </span>
+          <span className="urgent-banner__time">{urgentBanner.daysLabel}</span>
+          <div className="urgent-banner__text">
+            <strong>{urgentBanner.title}</strong>
+            {urgentBanner.meta && <span className="meta"> · {urgentBanner.meta}</span>}
           </div>
+          <span className="material-symbols-outlined hidden sm:inline-flex" style={{ fontSize: 18, color: 'var(--danger)' }}>
+            arrow_outward
+          </span>
         </Link>
       )}
 
@@ -300,7 +265,7 @@ export default async function DashboardPage() {
               >
                 <span
                   className="material-symbols-outlined flex-shrink-0 mt-0.5"
-                  style={{ fontSize: 16, color: accent, fontVariationSettings: "'FILL' 1" }}
+                  style={{ fontSize: 16, color: accent, fontVariationSettings: "'FILL' 0" }}
                 >
                   campaign
                 </span>

@@ -126,7 +126,7 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
             const subject  = subjects.find(s => s.id === exam.subject_id)
             const actCfg   = ACTIVITY_TYPES[(exam.activity_type || 'exam') as keyof typeof ACTIVITY_TYPES]
             const days     = daysUntilDate(exam.exam_date)
-            const urgency  = days < 3 ? 'var(--danger)' : days < 7 ? 'var(--warning)' : actCfg?.color || 'var(--color-primary)'
+            const urgency  = days < 7 ? 'var(--danger)' : days < 14 ? 'var(--warning)' : 'var(--success)'
             const accent   = subject?.color ?? urgency
             return (
               <div key={exam.id} className="row"

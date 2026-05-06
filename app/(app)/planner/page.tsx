@@ -933,16 +933,16 @@ function TaskKanCard({
       onClick={() => setExpanded(true)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(true) } }}
     >
-      <div className="kan-card__head">
+      <div className="kan-card__chips kan-card__head">
         {subject && (
           <span
-            className="badge"
+            className="chip chip-mat"
             style={{
-              background: `color-mix(in srgb, ${subject.color} 18%, transparent)`,
-              color: subject.color,
-            }}
+              ['--accent-color' as string]: subject.color,
+              ['--accent-bg-strong' as string]: `color-mix(in srgb, ${subject.color} 22%, transparent)`,
+            } as React.CSSProperties}
           >
-            {subject.name}
+            {subject.name.slice(0, 6).toUpperCase()}
           </span>
         )}
         {task.priority && (
@@ -1011,29 +1011,29 @@ function ExamKanCard({
       onClick={() => onEdit(exam)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEdit(exam) } }}
     >
-      <div className="kan-card__head">
+      <div className="kan-card__chips kan-card__head">
         {subject && (
           <span
-            className="badge"
+            className="chip chip-mat"
             style={{
-              background: `color-mix(in srgb, ${subject.color} 18%, transparent)`,
-              color: subject.color,
-            }}
+              ['--accent-color' as string]: subject.color,
+              ['--accent-bg-strong' as string]: `color-mix(in srgb, ${subject.color} 22%, transparent)`,
+            } as React.CSSProperties}
           >
-            {subject.name}
+            {subject.name.slice(0, 6).toUpperCase()}
           </span>
         )}
         <span
-          className="badge"
+          className="chip chip-type"
           style={{
             background: `color-mix(in srgb, ${typeCfg.color} 14%, transparent)`,
             color: typeCfg.color,
           }}
         >
-          {language === 'es' ? typeCfg.label_es : typeCfg.label_en}
+          {(language === 'es' ? typeCfg.label_es : typeCfg.label_en).toUpperCase()}
         </span>
         {exam.percentage != null && (
-          <span className="badge">{exam.percentage}%</span>
+          <span className="chip chip-weight">{exam.percentage}%</span>
         )}
         {isGraded && exam.grade != null && (
           <span className="badge badge--success" style={{ marginLeft: 'auto' }}>
@@ -1704,18 +1704,14 @@ export default function PlannerPage() {
         </div>
       )}
 
-      {/* FAB */}
+      {/* FAB — 56px circular per mock */}
       <button
         onClick={() => setSheetOpen(true)}
-        className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-4 lg:bottom-6 w-12 h-12 rounded-full flex items-center justify-center z-30 transition-all active:scale-95 hover:scale-105"
-        style={{
-          backgroundColor: 'var(--color-primary)',
-          color:           'var(--on-primary, white)',
-          boxShadow:       '0 4px 18px color-mix(in srgb, var(--color-primary) 28%, transparent)',
-        }}
+        className="fab"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}
         aria-label={t('planner.add')}
       >
-        <span className="material-symbols-outlined text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+        <span className="material-symbols-outlined">add</span>
       </button>
 
       {/* Create sheet */}

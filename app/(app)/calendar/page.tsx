@@ -127,21 +127,23 @@ const SANCTUARY_CALENDAR_CSS = `
   .fc .fc-day-sat,
   .fc .fc-day-sun { background: color-mix(in srgb, var(--on-surface) 3%, transparent) !important; }
 
-  /* Today highlight — stronger prominence */
+  /* Today highlight — subtle column overlay; the date number wears the solid blue dot */
   .fc .fc-day-today {
-    background: color-mix(in srgb, var(--color-primary) 9%, transparent) !important;
-    box-shadow: inset 0 2px 0 var(--color-primary) !important;
+    background: color-mix(in srgb, var(--color-primary) 5%, transparent) !important;
+    box-shadow: none !important;
   }
   .fc .fc-day-today .fc-daygrid-day-number {
     background: var(--color-primary) !important;
-    color: var(--on-primary) !important;
+    color: #fff !important;
     border-radius: 50% !important;
-    width: 26px !important;
-    height: 26px !important;
+    width: 22px !important;
+    height: 22px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-weight: 800 !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+    padding: 0 !important;
   }
 
   /* Past days — attenuated so "what's coming" reads first */
@@ -224,16 +226,17 @@ const SANCTUARY_CALENDAR_CSS = `
 
   /* Week/Day events: enforce minimum 48px height */
   .fc .fc-timegrid-event { min-height: 48px !important; }
+  /* Thin current-time indicator line per mock (1px, not full border) */
   .fc .fc-timegrid-now-indicator-line {
     border-color: var(--color-primary) !important;
-    border-width: 2px !important;
-    opacity: 0.9 !important;
+    border-width: 0 0 1px 0 !important;
+    opacity: 1 !important;
   }
   .fc .fc-timegrid-now-indicator-arrow {
     border-top-color: var(--color-primary) !important;
     border-bottom-color: var(--color-primary) !important;
-    opacity: 0.9 !important;
-    border-width: 5px !important;
+    opacity: 1 !important;
+    border-width: 4px !important;
   }
 
   /* ─── Popover (more events) ──────────────────── */
@@ -290,12 +293,12 @@ const SANCTUARY_CALENDAR_CSS = `
 
   /* ─── Event type differentiation ────────────── */
 
-  /* Schedule (class) — solid left accent, show prominently */
-  .fc-ev-schedule { border-left-width: 4px !important; }
+  /* Schedule (class) — solid left accent at exact 3px per mock */
+  .fc-ev-schedule { border-left-width: 3px !important; }
 
-  /* Exam — thicker border, distinct label prefix via title (added in JS) */
+  /* Exam — same 3px left, weight emphasis lives in title */
   .fc-ev-exam {
-    border-left-width: 4px !important;
+    border-left-width: 3px !important;
     font-weight: 700 !important;
   }
   .fc-ev-exam .fc-event-title {
@@ -441,8 +444,8 @@ const SANCTUARY_CALENDAR_CSS = `
     }
     .fc .fc-daygrid-body-natural .fc-daygrid-day-events { padding-bottom: 2px !important; }
 
-    /* Today box-shadow stays visible but smaller on mobile */
-    .fc .fc-day-today { box-shadow: inset 0 1.5px 0 var(--color-primary) !important; }
+    /* Mobile today: keep subtle column overlay only — the round number marker carries the cue */
+    .fc .fc-day-today { box-shadow: none !important; }
 
     /* ── Week / Day views ── */
     .fc-timeGridWeek-view .fc-scrollgrid { overflow-x: visible !important; }

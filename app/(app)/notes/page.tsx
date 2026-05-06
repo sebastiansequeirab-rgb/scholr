@@ -42,7 +42,7 @@ function NoteEditor({
   onSubjectChanged: (noteId: string, subjectId: string | null) => void
   onBack?: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [title,           setTitle]           = useState(note.title)
   const [saveStatus,      setSaveStatus]      = useState<'saved' | 'saving' | null>('saved')
   const [lastSaved,       setLastSaved]       = useState(note.updated_at)
@@ -253,8 +253,7 @@ function NoteEditor({
           )}
 
           {/* Divider */}
-          <span aria-hidden className="w-px h-5 mx-1.5 flex-shrink-0"
-            style={{ backgroundColor: 'var(--border-default)' }} />
+          <span aria-hidden className="notes-toolbar__sep" />
 
           {/* Group: format (bold/italic/strike/code) */}
           {editor && TOOLBAR.slice(0, 4).map(({ icon, title, action, active }) => (
@@ -271,8 +270,7 @@ function NoteEditor({
           ))}
 
           {/* Divider */}
-          <span aria-hidden className="w-px h-5 mx-1.5 flex-shrink-0"
-            style={{ backgroundColor: 'var(--border-default)' }} />
+          <span aria-hidden className="notes-toolbar__sep" />
 
           {/* Group: lists & blocks (bullet/numbered/checklist/quote) */}
           {editor && TOOLBAR.slice(4).map(({ icon, title, action, active }) => (
@@ -289,8 +287,7 @@ function NoteEditor({
           ))}
 
           {/* Divider */}
-          <span aria-hidden className="w-px h-5 mx-1.5 flex-shrink-0"
-            style={{ backgroundColor: 'var(--border-default)' }} />
+          <span aria-hidden className="notes-toolbar__sep" />
 
           {/* Group: attachments (image, voice) */}
           <button
@@ -389,7 +386,7 @@ function NoteEditor({
                 {t('notes.saving')}
               </>
             ) : (
-              `${t('notes.saved')} · ${timeAgo(lastSaved, t)}`
+              `${t('notes.saved')} · ${timeAgo(lastSaved, language as 'es' | 'en')}`
             )}
           </span>
         </div>
@@ -702,7 +699,6 @@ export default function NotesPage() {
               const isActive    = activeNote?.id === note.id
               const isDeleting  = deletingId === note.id
               const preview     = getPreview(note.content)
-              const accentColor = subj?.color || 'var(--color-primary)'
               const isSwiping   = swipeId === note.id
               const offset      = isSwiping ? swipeOffset : 0
               const THRESHOLD   = 72
@@ -727,10 +723,10 @@ export default function NotesPage() {
                       transform: `translateX(${offset}px)`,
                       transition: isSwiping ? 'none' : 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
                       backgroundColor: isActive
-                        ? `color-mix(in srgb, ${accentColor} 8%, var(--s-base))`
+                        ? 'color-mix(in srgb, var(--success) 6%, transparent)'
                         : 'var(--s-dim)',
                       borderLeft: isActive
-                        ? `3px solid color-mix(in srgb, ${accentColor} 60%, transparent)`
+                        ? '3px solid var(--success)'
                         : '3px solid transparent',
                     }}
                     onTouchStart={e => {

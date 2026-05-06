@@ -46,59 +46,35 @@ export default function AIPage() {
   }, [])
 
   return (
-    <div className="reveal-stagger">
+    <div className="reveal-stagger ai-shell-2">
 
       {/* ─────────── Hero ─────────── */}
-      <section
-        className="card relative overflow-hidden mb-3"
-        style={{
-          padding: '24px',
-          background:
-            'radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--color-tertiary) 24%, transparent), transparent 38%),' +
-            'radial-gradient(circle at 8% 90%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 42%),' +
-            'var(--s-low)',
-          borderColor: 'color-mix(in srgb, var(--color-tertiary) 20%, var(--border-subtle))',
-        }}
-      >
-        {/* Badge */}
-        <div className="flex items-center gap-2 mb-3">
-          <span
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-mono"
-            style={{
-              fontSize: 9.5,
-              fontWeight: 700,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              color: 'var(--color-tertiary)',
-              background: 'color-mix(in srgb, var(--color-tertiary) 14%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--color-tertiary) 24%, transparent)',
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 12, fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+      <section className="ai-hero-2 mb-3">
+        <div className="ai-hero-2__bg" />
+        <div className="ai-hero-2__orb" />
+        <div className="ai-hero-2__content">
+          <span className="ai-hero-2__badge">
+            <span className="material-symbols-outlined">auto_awesome</span>
             Skolar IA · Contexto Académico
           </span>
-        </div>
-
-        {/* Title */}
-        <h1 className="text-[clamp(28px,3.6vw,40px)] font-bold leading-[1.05]" style={{ color: 'var(--on-surface)', letterSpacing: '-0.025em' }}>
-          {language === 'es' ? (
-            <>Tu <em className="serif">copiloto</em> académico.</>
-          ) : (
-            <>Your academic <em className="serif">copilot</em>.</>
-          )}
-        </h1>
-        <p className="text-[14px] mt-3 max-w-[640px]" style={{ color: 'var(--on-surface-variant)', lineHeight: 1.55 }}>
-          {language === 'es'
-            ? 'Siempre al día con tu carrera. Tengo acceso a tus materias, apuntes, tareas y agenda — preguntame lo que necesites para llegar al examen sin sorpresas.'
-            : "Always up to date with your degree. I have access to your subjects, notes, tasks and schedule — ask me anything to walk into your next exam without surprises."}
-        </p>
-
-        {/* Context chips */}
-        <div className="flex flex-wrap gap-2 mt-5">
-          <ContextChip icon="menu_book" value={ctxExtra?.subject_count ?? '·'} label={language === 'es' ? 'materias indexadas' : 'subjects indexed'} />
-          <ContextChip icon="description" value={noteCount ?? '·'} label={language === 'es' ? 'apuntes' : 'notes'} />
-          <ContextChip icon="event" value={ctxExtra?.next_exam_date ? new Date(ctxExtra.next_exam_date + 'T12:00:00').toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short' }) : '—'} label={language === 'es' ? 'próximo examen' : 'next exam'} />
-          <ContextChip icon="task_alt" value={ctxExtra?.pending_task_count ?? '·'} label={language === 'es' ? 'tareas pendientes' : 'pending tasks'} />
+          <h1 className="ai-hero-2__title">
+            {language === 'es' ? (
+              <>Tu <em className="serif">copiloto</em> académico.</>
+            ) : (
+              <>Your academic <em className="serif">copilot</em>.</>
+            )}
+          </h1>
+          <p className="ai-hero-2__sub">
+            {language === 'es'
+              ? 'Siempre al día con tu carrera. Tengo acceso a tus materias, apuntes, tareas y agenda — preguntame lo que necesites para llegar al examen sin sorpresas.'
+              : "Always up to date with your degree. I have access to your subjects, notes, tasks and schedule — ask me anything to walk into your next exam without surprises."}
+          </p>
+          <div className="ai-hero-2__chips">
+            <HeroChip variant="info"      icon="menu_book"   value={ctxExtra?.subject_count ?? '·'} label={language === 'es' ? 'materias indexadas' : 'subjects indexed'} />
+            <HeroChip variant="success"   icon="description" value={noteCount ?? '·'}                label={language === 'es' ? 'apuntes' : 'notes'} />
+            <HeroChip variant="warning"   icon="event"       value={ctxExtra?.next_exam_date ? new Date(ctxExtra.next_exam_date + 'T12:00:00').toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short' }) : '—'} label={language === 'es' ? 'próximo examen' : 'next exam'} />
+            <HeroChip variant="tertiary"  icon="task_alt"    value={ctxExtra?.pending_task_count ?? '·'} label={language === 'es' ? 'tareas pendientes' : 'pending tasks'} />
+          </div>
         </div>
       </section>
 
@@ -146,20 +122,24 @@ export default function AIPage() {
   )
 }
 
-function ContextChip({ icon, value, label }: { icon: string; value: string | number; label: string }) {
+function HeroChip({
+  icon,
+  value,
+  label,
+  variant,
+}: {
+  icon: string
+  value: string | number
+  label: string
+  variant: 'info' | 'success' | 'warning' | 'tertiary'
+}) {
   return (
-    <div
-      className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full"
-      style={{
-        background: 'var(--s-bg)',
-        border: '1px solid var(--border-subtle)',
-      }}
-    >
-      <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'var(--color-tertiary)' }}>{icon}</span>
-      <span className="font-mono tabular" style={{ fontSize: 12, color: 'var(--on-surface)', fontWeight: 700 }}>{value}</span>
-      <span className="font-mono" style={{ fontSize: 9.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-outline)' }}>
-        {label}
+    <div className="ai-hero-2__chip">
+      <span className={`ai-hero-2__chip-icon ai-hero-2__chip-icon--${variant}`}>
+        <span className="material-symbols-outlined">{icon}</span>
       </span>
+      <strong>{value}</strong>
+      <span style={{ opacity: 0.85 }}>{label}</span>
     </div>
   )
 }

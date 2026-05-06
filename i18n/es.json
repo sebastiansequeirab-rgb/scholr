@@ -397,10 +397,6 @@
     "delete": "Eliminar",
     "add": "Agregar",
     "search": "Buscar",
-    "justNow": "ahora mismo",
-    "minutesAgo": "min",
-    "hoursAgo": "h",
-    "daysAgo": "días",
     "seeAll": "Ver todos"
   },
   "teacher": {

@@ -8,6 +8,7 @@ import { IconPicker } from '@/features/subjects/components/IconPicker'
 import { SubjectDetail } from '@/features/subjects/components/SubjectDetail'
 import type { Subject, Schedule } from '@/types'
 import { getSubjectIcon } from '@/features/subjects/utils'
+import { subjectTag } from '@/lib/utils'
 
 export default function SubjectsPage() {
   const { t } = useTranslation()
@@ -198,7 +199,7 @@ export default function SubjectsPage() {
 
       {/* Grid */}
       {!loading && subjects.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="subj-grid">
           {subjects.map((subject) => {
             const subjectSchedules = schedulesBySubject(subject.id)
             const prog = examProgress[subject.id]
@@ -207,6 +208,7 @@ export default function SubjectsPage() {
             const status = !prog || prog.graded === 0 ? 'pending' : isPassing ? 'pass' : isRisk ? 'risk' : 'fail'
             const pct = prog ? Math.min((prog.earned / 20) * 100, 100) : 0
             const completePct = prog && prog.total > 0 ? Math.round((prog.graded / prog.total) * 100) : 0
+            const tag = subjectTag(subject.color)
 
             const statusBadge = {
               pass:    { label: 'APROBANDO',  color: 'var(--success)',   bg: 'color-mix(in srgb, var(--success) 16%, transparent)' },
@@ -215,142 +217,120 @@ export default function SubjectsPage() {
               pending: { label: 'SIN NOTAS',  color: 'var(--color-outline)', bg: 'var(--s-base)' },
             }[status]
 
+            const subjCode = subject.name.slice(0, 6).toUpperCase()
+
             return (
               <div
                 key={subject.id}
-                className="card group relative cursor-pointer transition-all hover:-translate-y-[1px]"
-                style={{
-                  background: 'var(--s-low)',
-                  borderTop: `2px solid color-mix(in srgb, ${subject.color} 70%, transparent)`,
-                  paddingTop: 14,
-                }}
+                className={`subj-card ${tag}`}
                 onClick={() => { setDetailTab('progress'); setDetailSubject(subject) }}
               >
-                {/* Top row: code + status badge */}
-                <div className="flex items-center justify-between mb-3">
-                  <span
-                    className="font-mono"
-                    style={{
-                      fontSize: 9.5,
-                      fontWeight: 700,
-                      letterSpacing: '0.08em',
-                      color: subject.color,
-                      background: `color-mix(in srgb, ${subject.color} 15%, transparent)`,
-                      padding: '2px 7px',
-                      borderRadius: 4,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {subject.name.slice(0, 8).toUpperCase()}
-                  </span>
-                  <span className="badge" style={{ background: statusBadge.bg, color: statusBadge.color }}>
-                    {statusBadge.label}
-                  </span>
-                </div>
-
-                {/* Icon + Title */}
-                <div className="flex items-start gap-2.5 mb-2">
-                  <div className="relative flex-shrink-0">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === subject.id ? null : subject.id) }}
-                      className="w-9 h-9 rounded-[8px] flex items-center justify-center transition-all hover:brightness-125"
-                      style={{ background: `color-mix(in srgb, ${subject.color} 14%, transparent)` }}
-                      title="Cambiar ícono"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: subject.color, fontVariationSettings: "'FILL' 1" }}>
-                        {subject.icon || getSubjectIcon(subject.name)}
-                      </span>
-                    </button>
-                    {iconPickerOpen === subject.id && (
-                      <IconPicker
-                        currentIcon={subject.icon || getSubjectIcon(subject.name)}
-                        subjectColor={subject.color}
-                        onSelect={(icon) => handleIconSelect(subject.id, icon)}
-                        onClose={() => setIconPickerOpen(null)}
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-[14px] font-bold leading-tight truncate" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
-                      {subject.name}
-                    </h2>
-                    {subject.professor && (
-                      <p className="text-[11px] mt-0.5 flex items-center gap-1 truncate" style={{ color: 'var(--color-outline)' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 11 }}>person</span>
-                        <span className="truncate">{subject.professor}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Kebab menu */}
-                  <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
-                    <button
-                      onClick={() => setKebabOpen(kebabOpen === subject.id ? null : subject.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-[6px] transition hover:bg-white/5"
-                      style={{ color: 'var(--color-outline)' }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 17 }}>more_vert</span>
-                    </button>
-                    {kebabOpen === subject.id && (
-                      <div className="absolute right-0 top-8 z-20 rounded-[10px] overflow-hidden shadow-xl"
-                        style={{ background: 'var(--s-high)', border: '1px solid var(--border-default)', minWidth: 150 }}>
-                        <KebabAction icon="edit" label="Editar" onClick={(e) => { e.stopPropagation(); setEditingSubject(subject); setModalOpen(true); setKebabOpen(null) }} />
-                        <KebabAction icon="calendar_month" label="Horarios" onClick={(e) => { e.stopPropagation(); setExpandedSubject(expandedSubject === subject.id ? null : subject.id); setKebabOpen(null) }} />
-                        <KebabAction icon="auto_awesome" label="Chat IA" onClick={(e) => { e.stopPropagation(); setDetailTab('chat'); setDetailSubject(subject); setKebabOpen(null) }} accent="var(--color-tertiary)" />
-                        <KebabAction icon="delete" label="Eliminar" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(subject.id); setKebabOpen(null) }} accent="var(--danger)" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* KPI metrics box */}
-                <div
-                  className="grid grid-cols-3 gap-2 mt-3 mb-3 px-3 py-2.5 rounded-[8px]"
-                  style={{ background: 'var(--s-bg)', border: '1px solid var(--border-subtle)' }}
-                >
-                  <Metric label="Promedio" value={prog?.earned ? prog.earned.toFixed(1) : '—'} unit="/20" tone={status} />
-                  <Metric label="Créditos" value={String(subject.credits || 0)} />
-                  <Metric label="Avance" value={String(completePct) + '%'} />
-                </div>
-
-                {/* Progress bar */}
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{
-                      width: `${pct}%`,
-                      background: status === 'pass' ? 'var(--success)' : status === 'risk' ? 'var(--warning)' : status === 'fail' ? 'var(--danger)' : subject.color,
-                    }}
-                  />
-                </div>
-
-                {/* Schedule pills */}
-                {subjectSchedules.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {subjectSchedules.slice(0, 2).map(s => (
-                      <span
-                        key={s.id}
-                        className="font-mono inline-flex items-center gap-1"
-                        style={{
-                          fontSize: 10,
-                          padding: '2px 7px',
-                          borderRadius: 5,
-                          background: `color-mix(in srgb, ${subject.color} 12%, transparent)`,
-                          color: subject.color,
-                          letterSpacing: '0.02em',
-                        }}
+                {/* Top: code + status */}
+                <div className="subj-card__top">
+                  <span className="badge">{subjCode}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="badge badge--status" style={{ background: statusBadge.bg, color: statusBadge.color }}>
+                      {statusBadge.label}
+                    </span>
+                    <div className="relative" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => setKebabOpen(kebabOpen === subject.id ? null : subject.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-[6px] transition hover:bg-white/5"
+                        style={{ color: 'var(--color-outline)' }}
+                        aria-label="More"
                       >
-                        <span className="material-symbols-outlined" style={{ fontSize: 11 }}>schedule</span>
-                        {t(`subjects.days.${s.day_of_week}`).slice(0, 3)} {s.start_time.slice(0, 5)}
-                      </span>
-                    ))}
-                    {subjectSchedules.length > 2 && (
-                      <span className="font-mono" style={{ fontSize: 10, color: 'var(--color-outline)' }}>
-                        +{subjectSchedules.length - 2}
-                      </span>
-                    )}
+                        <span className="material-symbols-outlined" style={{ fontSize: 17 }}>more_vert</span>
+                      </button>
+                      {kebabOpen === subject.id && (
+                        <div className="absolute right-0 top-8 z-20 rounded-[10px] overflow-hidden shadow-xl"
+                          style={{ background: 'var(--s-high)', border: '1px solid var(--border-default)', minWidth: 150 }}>
+                          <KebabAction icon="edit" label="Editar" onClick={(e) => { e.stopPropagation(); setEditingSubject(subject); setModalOpen(true); setKebabOpen(null) }} />
+                          <KebabAction icon="calendar_month" label="Horarios" onClick={(e) => { e.stopPropagation(); setExpandedSubject(expandedSubject === subject.id ? null : subject.id); setKebabOpen(null) }} />
+                          <KebabAction icon="auto_awesome" label="Chat IA" onClick={(e) => { e.stopPropagation(); setDetailTab('chat'); setDetailSubject(subject); setKebabOpen(null) }} accent="var(--color-tertiary)" />
+                          <KebabAction icon="palette" label="Ícono" onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === subject.id ? null : subject.id); setKebabOpen(null) }} />
+                          <KebabAction icon="delete" label="Eliminar" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(subject.id); setKebabOpen(null) }} accent="var(--danger)" />
+                        </div>
+                      )}
+                      {iconPickerOpen === subject.id && (
+                        <div className="absolute right-0 top-8 z-30">
+                          <IconPicker
+                            currentIcon={subject.icon || getSubjectIcon(subject.name)}
+                            subjectColor={subject.color}
+                            onSelect={(icon) => handleIconSelect(subject.id, icon)}
+                            onClose={() => setIconPickerOpen(null)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h2 className="subj-card__title">{subject.name}</h2>
+
+                {/* Professor */}
+                {subject.professor && (
+                  <div className="subj-card__prof">
+                    <span className="material-symbols-outlined">person</span>
+                    <span className="truncate">{subject.professor}</span>
                   </div>
                 )}
+
+                {/* KPI metrics */}
+                <div className="subj-card__metrics">
+                  <div className="metric">
+                    <div className="metric__label">Promedio</div>
+                    <div
+                      className="metric__value"
+                      style={{
+                        color: status === 'pass' ? 'var(--success)' : status === 'risk' ? 'var(--warning)' : status === 'fail' ? 'var(--danger)' : 'var(--on-surface)',
+                      }}
+                    >
+                      {prog?.earned ? prog.earned.toFixed(1) : '—'}
+                      <span className="metric__unit">/20</span>
+                    </div>
+                  </div>
+                  <div className="metric">
+                    <div className="metric__label">Créditos</div>
+                    <div className="metric__value">{subject.credits || 0}</div>
+                  </div>
+                  <div className="metric">
+                    <div className="metric__label">Avance</div>
+                    <div className="metric__value">
+                      {completePct}<span className="metric__unit">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar — only when there's progress */}
+                {pct > 0 && (
+                  <div className="progress-track">
+                    <div className="progress-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                )}
+
+                {/* Hint when at risk */}
+                {status === 'risk' && prog && (
+                  <div className="subj-card__hint">
+                    Necesitás subir el promedio
+                  </div>
+                )}
+
+                {/* Footer: schedule pill + open arrow */}
+                <div className="subj-card__foot">
+                  {subjectSchedules.length > 0 ? (
+                    <span className="subj-card__next">
+                      <span className="material-symbols-outlined">schedule</span>
+                      {t(`subjects.days.${subjectSchedules[0].day_of_week}`).slice(0, 3)} {subjectSchedules[0].start_time.slice(0, 5)}
+                      {subjectSchedules.length > 1 && (
+                        <span style={{ marginLeft: 4, opacity: 0.6 }}>+{subjectSchedules.length - 1}</span>
+                      )}
+                    </span>
+                  ) : <span />}
+                  <span className="subj-card__open">
+                    Abrir <span className="material-symbols-outlined">arrow_outward</span>
+                  </span>
+                </div>
 
                 {/* Expanded schedule manager */}
                 {expandedSubject === subject.id && (
@@ -397,53 +377,33 @@ export default function SubjectsPage() {
             <span className="serif">{t('subjects.enrolledTitle')}</span>
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="subj-grid">
             {enrolledSubjects.map((subject) => {
               const prog = examProgress[subject.id]
               const isPassing = prog && prog.earned >= 9.5
               const pct = prog ? Math.min((prog.earned / 20) * 100, 100) : 0
+              const tag = subjectTag(subject.color)
               return (
-                <div
-                  key={subject.id}
-                  className="card relative"
-                  style={{
-                    background: 'var(--s-low)',
-                    borderTop: `2px solid color-mix(in srgb, ${subject.color} 70%, transparent)`,
-                  }}
-                >
-                  <span className="badge badge--ai absolute top-3 right-3">{t('subjects.enrolled')}</span>
-
-                  <div className="flex items-start gap-2.5 mb-3">
-                    <div className="w-9 h-9 rounded-[8px] flex items-center justify-center flex-shrink-0"
-                      style={{ background: `color-mix(in srgb, ${subject.color} 14%, transparent)` }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: subject.color, fontVariationSettings: "'FILL' 1" }}>
-                        {subject.icon || getSubjectIcon(subject.name)}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0 pr-16">
-                      <p className="text-[14px] font-bold truncate" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
-                        {subject.name}
-                      </p>
-                      {subject.teacher_name && (
-                        <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--on-surface-variant)' }}>
-                          Prof. {subject.teacher_name}
-                        </p>
-                      )}
-                    </div>
+                <div key={subject.id} className={`subj-card ${tag}`}>
+                  <div className="subj-card__top">
+                    <span className="badge">{subject.name.slice(0, 6).toUpperCase()}</span>
+                    <span className="badge badge--ai">{t('subjects.enrolled')}</span>
                   </div>
-
-                  <div className="progress-bar mt-2">
-                    <div
-                      className="progress-fill"
-                      style={{
-                        width: `${pct}%`,
-                        background: isPassing ? 'var(--success)' : prog ? 'var(--color-primary)' : 'var(--border-strong)',
-                      }}
-                    />
-                  </div>
-                  <p className="font-mono mt-2" style={{ fontSize: 10, color: isPassing ? 'var(--success)' : 'var(--color-outline)', letterSpacing: '0.04em' }}>
+                  <h2 className="subj-card__title">{subject.name}</h2>
+                  {subject.teacher_name && (
+                    <div className="subj-card__prof">
+                      <span className="material-symbols-outlined">person</span>
+                      Prof. {subject.teacher_name}
+                    </div>
+                  )}
+                  {pct > 0 && (
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${pct}%`, background: isPassing ? 'var(--success)' : 'var(--color-primary)' }} />
+                    </div>
+                  )}
+                  <div className="subj-card__hint">
                     {prog ? `${prog.earned.toFixed(1)} / 20` : 'Sin notas aún'}
-                  </p>
+                  </div>
                 </div>
               )
             })}
@@ -536,38 +496,6 @@ export default function SubjectsPage() {
 // ──────────────────────────────────────────────────────────────────
 // Sub-components
 // ──────────────────────────────────────────────────────────────────
-
-function Metric({
-  label,
-  value,
-  unit,
-  tone,
-}: {
-  label: string
-  value: string
-  unit?: string
-  tone?: 'pass' | 'risk' | 'fail' | 'pending'
-}) {
-  const color = tone === 'pass'
-    ? 'var(--success)'
-    : tone === 'risk'
-      ? 'var(--warning)'
-      : tone === 'fail'
-        ? 'var(--danger)'
-        : 'var(--on-surface)'
-
-  return (
-    <div className="flex flex-col">
-      <span className="font-mono" style={{ fontSize: 8.5, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-outline)' }}>
-        {label}
-      </span>
-      <span className="font-mono mt-0.5 tabular flex items-baseline gap-0.5" style={{ fontSize: 14, fontWeight: 700, color, letterSpacing: '-0.01em' }}>
-        {value}
-        {unit && <span style={{ fontSize: 10, color: 'var(--color-outline)', fontWeight: 500 }}>{unit}</span>}
-      </span>
-    </div>
-  )
-}
 
 function KebabAction({
   icon,

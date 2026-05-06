@@ -394,21 +394,24 @@ export function SubjectDetail({
             ) : (
               <>
                 {/* ─── KPI strip ─── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+                <div className="grade-kpis">
                   <KpiBox
+                    icon="bar_chart"
                     label={language === 'es' ? 'Promedio actual' : 'Current average'}
                     value={summary.currentAverage != null ? summary.currentAverage.toFixed(2) : '—'}
-                    unit={`/ ${MAX_SCORE}`}
+                    unit={`/${MAX_SCORE}`}
                     hint={language === 'es' ? `${Math.round(summary.doneWeight)}% rendido` : `${Math.round(summary.doneWeight)}% done`}
                     tone={status}
                   />
                   <KpiBox
+                    icon="trending_up"
                     label={language === 'es' ? 'Proyección final' : 'Projected final'}
                     value={summary.projectedFinal != null ? summary.projectedFinal.toFixed(2) : '—'}
-                    unit={`/ ${MAX_SCORE}`}
+                    unit={`/${MAX_SCORE}`}
                     hint={language === 'es' ? 'si mantenés ritmo' : 'if you keep pace'}
                   />
                   <KpiBox
+                    icon="flag"
                     label={language === 'es' ? 'Para aprobar' : 'To pass'}
                     value={
                       summary.neededToPass == null
@@ -422,13 +425,13 @@ export function SubjectDetail({
                     unit={
                       summary.neededToPass == null || summary.neededToPass === 0 || !Number.isFinite(summary.neededToPass)
                         ? ''
-                        : `/ ${MAX_SCORE}`
+                        : `/${MAX_SCORE}`
                     }
                     hint={
                       summary.neededToPass === 0
-                        ? (language === 'es' ? 'ya estás aprobando' : 'already passing')
+                        ? (language === 'es' ? 'ya aprobando' : 'already passing')
                         : !Number.isFinite(summary.neededToPass ?? 0)
-                          ? (language === 'es' ? 'imposible este ciclo' : 'impossible this term')
+                          ? (language === 'es' ? 'imposible' : 'impossible')
                           : language === 'es' ? `meta ≥ ${PASS}` : `target ≥ ${PASS}`
                     }
                     tone={
@@ -444,73 +447,45 @@ export function SubjectDetail({
                     }
                   />
                   <KpiBox
+                    icon="verified"
                     label={language === 'es' ? 'Estado' : 'Status'}
-                    value={statusLabel(status, language as 'es' | 'en')}
+                    badge={statusLabel(status, language as 'es' | 'en')}
                     hint={`${summary.countDone}/${summary.countTotal} ${language === 'es' ? 'evaluaciones' : 'evals'}`}
                     tone={status}
-                    isText
                   />
                 </div>
 
                 {/* ─── Calculadora editable ─── */}
-                <section
-                  className="card mb-3"
-                  style={{ background: 'var(--s-low)', padding: 14 }}
-                >
+                <section className="card mb-3" style={{ background: 'var(--s-low)', padding: 14 }}>
                   <div className="section-head">
                     <div className="section-head__left">
-                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: subject.color, fontVariationSettings: "'FILL' 1" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: subject.color, fontVariationSettings: "'FILL' 0" }}>
                         calculate
                       </span>
                       <span className="section-head__title">
                         <span className="serif">{language === 'es' ? 'calculadora de notas' : 'grade calculator'}</span>
                       </span>
                     </div>
-                    <span
-                      className="font-mono"
-                      style={{
-                        fontSize: 10,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        color: weightOk ? 'var(--color-outline)' : 'var(--warning)',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {weightOk ? '' : '⚠ '}
-                      {language === 'es' ? 'pesos' : 'weights'} {totalWeight.toFixed(0)}%
-                    </span>
-                  </div>
-
-                  {/* Header row */}
-                  <div
-                    className="grid items-center gap-2 px-2 mb-2"
-                    style={{ gridTemplateColumns: '1fr 70px 70px 70px' }}
-                  >
-                    {[
-                      language === 'es' ? 'Evaluación' : 'Evaluation',
-                      language === 'es' ? 'Peso %' : 'Weight %',
-                      language === 'es' ? 'Nota' : 'Grade',
-                      language === 'es' ? 'Aporte' : 'Contrib.',
-                    ].map((h, i) => (
-                      <span
-                        key={i}
-                        className="font-mono"
-                        style={{
-                          fontSize: 9,
-                          fontWeight: 700,
-                          letterSpacing: '0.14em',
-                          textTransform: 'uppercase',
-                          color: 'var(--color-outline)',
-                          textAlign: i === 0 ? 'left' : 'right',
-                        }}
-                      >
-                        {h}
+                    {!weightOk ? (
+                      <span className="grade-table__warn">
+                        <span className="material-symbols-outlined">warning</span>
+                        {language === 'es' ? 'pesos' : 'weights'} {totalWeight.toFixed(0)}%
                       </span>
-                    ))}
+                    ) : (
+                      <span className="font-mono" style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-outline)', fontWeight: 600 }}>
+                        {language === 'es' ? 'pesos' : 'weights'} 100%
+                      </span>
+                    )}
                   </div>
 
-                  {/* Rows */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="grade-table">
+                    <div className="grade-table__head">
+                      <span>{language === 'es' ? 'Evaluación' : 'Evaluation'}</span>
+                      <span>{language === 'es' ? 'Peso %' : 'Weight %'}</span>
+                      <span>{language === 'es' ? 'Nota' : 'Grade'}</span>
+                      <span>{language === 'es' ? 'Aporte' : 'Contrib.'}</span>
+                    </div>
+
                     {weightedExams.map(exam => {
                       const cfg = ACTIVITY_TYPES[exam.activity_type]
                       const score = localScores[exam.id]
@@ -518,114 +493,81 @@ export function SubjectDetail({
                       const cls = classify(score)
                       const contribution = score != null ? (score / MAX_SCORE) * MAX_SCORE * (weight / 100) : null
                       const isTeacher = exam.assigned_by != null
+                      const aporteClass = contribution == null
+                        ? 'is-empty'
+                        : contribution >= 0
+                          ? 'is-positive'
+                          : 'is-negative'
 
                       return (
-                        <div
-                          key={exam.id}
-                          className="grid items-center gap-2 px-2 py-2.5 rounded-[8px]"
-                          style={{
-                            gridTemplateColumns: '1fr 70px 70px 70px',
-                            background: 'var(--s-base)',
-                            border: '1px solid var(--border-subtle)',
-                          }}
-                        >
-                          {/* Label */}
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span
-                              className="material-symbols-outlined flex-shrink-0"
-                              style={{ fontSize: 14, color: cfg.color, fontVariationSettings: "'FILL' 1" }}
-                            >
-                              {cfg.icon}
-                            </span>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-[12.5px] font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
-                                  {exam.title}
-                                </p>
-                                {isTeacher && (
-                                  <span
-                                    className="material-symbols-outlined flex-shrink-0"
-                                    style={{ fontSize: 11, color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}
-                                    title={language === 'es' ? 'Asignada por el profesor' : 'Assigned by teacher'}
-                                  >
-                                    lock
-                                  </span>
-                                )}
-                              </div>
-                              <p
-                                className="font-mono"
-                                style={{ fontSize: 9.5, color: 'var(--color-outline)', letterSpacing: '0.04em' }}
-                              >
-                                {new Date(exam.exam_date + 'T12:00:00').toLocaleDateString(
-                                  language === 'es' ? 'es-ES' : 'en-US',
-                                  { month: 'short', day: 'numeric' },
-                                )}
-                              </p>
+                        <div key={exam.id} className={`grade-row ${isTeacher ? 'locked' : ''}`}>
+                          <div className="grade-row__main">
+                            <div className="grade-row__title">
+                              <span className="material-symbols-outlined" style={{ color: cfg.color, fontVariationSettings: "'FILL' 0" }}>
+                                {cfg.icon}
+                              </span>
+                              <span className="truncate">{exam.title}</span>
+                              {isTeacher && (
+                                <span className="material-symbols-outlined" style={{ fontSize: 12, color: 'var(--color-primary)' }} title={language === 'es' ? 'Asignada por el profesor' : 'Assigned by teacher'}>
+                                  lock
+                                </span>
+                              )}
+                            </div>
+                            <div className="grade-row__when">
+                              {new Date(exam.exam_date + 'T12:00:00').toLocaleDateString(
+                                language === 'es' ? 'es-ES' : 'en-US',
+                                { month: 'short', day: 'numeric' },
+                              )}
                             </div>
                           </div>
 
-                          {/* Weight input */}
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={1}
-                            value={weight}
-                            disabled={isTeacher}
-                            onChange={e => updateWeight(exam.id, e.target.value)}
-                            onBlur={() => persistExam(exam)}
-                            className="grade-input"
-                            style={{ width: '100%', opacity: isTeacher ? 0.55 : 1 }}
-                            aria-label="Weight"
-                          />
+                          <div className="grade-row__weight">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={weight}
+                              disabled={isTeacher}
+                              onChange={e => updateWeight(exam.id, e.target.value)}
+                              onBlur={() => persistExam(exam)}
+                              className="grade-input"
+                              aria-label="Weight"
+                            />
+                            <span className="metric__unit">%</span>
+                          </div>
 
-                          {/* Score input (colored by class) */}
-                          <input
-                            type="number"
-                            min={0}
-                            max={MAX_SCORE}
-                            step={0.1}
-                            value={score ?? ''}
-                            disabled={isTeacher}
-                            onChange={e => updateScore(exam.id, e.target.value)}
-                            onBlur={() => persistExam(exam)}
-                            placeholder="—"
-                            className={`grade-input ${cls === 'pending' ? '' : cls}`}
-                            style={{ width: '100%', opacity: isTeacher ? 0.55 : 1 }}
-                            aria-label="Score"
-                          />
+                          <div className="grade-row__score">
+                            <input
+                              type="number"
+                              min={0}
+                              max={MAX_SCORE}
+                              step={0.1}
+                              value={score ?? ''}
+                              disabled={isTeacher}
+                              onChange={e => updateScore(exam.id, e.target.value)}
+                              onBlur={() => persistExam(exam)}
+                              placeholder="—"
+                              className={`grade-input grade-input--score ${cls === 'pending' ? '' : cls}`}
+                              aria-label="Score"
+                            />
+                            <span className="metric__unit">/{MAX_SCORE}</span>
+                          </div>
 
-                          {/* Contribution + save status */}
-                          <div className="flex items-center justify-end gap-1.5 min-w-0">
+                          <div className={`grade-row__aporte ${aporteClass}`}>
                             <SaveBadge status={saveStatus[exam.id] ?? 'idle'} isTeacher={isTeacher} lang={language as 'es' | 'en'} />
-                            <span
-                              className="font-mono tabular text-right"
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 700,
-                                color:
-                                  contribution == null
-                                    ? 'var(--color-outline)'
-                                    : 'var(--success)',
-                              }}
-                            >
-                              {contribution != null ? `+${contribution.toFixed(2)}` : '—'}
-                            </span>
+                            {contribution != null ? `${contribution >= 0 ? '+' : ''}${contribution.toFixed(2)}` : '—'}
                           </div>
                         </div>
                       )
                     })}
-                  </div>
 
-                  {/* Footer hint */}
-                  <p
-                    className="font-mono mt-3"
-                    style={{ fontSize: 10.5, letterSpacing: '0.04em', color: 'var(--color-outline)', lineHeight: 1.5 }}
-                  >
-                    {language === 'es'
-                      ? 'Editá pesos y notas — los cambios se guardan automáticamente al salir del campo. Las evaluaciones del profesor (con candado) son sólo lectura.'
-                      : 'Edit weights and grades — changes save automatically when you leave the field. Teacher-assigned evaluations (with lock icon) are read-only.'}
-                  </p>
+                    <div className="grade-table__foot">
+                      {language === 'es'
+                        ? 'Editá pesos y notas — los cambios se guardan automáticamente al salir del campo. Las evaluaciones del profesor (con candado) son sólo lectura.'
+                        : 'Edit weights and grades — changes save automatically when you leave the field. Teacher-assigned evaluations (with lock icon) are read-only.'}
+                    </div>
+                  </div>
                 </section>
 
                 {/* ─── Scenarios ─── */}
@@ -721,19 +663,21 @@ export function SubjectDetail({
 // ──────────────────────────────────────────────────────────────────
 
 function KpiBox({
+  icon,
   label,
   value,
   unit,
   hint,
   tone,
-  isText,
+  badge,
 }: {
+  icon?: string
   label: string
-  value: string
+  value?: string
   unit?: string
   hint?: string
   tone?: GradeStatus
-  isText?: boolean
+  badge?: string
 }) {
   const color =
     tone === 'pass'
@@ -745,16 +689,24 @@ function KpiBox({
           : 'var(--on-surface)'
 
   return (
-    <div className="kpi" style={{ padding: '12px 14px' }}>
-      <span className="kpi__sub">{label}</span>
-      <span
-        className="kpi__num font-mono tabular flex items-baseline gap-1"
-        style={{ color, fontSize: isText ? 16 : 24 }}
-      >
-        {value}
-        {unit && <span style={{ fontSize: 11, color: 'var(--color-outline)', fontWeight: 500 }}>{unit}</span>}
-      </span>
-      {hint && <span className="kpi__hint">{hint}</span>}
+    <div className="grade-kpi">
+      {icon && (
+        <div className="grade-kpi__icon">
+          <span className="material-symbols-outlined">{icon}</span>
+        </div>
+      )}
+      <div className="metric__label">{label}</div>
+      {badge ? (
+        <div className="grade-kpi__badge" style={{ background: statusBg(tone ?? 'pending'), color: statusFg(tone ?? 'pending') }}>
+          {badge}
+        </div>
+      ) : (
+        <div className="grade-kpi__num" style={{ color }}>
+          {value}
+          {unit && <span className="metric__unit">{unit}</span>}
+        </div>
+      )}
+      {hint && <div className="grade-kpi__sub">{hint}</div>}
     </div>
   )
 }

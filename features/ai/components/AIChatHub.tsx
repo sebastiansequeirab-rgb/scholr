@@ -387,6 +387,7 @@ export function AIChatHub({
     const subId     = session.subject_id
     const sub       = subId ? subjects.find(s => s.id === subId) : null
     const color     = sub?.color ?? 'var(--color-tertiary)'
+    const sessionIcon = sub?.icon || (sub ? 'menu_book' : 'auto_awesome')
     const isActive  = activeSessionId === session.id
 
     if (deleteConfirm === session.id) {
@@ -420,8 +421,8 @@ export function AIChatHub({
             : 'transparent',
         }}>
         <span className="material-symbols-outlined text-[12px] flex-shrink-0"
-          style={{ color: isActive ? color : 'var(--color-outline)' }}>
-          chat
+          style={{ color, fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+          {sessionIcon}
         </span>
         <span className="text-[11px] truncate flex-1"
           style={{ color: isActive ? 'var(--on-surface)' : 'var(--color-secondary)' }}>
@@ -612,12 +613,12 @@ export function AIChatHub({
                     fontSize: '13px',
                     lineHeight: 1.55,
                     backgroundColor: isUser
-                      ? 'color-mix(in srgb, var(--color-primary) 14%, var(--s-base))'
-                      : 'color-mix(in srgb, var(--color-tertiary) 10%, var(--s-base))',
+                      ? 'var(--accent-soft)'
+                      : 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)',
                     color: 'var(--on-surface)',
                     borderBottomRightRadius: isUser ? '4px' : undefined,
                     borderBottomLeftRadius:  !isUser ? '4px' : undefined,
-                    border: `1px solid color-mix(in srgb, ${isUser ? 'var(--color-primary)' : 'var(--color-tertiary)'} 22%, transparent)`,
+                    border: `1px solid color-mix(in srgb, ${isUser ? 'var(--color-primary)' : 'var(--color-tertiary)'} 30%, transparent)`,
                   }}>
                   {msg.content}
                 </div>

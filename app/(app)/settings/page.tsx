@@ -93,7 +93,7 @@ export default function SettingsPage() {
           <header className="section-head" style={{ padding: '12px 18px' }}>
             <div className="section-head__left">
               <span className="material-symbols-outlined text-[16px]"
-                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>person</span>
+                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 0" }}>person</span>
               <span className="section-head__title">
                 {language === 'es' ? 'Perfil' : 'Profile'}
               </span>
@@ -145,13 +145,18 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Full name */}
-            <div>
-              <label htmlFor="settingsName" className="label">
-                {language === 'es' ? 'Nombre completo' : 'Full name'}
+            {/* Full name — serif italic per mock */}
+            <div className="settings-field">
+              <label htmlFor="settingsName" className="settings-field__label">
+                {language === 'es' ? 'NOMBRE COMPLETO' : 'FULL NAME'}
               </label>
-              <input id="settingsName" className="input" value={fullName}
-                onChange={(e) => { setFullName(e.target.value); setDirty(true) }} />
+              <input
+                id="settingsName"
+                className="settings-field__name"
+                value={fullName}
+                placeholder={language === 'es' ? 'Tu nombre' : 'Your name'}
+                onChange={(e) => { setFullName(e.target.value); setDirty(true) }}
+              />
             </div>
 
             {/* Bio */}
@@ -171,7 +176,7 @@ export default function SettingsPage() {
           <header className="section-head" style={{ padding: '12px 18px' }}>
             <div className="section-head__left">
               <span className="material-symbols-outlined text-[16px]"
-                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+                style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 0" }}>workspace_premium</span>
               <span className="section-head__title">
                 {language === 'es' ? 'Plan' : 'Plan'}
               </span>
@@ -205,8 +210,8 @@ export default function SettingsPage() {
                 </div>
               </div>
               {!profile?.is_premium && (
-                <button className="btn btn-tertiary flex-shrink-0">
-                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>upgrade</span>
+                <button className="settings-upgrade flex-shrink-0">
+                  <span className="material-symbols-outlined">upgrade</span>
                   Upgrade
                 </button>
               )}
