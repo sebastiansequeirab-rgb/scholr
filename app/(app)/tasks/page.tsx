@@ -340,21 +340,25 @@ export default function TasksPage() {
   ]
 
   return (
-    <div className="max-w-3xl mx-auto animate-fade-in">
+    <div className="max-w-3xl mx-auto reveal-stagger">
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-          {t('tasks.title')}
-        </h1>
-        <div className="mt-4">
-          <div className="flex justify-between mono text-[10px] mb-1.5" style={{ color: 'var(--color-outline)' }}>
-            <span>{t('tasks.progress')}</span>
-            <span>{progress}%</span>
-          </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
-          </div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">{t('nav.tasks')} · {progress}%</span>
+          <h1 className="screen-head__title">
+            <span className="serif">{t('tasks.title').toLowerCase()}</span>
+          </h1>
+        </div>
+      </header>
+
+      <div className="mb-5">
+        <div className="flex justify-between font-mono mb-1.5" style={{ fontSize: 10, color: 'var(--color-outline)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <span>{t('tasks.progress')}</span>
+          <span className="tabular">{progress}%</span>
+        </div>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
       </div>
 

@@ -1060,17 +1060,17 @@ export default function PlannerPage() {
   ]
 
   return (
-    <div className="max-w-3xl mx-auto animate-fade-in pb-32 lg:pb-10">
+    <div className="max-w-3xl mx-auto reveal-stagger pb-32 lg:pb-10">
 
       {/* Header */}
-      <div className="mb-5">
-        <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1" style={{ color: 'var(--color-primary)' }}>
-          Skolar Sanctuary
-        </p>
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-          {t('planner.title')}
-        </h1>
-      </div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">{t('nav.tasks')} · 2026</span>
+          <h1 className="screen-head__title">
+            <span className="serif">plan de trabajo</span>
+          </h1>
+        </div>
+      </header>
 
       {/* ── Filters: type tabs + filter button in one row ── */}
       <div className="flex items-center gap-2 mb-4">

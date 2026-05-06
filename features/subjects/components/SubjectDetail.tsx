@@ -1,71 +1,28 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import type { Subject, Exam, Document } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
 import { formatFileSize } from '@/features/teacher/courses/utils'
+import {
+  PASS,
+  MAX_SCORE,
+  summarize,
+  classify,
+  projectIfAvg,
+  statusLabel,
+  statusBg,
+  statusFg,
+  type GradeItem,
+  type GradeStatus,
+} from '@/lib/grades'
 import { SubjectChat } from './SubjectChat'
+import { getSubjectIcon } from '@/features/subjects/utils'
 
 type DetailTab = 'progress' | 'chat' | 'documents'
-
-const PASS_SCORE = 10
-const MAX_SCORE  = 20
-
-function ProgressRing({ earned, potential, max }: { earned: number; potential: number; max: number }) {
-  const size = 140
-  const stroke = 10
-  const r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const passAngle = (PASS_SCORE / max) * circ
-
-  const earnedDash  = Math.min((earned  / max) * circ, circ)
-  const potDash     = Math.min((potential / max) * circ, circ)
-  const isPassing   = earned >= PASS_SCORE
-
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        {/* Track */}
-        <circle cx={size/2} cy={size/2} r={r} fill="none"
-          stroke="var(--s-high)" strokeWidth={stroke} />
-        {/* Potential (ungraded max) */}
-        {potential > 0 && (
-          <circle cx={size/2} cy={size/2} r={r} fill="none"
-            stroke="var(--color-primary)" strokeWidth={stroke}
-            strokeDasharray={`${potDash} ${circ}`}
-            strokeLinecap="round"
-            style={{ opacity: 0.2 }} />
-        )}
-        {/* Earned */}
-        {earned > 0 && (
-          <circle cx={size/2} cy={size/2} r={r} fill="none"
-            stroke={isPassing ? 'var(--success)' : 'var(--color-primary)'}
-            strokeWidth={stroke}
-            strokeDasharray={`${earnedDash} ${circ}`}
-            strokeLinecap="round"
-            style={{ transition: 'stroke-dasharray 0.6s ease' }} />
-        )}
-        {/* Pass threshold tick */}
-        <line
-          x1={size/2 + r * Math.cos((passAngle / circ) * 2 * Math.PI - Math.PI/2 - Math.PI/2)}
-          y1={size/2 + r * Math.sin((passAngle / circ) * 2 * Math.PI - Math.PI/2 - Math.PI/2)}
-          x2={size/2 + (r - stroke) * Math.cos((passAngle / circ) * 2 * Math.PI - Math.PI/2 - Math.PI/2)}
-          y2={size/2 + (r - stroke) * Math.sin((passAngle / circ) * 2 * Math.PI - Math.PI/2 - Math.PI/2)}
-          stroke="var(--warning)" strokeWidth={2} />
-      </svg>
-      {/* Center label */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-black leading-none" style={{ color: isPassing ? 'var(--success)' : 'var(--on-surface)' }}>
-          {earned.toFixed(1)}
-        </span>
-        <span className="text-xs font-semibold" style={{ color: 'var(--color-outline)' }}>/ {max}</span>
-      </div>
-    </div>
-  )
-}
 
 export function SubjectDetail({
   subject,
@@ -77,12 +34,16 @@ export function SubjectDetail({
   initialTab?: DetailTab
 }) {
   const { language } = useTranslation()
-  const [activeTab,       setActiveTab]       = useState<DetailTab>(initialTab)
-  const [exams,           setExams]           = useState<Exam[]>([])
-  const [noteCount,       setNoteCount]       = useState<number>(0)
-  const [documents,       setDocuments]       = useState<Document[]>([])
-  const [teacherGrades,   setTeacherGrades]   = useState<Record<string, number | null>>({})
-  const [loading,         setLoading]         = useState(true)
+  const [activeTab, setActiveTab] = useState<DetailTab>(initialTab)
+  const [exams, setExams] = useState<Exam[]>([])
+  const [noteCount, setNoteCount] = useState<number>(0)
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [teacherGrades, setTeacherGrades] = useState<Record<string, number | null>>({})
+  const [loading, setLoading] = useState(true)
+
+  // Local edit state (what-if simulator)
+  const [localScores, setLocalScores] = useState<Record<string, number | null>>({})
+  const [localWeights, setLocalWeights] = useState<Record<string, number>>({})
 
   const fetchExams = useCallback(async () => {
     const supabase = createClient()
@@ -103,11 +64,8 @@ export function SubjectDetail({
     setExams(data || [])
     setNoteCount(count ?? 0)
 
-    // Fetch teacher grades (exam_grades) for teacher-assigned exams in this subject
     if (user && subject.teacher_id) {
-      const examIds = (data || [])
-        .filter(e => e.assigned_by != null)
-        .map(e => e.id as string)
+      const examIds = (data || []).filter(e => e.assigned_by != null).map(e => e.id as string)
       if (examIds.length > 0) {
         const { data: grades } = await supabase
           .from('exam_grades')
@@ -123,7 +81,6 @@ export function SubjectDetail({
       }
     }
 
-    // Fetch documents if this is a teacher-created course
     if (subject.teacher_id) {
       const { data: docs } = await supabase
         .from('documents')
@@ -138,6 +95,20 @@ export function SubjectDetail({
 
   useEffect(() => { fetchExams() }, [fetchExams])
 
+  // Initialize local edit state from server data once exams load
+  useEffect(() => {
+    if (exams.length === 0) return
+    const initialScores: Record<string, number | null> = {}
+    const initialWeights: Record<string, number> = {}
+    for (const e of exams) {
+      const serverGrade = e.assigned_by ? (teacherGrades[e.id] ?? null) : (e.grade ?? null)
+      initialScores[e.id] = serverGrade
+      initialWeights[e.id] = e.percentage ?? 0
+    }
+    setLocalScores(initialScores)
+    setLocalWeights(initialWeights)
+  }, [exams, teacherGrades])
+
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -145,139 +116,205 @@ export function SubjectDetail({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  // Resolve effective grade: teacher exams use exam_grades; own exams use exam.grade
-  const effectiveGrade = (e: Exam): number | null =>
-    e.assigned_by ? (teacherGrades[e.id] ?? null) : e.grade
+  // Filter to weighted exams (others ignored for the calc)
+  const weightedExams = useMemo(() => exams.filter(e => e.percentage != null), [exams])
+  const noWeightExams = useMemo(() => exams.filter(e => e.percentage == null), [exams])
 
-  const gradedExams    = exams.filter(e => effectiveGrade(e) !== null && e.percentage != null)
-  const submittedExams = exams.filter(e => e.submission_status === 'submitted' && effectiveGrade(e) == null)
-  const ungradedExams  = exams.filter(e => effectiveGrade(e) == null && e.percentage != null)
-  const noWeightExams  = exams.filter(e => e.percentage == null)
+  // Build GradeItem[] from local edit state
+  const gradeItems: GradeItem[] = useMemo(
+    () => weightedExams.map(e => ({
+      label:  e.title,
+      weight: localWeights[e.id] ?? 0,
+      score:  localScores[e.id] ?? null,
+      max:    MAX_SCORE,
+      when:   e.exam_date,
+    })),
+    [weightedExams, localScores, localWeights],
+  )
 
-  const earned    = gradedExams.reduce((sum, e) => sum + (effectiveGrade(e)! * e.percentage! / 100), 0)
-  const potential = ungradedExams.reduce((sum, e) => sum + (e.percentage! / 100 * MAX_SCORE), 0)
-  const totalWeight = gradedExams.reduce((sum, e) => sum + e.percentage!, 0)
-  const remaining = Math.max(0, PASS_SCORE - earned)
-  const isPassing = earned >= PASS_SCORE
+  const summary = useMemo(() => summarize(gradeItems), [gradeItems])
+  const totalWeight = summary.totalWeight
+  const weightOk = Math.abs(totalWeight - 100) < 0.01
+  const sub10 = projectIfAvg(gradeItems, 10)
+  const sub14 = projectIfAvg(gradeItems, 14)
+  const sub18 = projectIfAvg(gradeItems, 18)
 
-  const iconFor = (subject: Subject) => subject.icon || 'menu_book'
+  const status = summary.status
+  const iconFor = (s: Subject) => s.icon || getSubjectIcon(s.name)
+
+  const updateScore = (id: string, raw: string) => {
+    if (raw === '') {
+      setLocalScores(prev => ({ ...prev, [id]: null }))
+      return
+    }
+    const n = parseFloat(raw)
+    if (Number.isNaN(n)) return
+    setLocalScores(prev => ({ ...prev, [id]: Math.max(0, Math.min(MAX_SCORE, n)) }))
+  }
+  const updateWeight = (id: string, raw: string) => {
+    const n = parseFloat(raw)
+    if (Number.isNaN(n)) return
+    setLocalWeights(prev => ({ ...prev, [id]: Math.max(0, Math.min(100, n)) }))
+  }
 
   return (
-    <div
-      className="modal-overlay"
-      onClick={onClose}
-    >
+    <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-content w-full max-w-2xl max-h-[90vh] flex flex-col"
+        className="w-full max-w-3xl max-h-[92vh] flex flex-col rounded-[18px] overflow-hidden animate-slide-up"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={subject.name}
-        style={{ padding: 0, overflow: 'hidden' }}
+        style={{ background: 'var(--s-base)', border: '1px solid var(--border-default)' }}
       >
-        {/* ── Header strip ── */}
-        <div className="relative flex items-center gap-4 p-6"
+        {/* ─────────── Header strip ─────────── */}
+        <div
+          className="relative flex items-start gap-4 px-6 py-5"
           style={{
-            background: `linear-gradient(135deg, ${subject.color}22 0%, ${subject.color}08 100%)`,
+            background: `linear-gradient(135deg, color-mix(in srgb, ${subject.color} 18%, transparent) 0%, color-mix(in srgb, ${subject.color} 6%, transparent) 100%)`,
             borderBottom: '1px solid var(--border-subtle)',
-          }}>
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: `${subject.color}20` }}>
-            <span className="material-symbols-outlined text-2xl" style={{ color: subject.color }}>
+          }}
+        >
+          <div
+            className="w-11 h-11 rounded-[10px] flex items-center justify-center flex-shrink-0"
+            style={{ background: `color-mix(in srgb, ${subject.color} 22%, transparent)` }}
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: 22, color: subject.color, fontVariationSettings: "'FILL' 1" }}
+            >
               {iconFor(subject)}
             </span>
           </div>
+
           <div className="flex-1 min-w-0">
-            <p className="mono text-[9px] tracking-[0.2em] uppercase mb-0.5"
-              style={{ color: subject.color }}>
-              Skolar Sanctuary
-            </p>
-            <h2 className="text-xl font-extrabold tracking-tight truncate" style={{ color: 'var(--on-surface)' }}>
-              {subject.name}
+            <span
+              className="font-mono"
+              style={{
+                fontSize: 9.5,
+                fontWeight: 700,
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                color: subject.color,
+              }}
+            >
+              {subject.credits ? `${subject.credits} UC · ` : ''}
+              {subject.professor || subject.name}
+            </span>
+            <h2
+              className="text-[22px] font-bold leading-tight mt-0.5"
+              style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}
+            >
+              <span className="serif">{subject.name}</span>
             </h2>
-            {subject.professor && (
-              <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--color-outline)' }}>
-                <span className="material-symbols-outlined text-[12px]">person</span>
-                {subject.professor}
-              </p>
-            )}
-            {noteCount > 0 && (
-              <Link
-                href={`/notes?subject=${subject.id}`}
-                onClick={onClose}
-                className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all hover:opacity-80"
-                style={{
-                  backgroundColor: `${subject.color}18`,
-                  color:           subject.color,
-                  border:          `1px solid ${subject.color}30`,
-                }}
-              >
-                <span className="material-symbols-outlined text-[11px]">edit_note</span>
-                {noteCount} {language === 'es' ? `nota${noteCount !== 1 ? 's' : ''}` : `note${noteCount !== 1 ? 's' : ''}`}
-              </Link>
-            )}
+
+            {/* Status row */}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className="badge" style={{ background: statusBg(status), color: statusFg(status) }}>
+                {statusLabel(status, language as 'es' | 'en')}
+              </span>
+              {summary.currentAverage != null && (
+                <span className="text-[11.5px]" style={{ color: 'var(--on-surface-variant)' }}>
+                  {language === 'es' ? 'Promedio actual' : 'Current avg'}{' '}
+                  <strong className="font-mono tabular" style={{ color: 'var(--on-surface)' }}>
+                    {summary.currentAverage.toFixed(2)}
+                  </strong>
+                  <span style={{ color: 'var(--color-outline)' }}> / {MAX_SCORE}</span>
+                </span>
+              )}
+              {noteCount > 0 && (
+                <Link
+                  href={`/notes?subject=${subject.id}`}
+                  onClick={onClose}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
+                  style={{ color: subject.color }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 12 }}>edit_note</span>
+                  {noteCount} {language === 'es' ? `nota${noteCount !== 1 ? 's' : ''}` : `note${noteCount !== 1 ? 's' : ''}`}
+                </Link>
+              )}
+            </div>
           </div>
-          <button onClick={onClose}
-            className="p-2 rounded-xl transition-all hover:bg-black/5 dark:hover:bg-white/5 flex-shrink-0"
-            style={{ color: 'var(--color-outline)' }}>
-            <span className="material-symbols-outlined text-[20px]">close</span>
+
+          <button
+            onClick={onClose}
+            className="btn btn-icon btn-ghost flex-shrink-0"
+            aria-label="Close"
+          >
+            <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        {/* ── Tab bar ── */}
-        <div className="flex gap-1 px-4 py-2" style={{ borderBottom: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-low)' }}>
+        {/* ─────────── Tab bar ─────────── */}
+        <div
+          className="flex gap-1 px-4 py-2"
+          style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--s-low)' }}
+        >
           {([
-            { id: 'progress',  icon: 'trending_up',  label_es: 'Progreso',   label_en: 'Progress',  show: true                     },
-            { id: 'documents', icon: 'folder_open',  label_es: 'Archivos',   label_en: 'Files',     show: !!subject.teacher_id     },
-            { id: 'chat',      icon: 'auto_awesome',  label_es: 'Chat IA',    label_en: 'AI Chat',   show: true                     },
-          ] as const).filter(tab => tab.show).map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={{
-                backgroundColor: activeTab === tab.id ? `${subject.color}15` : 'transparent',
-                color:           activeTab === tab.id ? subject.color : 'var(--color-outline)',
-              }}>
-              <span className="material-symbols-outlined text-[14px]"
-                style={{ fontVariationSettings: activeTab === tab.id ? "'FILL' 1" : "'FILL' 0" }}>
-                {tab.icon}
-              </span>
-              {language === 'es' ? tab.label_es : tab.label_en}
-            </button>
-          ))}
+            { id: 'progress',  icon: 'calculate',    label_es: 'Calculadora', label_en: 'Calculator', show: true                  },
+            { id: 'documents', icon: 'folder_open',  label_es: 'Archivos',    label_en: 'Files',      show: !!subject.teacher_id  },
+            { id: 'chat',      icon: 'auto_awesome', label_es: 'Chat IA',     label_en: 'AI Chat',    show: true                  },
+          ] as const).filter(tab => tab.show).map(tab => {
+            const active = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] transition-all"
+                style={{
+                  background: active ? `color-mix(in srgb, ${subject.color} 16%, transparent)` : 'transparent',
+                  color: active ? subject.color : 'var(--on-surface-variant)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 14, fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  {tab.icon}
+                </span>
+                {language === 'es' ? tab.label_es : tab.label_en}
+              </button>
+            )
+          })}
         </div>
 
-        {/* ── Documents tab ── */}
+        {/* ─────────── Documents tab ─────────── */}
         {activeTab === 'documents' && (
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-5">
             {loading ? (
-              <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-14 rounded-xl" />)}</div>
+              <div className="flex flex-col gap-2">{[1,2,3].map(i => <div key={i} className="skeleton h-14" />)}</div>
             ) : documents.length === 0 ? (
-              <div className="text-center py-12">
-                <span className="material-symbols-outlined text-4xl mb-3 block"
-                  style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
+              <div className="text-center py-10">
+                <span className="material-symbols-outlined block mb-2" style={{ fontSize: 32, color: 'var(--color-outline)' }}>
                   folder_open
                 </span>
-                <p className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>
+                <p className="text-[13px]" style={{ color: 'var(--on-surface-variant)' }}>
                   {language === 'es' ? 'Sin archivos disponibles' : 'No files available'}
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl"
-                    style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}>
-                      <span className="material-symbols-outlined text-[16px]"
-                        style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+              <div className="flex flex-col gap-1.5">
+                {documents.map(doc => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center gap-3 p-3 rounded-[10px]"
+                    style={{ background: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-[8px] flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
                         insert_drive_file
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: 'var(--on-surface)' }}>
+                      <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
                         {doc.title}
                       </p>
-                      <p className="text-[10px]" style={{ color: 'var(--on-surface-variant)' }}>
+                      <p className="font-mono" style={{ fontSize: 10, color: 'var(--on-surface-variant)', letterSpacing: '0.04em' }}>
                         {doc.size_bytes != null ? formatFileSize(doc.size_bytes) : '—'}
                       </p>
                     </div>
@@ -285,10 +322,10 @@ export function SubjectDetail({
                       href={doc.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg hover:bg-[var(--s-base)] transition-all flex-shrink-0"
+                      className="btn btn-icon btn-ghost"
                       style={{ color: 'var(--color-primary)' }}
                     >
-                      <span className="material-symbols-outlined text-[18px]">download</span>
+                      <span className="material-symbols-outlined">download</span>
                     </a>
                   </div>
                 ))}
@@ -297,247 +334,400 @@ export function SubjectDetail({
           </div>
         )}
 
-        {/* ── Chat tab ── */}
+        {/* ─────────── Chat tab ─────────── */}
         {activeTab === 'chat' && (
           <div className="flex-1 overflow-hidden flex flex-col">
             <SubjectChat subject={subject} />
           </div>
         )}
 
-        {/* ── Progress tab ── */}
+        {/* ─────────── Calculator tab ─────────── */}
         {activeTab === 'progress' && (
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {loading ? (
-            <div className="space-y-3">
-              {[1,2,3].map(i => <div key={i} className="skeleton h-14 rounded-xl" />)}
-            </div>
-          ) : (
-            <>
-              {/* ── Score overview ── */}
-              <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-                <ProgressRing earned={earned} potential={potential} max={MAX_SCORE} />
-
-                <div className="flex-1 space-y-3">
-                  {/* Main score */}
-                  <div className="rounded-2xl p-4"
-                    style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
-                    <div className="flex items-end gap-2 mb-1">
-                      <span className="text-3xl font-black leading-none"
-                        style={{ color: isPassing ? 'var(--success)' : 'var(--color-primary)' }}>
-                        {earned.toFixed(2)}
-                      </span>
-                      <span className="text-base font-bold mb-0.5" style={{ color: 'var(--color-outline)' }}>
-                        / {MAX_SCORE}
-                      </span>
-                      {isPassing && (
-                        <span className="ml-auto flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
-                          style={{ backgroundColor: 'color-mix(in srgb, var(--success) 15%, transparent)', color: 'var(--success)' }}>
-                          <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                          {language === 'es' ? 'Aprobado' : 'Passing'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
-                      {isPassing
-                        ? (language === 'es' ? `+${(earned - PASS_SCORE).toFixed(2)} pts sobre la nota mínima` : `+${(earned - PASS_SCORE).toFixed(2)} pts above pass mark`)
-                        : (language === 'es' ? `Faltan ${remaining.toFixed(2)} pts para aprobar` : `${remaining.toFixed(2)} pts needed to pass`)}
-                    </p>
-                  </div>
-
-                  {/* Stats row */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { label: language === 'es' ? 'Calificadas' : 'Graded',    value: gradedExams.length,    color: 'var(--success)'       },
-                      { label: language === 'es' ? 'Entregadas'  : 'Submitted', value: submittedExams.length, color: 'var(--warning)'       },
-                      { label: language === 'es' ? 'Pendientes'  : 'Pending',   value: ungradedExams.length - submittedExams.length, color: 'var(--color-outline)' },
-                      { label: language === 'es' ? 'Peso eval.'  : 'Weight',    value: `${totalWeight}%`,     color: 'var(--color-primary)' },
-                    ].map(stat => (
-                      <div key={stat.label} className="rounded-xl p-2 text-center"
-                        style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
-                        <p className="text-base font-black leading-none" style={{ color: stat.color }}>{stat.value}</p>
-                        <p className="text-[8px] mt-0.5 font-semibold uppercase tracking-wide" style={{ color: 'var(--color-outline)' }}>
-                          {stat.label}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Progress bar */}
-                  <div>
-                    <div className="h-2.5 rounded-full overflow-hidden"
-                      style={{ backgroundColor: 'var(--s-high)' }}>
-                      {/* Potential */}
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${Math.min(((earned + potential) / MAX_SCORE) * 100, 100)}%`,
-                          background: `color-mix(in srgb, var(--color-primary) 30%, transparent)`,
-                        }} />
-                    </div>
-                    <div className="h-2.5 rounded-full -mt-2.5 overflow-hidden">
-                      {/* Earned */}
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${Math.min((earned / MAX_SCORE) * 100, 100)}%`,
-                          background: isPassing
-                            ? 'linear-gradient(90deg, var(--success), color-mix(in srgb, var(--success) 70%, var(--color-primary)))'
-                            : 'linear-gradient(90deg, var(--color-primary-container), var(--color-primary))',
-                        }} />
-                    </div>
-                    {/* Pass marker */}
-                    <div className="relative h-0">
-                      <div className="absolute top-[-12px] w-0.5 h-3 rounded-full"
-                        style={{
-                          left: `${(PASS_SCORE / MAX_SCORE) * 100}%`,
-                          backgroundColor: 'var(--warning)',
-                        }} />
-                    </div>
-                    <div className="flex justify-between mt-2 text-[9px] font-semibold"
-                      style={{ color: 'var(--color-outline)' }}>
-                      <span>0</span>
-                      <span style={{ color: 'var(--warning)' }}>
-                        {language === 'es' ? `mín. ${PASS_SCORE}` : `min. ${PASS_SCORE}`}
-                      </span>
-                      <span>{MAX_SCORE}</span>
-                    </div>
-                  </div>
+          <div className="flex-1 overflow-y-auto p-5">
+            {loading ? (
+              <div className="flex flex-col gap-2">{[1,2,3].map(i => <div key={i} className="skeleton h-14" />)}</div>
+            ) : weightedExams.length === 0 ? (
+              <EmptyCalc lang={language as 'es' | 'en'} subjectColor={subject.color} />
+            ) : (
+              <>
+                {/* ─── KPI strip ─── */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+                  <KpiBox
+                    label={language === 'es' ? 'Promedio actual' : 'Current average'}
+                    value={summary.currentAverage != null ? summary.currentAverage.toFixed(2) : '—'}
+                    unit={`/ ${MAX_SCORE}`}
+                    hint={language === 'es' ? `${Math.round(summary.doneWeight)}% rendido` : `${Math.round(summary.doneWeight)}% done`}
+                    tone={status}
+                  />
+                  <KpiBox
+                    label={language === 'es' ? 'Proyección final' : 'Projected final'}
+                    value={summary.projectedFinal != null ? summary.projectedFinal.toFixed(2) : '—'}
+                    unit={`/ ${MAX_SCORE}`}
+                    hint={language === 'es' ? 'si mantenés ritmo' : 'if you keep pace'}
+                  />
+                  <KpiBox
+                    label={language === 'es' ? 'Para aprobar' : 'To pass'}
+                    value={
+                      summary.neededToPass == null
+                        ? '—'
+                        : summary.neededToPass === 0
+                          ? '✓'
+                          : !Number.isFinite(summary.neededToPass)
+                            ? '✕'
+                            : summary.neededToPass.toFixed(2)
+                    }
+                    unit={
+                      summary.neededToPass == null || summary.neededToPass === 0 || !Number.isFinite(summary.neededToPass)
+                        ? ''
+                        : `/ ${MAX_SCORE}`
+                    }
+                    hint={
+                      summary.neededToPass === 0
+                        ? (language === 'es' ? 'ya estás aprobando' : 'already passing')
+                        : !Number.isFinite(summary.neededToPass ?? 0)
+                          ? (language === 'es' ? 'imposible este ciclo' : 'impossible this term')
+                          : language === 'es' ? `meta ≥ ${PASS}` : `target ≥ ${PASS}`
+                    }
+                    tone={
+                      summary.neededToPass == null
+                        ? 'pending'
+                        : summary.neededToPass === 0
+                          ? 'pass'
+                          : !Number.isFinite(summary.neededToPass)
+                            ? 'fail'
+                            : summary.neededToPass > 14
+                              ? 'risk'
+                              : 'pass'
+                    }
+                  />
+                  <KpiBox
+                    label={language === 'es' ? 'Estado' : 'Status'}
+                    value={statusLabel(status, language as 'es' | 'en')}
+                    hint={`${summary.countDone}/${summary.countTotal} ${language === 'es' ? 'evaluaciones' : 'evals'}`}
+                    tone={status}
+                    isText
+                  />
                 </div>
-              </div>
 
-              {/* ── Evaluations breakdown ── */}
-              {exams.length > 0 ? (
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest mb-3"
-                    style={{ color: 'var(--color-outline)' }}>
-                    {language === 'es' ? 'Desglose de evaluaciones' : 'Evaluation breakdown'}
-                  </h3>
+                {/* ─── Calculadora editable ─── */}
+                <section
+                  className="card mb-3"
+                  style={{ background: 'var(--s-low)', padding: 14 }}
+                >
+                  <div className="section-head">
+                    <div className="section-head__left">
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: subject.color, fontVariationSettings: "'FILL' 1" }}>
+                        calculate
+                      </span>
+                      <span className="section-head__title">
+                        <span className="serif">{language === 'es' ? 'calculadora de notas' : 'grade calculator'}</span>
+                      </span>
+                    </div>
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: 10,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: weightOk ? 'var(--color-outline)' : 'var(--warning)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {weightOk ? '' : '⚠ '}
+                      {language === 'es' ? 'pesos' : 'weights'} {totalWeight.toFixed(0)}%
+                    </span>
+                  </div>
 
                   {/* Header row */}
-                  <div className="grid gap-2 mb-1 px-3"
-                    style={{ gridTemplateColumns: '1fr 56px 64px 72px' }}>
-                    {['', language === 'es' ? 'Peso' : 'Weight', language === 'es' ? 'Nota' : 'Grade', language === 'es' ? 'Aporte' : 'Contrib.'].map((h, i) => (
-                      <span key={i} className="text-[9px] font-bold uppercase tracking-wide text-right first:text-left"
-                        style={{ color: 'var(--color-outline)' }}>{h}</span>
+                  <div
+                    className="grid items-center gap-2 px-2 mb-2"
+                    style={{ gridTemplateColumns: '1fr 70px 70px 70px' }}
+                  >
+                    {[
+                      language === 'es' ? 'Evaluación' : 'Evaluation',
+                      language === 'es' ? 'Peso %' : 'Weight %',
+                      language === 'es' ? 'Nota' : 'Grade',
+                      language === 'es' ? 'Aporte' : 'Contrib.',
+                    ].map((h, i) => (
+                      <span
+                        key={i}
+                        className="font-mono"
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: '0.14em',
+                          textTransform: 'uppercase',
+                          color: 'var(--color-outline)',
+                          textAlign: i === 0 ? 'left' : 'right',
+                        }}
+                      >
+                        {h}
+                      </span>
                     ))}
                   </div>
 
-                  <div className="space-y-1.5">
-                    {exams.map(exam => {
-                      const cfg        = ACTIVITY_TYPES[exam.activity_type]
-                      const grade      = effectiveGrade(exam)
-                      const isTeacher  = exam.assigned_by != null
-                      const hasGrade   = grade !== null && exam.percentage != null
-                      const contrib    = hasGrade ? (grade! * exam.percentage! / 100) : null
-                      const maxContrib = exam.percentage != null ? (exam.percentage / 100 * MAX_SCORE) : null
+                  {/* Rows */}
+                  <div className="flex flex-col gap-1.5">
+                    {weightedExams.map(exam => {
+                      const cfg = ACTIVITY_TYPES[exam.activity_type]
+                      const score = localScores[exam.id]
+                      const weight = localWeights[exam.id] ?? 0
+                      const cls = classify(score)
+                      const contribution = score != null ? (score / MAX_SCORE) * MAX_SCORE * (weight / 100) : null
+                      const isTeacher = exam.assigned_by != null
 
                       return (
-                        <div key={exam.id}
-                          className="grid items-center gap-2 px-3 py-2.5 rounded-xl"
+                        <div
+                          key={exam.id}
+                          className="grid items-center gap-2 px-2 py-2.5 rounded-[8px]"
                           style={{
-                            gridTemplateColumns: '1fr 56px 64px 72px',
-                            backgroundColor: 'var(--s-base)',
-                            border: `1px solid ${isTeacher ? 'color-mix(in srgb, var(--color-primary) 20%, transparent)' : 'var(--border-subtle)'}`,
-                            opacity: hasGrade ? 1 : 0.7,
-                          }}>
-                          {/* Name + type */}
+                            gridTemplateColumns: '1fr 70px 70px 70px',
+                            background: 'var(--s-base)',
+                            border: '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          {/* Label */}
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="material-symbols-outlined text-[14px] flex-shrink-0"
-                              style={{ color: cfg.color, fontVariationSettings: "'FILL' 1" }}>
+                            <span
+                              className="material-symbols-outlined flex-shrink-0"
+                              style={{ fontSize: 14, color: cfg.color, fontVariationSettings: "'FILL' 1" }}
+                            >
                               {cfg.icon}
                             </span>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-xs font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
+                                <p className="text-[12.5px] font-semibold truncate" style={{ color: 'var(--on-surface)' }}>
                                   {exam.title}
                                 </p>
                                 {isTeacher && (
-                                  <span className="material-symbols-outlined text-[11px] flex-shrink-0"
-                                    style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}
-                                    title={language === 'es' ? 'Asignada por el profesor' : 'Assigned by teacher'}>
+                                  <span
+                                    className="material-symbols-outlined flex-shrink-0"
+                                    style={{ fontSize: 11, color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}
+                                    title={language === 'es' ? 'Asignada por el profesor' : 'Assigned by teacher'}
+                                  >
                                     lock
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[9px]" style={{ color: 'var(--color-outline)' }}>
-                                {new Date(exam.exam_date + 'T12:00:00').toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' })}
+                              <p
+                                className="font-mono"
+                                style={{ fontSize: 9.5, color: 'var(--color-outline)', letterSpacing: '0.04em' }}
+                              >
+                                {new Date(exam.exam_date + 'T12:00:00').toLocaleDateString(
+                                  language === 'es' ? 'es-ES' : 'en-US',
+                                  { month: 'short', day: 'numeric' },
+                                )}
                               </p>
                             </div>
                           </div>
 
-                          {/* Weight */}
-                          <span className="text-xs font-bold text-right mono"
-                            style={{ color: 'var(--color-primary)' }}>
-                            {exam.percentage != null ? `${exam.percentage}%` : '—'}
-                          </span>
+                          {/* Weight input */}
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={weight}
+                            onChange={e => updateWeight(exam.id, e.target.value)}
+                            className="grade-input"
+                            style={{ width: '100%' }}
+                            aria-label="Weight"
+                          />
 
-                          {/* Grade */}
-                          <span className="text-xs font-bold text-right mono"
-                            style={{ color: hasGrade ? 'var(--on-surface)' : 'var(--color-outline)' }}>
-                            {hasGrade ? `${grade!.toFixed(1)}/20` : (language === 'es' ? 'Pend.' : 'Pend.')}
-                          </span>
+                          {/* Score input (colored by class) */}
+                          <input
+                            type="number"
+                            min={0}
+                            max={MAX_SCORE}
+                            step={0.1}
+                            value={score ?? ''}
+                            onChange={e => updateScore(exam.id, e.target.value)}
+                            placeholder="—"
+                            className={`grade-input ${cls === 'pending' ? '' : cls}`}
+                            style={{ width: '100%' }}
+                            aria-label="Score"
+                          />
 
                           {/* Contribution */}
-                          <div className="text-right">
-                            {contrib != null ? (
-                              <span className="text-xs font-black mono"
-                                style={{ color: contrib > 0 ? 'var(--success)' : 'var(--color-outline)' }}>
-                                +{contrib.toFixed(2)}
-                              </span>
-                            ) : maxContrib != null ? (
-                              <span className="text-[10px] mono" style={{ color: 'var(--color-outline)' }}>
-                                ≤{maxContrib.toFixed(1)}
-                              </span>
-                            ) : (
-                              <span className="text-xs" style={{ color: 'var(--color-outline)' }}>—</span>
-                            )}
-                          </div>
+                          <span
+                            className="font-mono tabular text-right"
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color:
+                                contribution == null
+                                  ? 'var(--color-outline)'
+                                  : 'var(--success)',
+                            }}
+                          >
+                            {contribution != null ? `+${contribution.toFixed(2)}` : '—'}
+                          </span>
                         </div>
                       )
                     })}
                   </div>
 
-                  {/* Unweighted activities */}
-                  {noWeightExams.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-[9px] uppercase tracking-widest font-bold mb-2"
-                        style={{ color: 'var(--color-outline)' }}>
-                        {language === 'es' ? 'Sin porcentaje asignado' : 'No weight assigned'}
-                      </p>
-                      <div className="space-y-1">
-                        {noWeightExams.map(exam => {
-                          const cfg = ACTIVITY_TYPES[exam.activity_type]
-                          return (
-                            <div key={exam.id}
-                              className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                              style={{ backgroundColor: 'var(--s-base)', opacity: 0.5, border: '1px solid var(--border-subtle)' }}>
-                              <span className="material-symbols-outlined text-[13px]"
-                                style={{ color: cfg.color }}>{cfg.icon}</span>
-                              <span className="text-xs truncate" style={{ color: 'var(--on-surface)' }}>{exam.title}</span>
-                            </div>
-                          )
-                        })}
+                  {/* Footer hint */}
+                  <p
+                    className="font-mono mt-3"
+                    style={{ fontSize: 10.5, letterSpacing: '0.04em', color: 'var(--color-outline)', lineHeight: 1.5 }}
+                  >
+                    {language === 'es'
+                      ? 'Editá pesos y notas para simular escenarios. Los cambios no se guardan — usá la sección Evaluaciones para guardar.'
+                      : 'Edit weights and grades to simulate. Changes are not saved — use the Evaluations section to persist.'}
+                  </p>
+                </section>
+
+                {/* ─── Scenarios ─── */}
+                {summary.pendingWeight > 0 && (
+                  <section className="card" style={{ background: 'var(--s-low)', padding: 14 }}>
+                    <div className="section-head">
+                      <div className="section-head__left">
+                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
+                          trending_up
+                        </span>
+                        <span className="section-head__title">
+                          <span className="serif">{language === 'es' ? 'escenarios' : 'scenarios'}</span>
+                        </span>
                       </div>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <span className="material-symbols-outlined text-3xl block mb-2"
-                    style={{ color: 'var(--color-outline)' }}>assignment</span>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>
-                    {language === 'es' ? 'Sin evaluaciones registradas' : 'No evaluations recorded'}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-outline)' }}>
-                    {language === 'es'
-                      ? 'Agrega actividades en la sección Actividades para ver tu progreso.'
-                      : 'Add activities in the Activities section to track your progress.'}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      {[
+                        { avg: 10, projected: sub10, color: 'var(--color-outline)' },
+                        { avg: 14, projected: sub14, color: 'var(--success)' },
+                        { avg: 18, projected: sub18, color: 'var(--success)' },
+                      ].map(({ avg, projected, color }) => {
+                        const projectedStr = projected != null ? projected.toFixed(2) : '—'
+                        const passes = projected != null && projected >= PASS
+                        return (
+                          <div
+                            key={avg}
+                            className="flex items-center gap-2 px-3 py-2 rounded-[8px]"
+                            style={{ background: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}
+                          >
+                            <span className="text-[12.5px]" style={{ color: 'var(--on-surface-variant)' }}>
+                              {language === 'es' ? 'Si saco' : 'If I score'}{' '}
+                              <strong className="font-mono tabular" style={{ color: 'var(--on-surface)' }}>
+                                {avg}
+                              </strong>{' '}
+                              {language === 'es' ? 'en lo que falta:' : 'on remaining:'}
+                            </span>
+                            <span className="ml-auto font-mono tabular flex items-baseline gap-1" style={{ fontSize: 13, fontWeight: 700, color: passes ? 'var(--success)' : color }}>
+                              → {projectedStr}
+                              <span style={{ fontSize: 10, color: 'var(--color-outline)', fontWeight: 500 }}>
+                                / {MAX_SCORE}
+                              </span>
+                              {passes && (
+                                <span className="material-symbols-outlined ml-1" style={{ fontSize: 13, color: 'var(--success)' }}>
+                                  check_circle
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </section>
+                )}
+
+                {/* Unweighted activities */}
+                {noWeightExams.length > 0 && (
+                  <section className="mt-3">
+                    <p
+                      className="font-mono mb-2"
+                      style={{ fontSize: 9.5, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 600, color: 'var(--color-outline)' }}
+                    >
+                      {language === 'es' ? 'Sin porcentaje asignado' : 'No weight assigned'}
+                    </p>
+                    <div className="flex flex-col gap-1">
+                      {noWeightExams.map(exam => {
+                        const cfg = ACTIVITY_TYPES[exam.activity_type]
+                        return (
+                          <div
+                            key={exam.id}
+                            className="flex items-center gap-2 px-3 py-2 rounded-[8px]"
+                            style={{ background: 'var(--s-base)', opacity: 0.55, border: '1px solid var(--border-subtle)' }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 13, color: cfg.color }}>{cfg.icon}</span>
+                            <span className="text-[12px] truncate" style={{ color: 'var(--on-surface)' }}>{exam.title}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Sub-components
+// ──────────────────────────────────────────────────────────────────
+
+function KpiBox({
+  label,
+  value,
+  unit,
+  hint,
+  tone,
+  isText,
+}: {
+  label: string
+  value: string
+  unit?: string
+  hint?: string
+  tone?: GradeStatus
+  isText?: boolean
+}) {
+  const color =
+    tone === 'pass'
+      ? 'var(--success)'
+      : tone === 'risk'
+        ? 'var(--warning)'
+        : tone === 'fail'
+          ? 'var(--danger)'
+          : 'var(--on-surface)'
+
+  return (
+    <div className="kpi" style={{ padding: '12px 14px' }}>
+      <span className="kpi__sub">{label}</span>
+      <span
+        className="kpi__num font-mono tabular flex items-baseline gap-1"
+        style={{ color, fontSize: isText ? 16 : 24 }}
+      >
+        {value}
+        {unit && <span style={{ fontSize: 11, color: 'var(--color-outline)', fontWeight: 500 }}>{unit}</span>}
+      </span>
+      {hint && <span className="kpi__hint">{hint}</span>}
+    </div>
+  )
+}
+
+function EmptyCalc({ lang, subjectColor }: { lang: 'es' | 'en'; subjectColor: string }) {
+  return (
+    <div className="text-center py-10">
+      <div
+        className="inline-flex w-12 h-12 rounded-[12px] items-center justify-center mb-3"
+        style={{ background: `color-mix(in srgb, ${subjectColor} 14%, transparent)` }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 22, color: subjectColor }}>
+          assignment
+        </span>
+      </div>
+      <p className="text-[14px] font-bold" style={{ color: 'var(--on-surface)' }}>
+        {lang === 'es' ? 'Sin evaluaciones registradas' : 'No evaluations recorded'}
+      </p>
+      <p className="text-[12px] mt-1" style={{ color: 'var(--color-outline)' }}>
+        {lang === 'es'
+          ? 'Agregá actividades en la sección Evaluaciones para empezar a ver tu progreso.'
+          : 'Add activities in the Evaluations section to start tracking your progress.'}
+      </p>
     </div>
   )
 }

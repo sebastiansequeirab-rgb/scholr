@@ -6,17 +6,17 @@ export default function AISettingsPage() {
   const { language } = useTranslation()
 
   return (
-    <div className="max-w-lg mx-auto animate-fade-in">
+    <div className="max-w-lg mx-auto reveal-stagger">
 
       {/* Page title */}
-      <div className="mb-6">
-        <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1" style={{ color: 'var(--color-primary)' }}>
-          Skolar
-        </p>
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-          {language === 'es' ? 'Configuración de IA' : 'AI Settings'}
-        </h1>
-      </div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">Skolar IA · {language === 'es' ? 'Configuración' : 'Settings'}</span>
+          <h1 className="screen-head__title">
+            <span className="serif">{language === 'es' ? 'tu copiloto' : 'your copilot'}</span>
+          </h1>
+        </div>
+      </header>
 
       {/* Placeholder card */}
       <section className="rounded-2xl overflow-hidden"

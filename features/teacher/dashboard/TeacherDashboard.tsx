@@ -23,16 +23,16 @@ export function TeacherDashboard({ profile, courses, totalStudents }: TeacherDas
   const { t } = useTranslation()
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6 reveal-stagger">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-          {t('dashboard.greeting')}, {profile.full_name?.split(' ')[0]}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--on-surface-variant)' }}>
-          {t('teacher.dashboard.title')}
-        </p>
-      </div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">Skolar · {t('teacher.dashboard.title')}</span>
+          <h1 className="screen-head__title">
+            {t('dashboard.greeting')}, <span className="serif">{profile.full_name?.split(' ')[0]}</span>
+          </h1>
+        </div>
+      </header>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4">

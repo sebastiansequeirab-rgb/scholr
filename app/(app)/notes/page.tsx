@@ -384,8 +384,16 @@ function NoteEditor({
             onChange={handleTitleChange}
             onKeyDown={handleTitleKeyDown}
             placeholder={t('notes.untitled')}
-            className="text-3xl font-extrabold tracking-tight bg-transparent border-none outline-none mb-6 w-full"
-            style={{ color: 'var(--on-surface)' }}
+            className="bg-transparent border-none outline-none mb-6 w-full serif"
+            style={{
+              color: 'var(--on-surface)',
+              fontFamily: 'var(--font-serif)',
+              fontStyle: 'italic',
+              fontWeight: 400,
+              fontSize: 32,
+              letterSpacing: '-0.015em',
+              lineHeight: 1.15,
+            }}
             aria-label="Note title"
           />
           <div
@@ -510,14 +518,13 @@ export default function NotesPage() {
       <div className={`flex items-center justify-between px-5 py-3.5 flex-shrink-0 ${mobileShowEditor ? 'hidden lg:flex' : 'flex'}`}
         style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div>
-          <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-0.5"
-            style={{ color: 'var(--color-primary)' }}>Notebook</span>
-          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-            {t('notes.title')}
+          <span className="kicker block mb-0.5">Notebook</span>
+          <h1 className="text-[20px] font-bold tracking-tight" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+            <span className="serif">{t('notes.title').toLowerCase()}</span>
           </h1>
         </div>
-        <button onClick={createNote} className="btn-primary" id="add-note-btn">
-          <span className="material-symbols-outlined text-[18px]">edit_note</span>
+        <button onClick={createNote} className="btn btn-primary" id="add-note-btn">
+          <span className="material-symbols-outlined">edit_note</span>
           <span className="hidden sm:inline">{t('notes.add')}</span>
         </button>
       </div>

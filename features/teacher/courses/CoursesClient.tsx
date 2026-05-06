@@ -37,20 +37,22 @@ export function CoursesClient({ initialCourses, teacherId }: CoursesClientProps)
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto reveal-stagger">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-          {t('teacher.courses.title')}
-        </h1>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          {t('teacher.courses.add')}
-        </button>
-      </div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">Skolar · {t('teacher.dashboard.title')}</span>
+          <h1 className="screen-head__title">
+            <span className="serif">{t('teacher.courses.title').toLowerCase()}</span>
+          </h1>
+        </div>
+        <div className="screen-head__actions">
+          <button onClick={() => setModalOpen(true)} className="btn btn-primary">
+            <span className="material-symbols-outlined">add</span>
+            {t('teacher.courses.add')}
+          </button>
+        </div>
+      </header>
 
       {/* Courses grid */}
       {initialCourses.length === 0 ? (

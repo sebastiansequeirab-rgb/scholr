@@ -595,15 +595,14 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto animate-fade-in">
+    <div className="max-w-6xl mx-auto reveal-stagger">
 
       {/* Page header */}
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <span className="mono text-[10px] tracking-[0.2em] uppercase font-medium block mb-0.5"
-            style={{ color: 'var(--color-primary)' }}>Academic Timeline</span>
-          <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-            {t('calendar.title')}
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">{t('nav.calendar')} · {language === 'es' ? 'Esta semana' : 'This week'}</span>
+          <h1 className="screen-head__title">
+            <span className="serif">{language === 'es' ? 'tu agenda' : 'your schedule'}</span>
           </h1>
         </div>
         {/* Legend toggle — mobile only */}
@@ -619,7 +618,7 @@ export default function CalendarPage() {
           <span className="material-symbols-outlined text-[14px]">legend_toggle</span>
           {legendOpen ? t('common.close') : 'Leyenda'}
         </button>
-      </div>
+      </header>
 
       {/* Legend — always visible on desktop, collapsible on mobile */}
       <div className={`mb-4 rounded-xl p-3 ${legendOpen ? 'flex' : 'hidden lg:flex'} flex-wrap gap-x-4 gap-y-2`}

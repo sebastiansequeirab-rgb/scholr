@@ -79,14 +79,14 @@ export default function PersonalizationPage() {
     <div className="max-w-lg mx-auto animate-fade-in">
 
       {/* Page title */}
-      <div className="mb-6">
-        <p className="mono text-[10px] tracking-[0.18em] uppercase mb-1" style={{ color: 'var(--color-primary)' }}>
-          Skolar
-        </p>
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--on-surface)' }}>
-          {language === 'es' ? 'Personalización' : 'Personalization'}
-        </h1>
-      </div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">Skolar · {language === 'es' ? 'Tu look' : 'Your look'}</span>
+          <h1 className="screen-head__title">
+            <span className="serif">{language === 'es' ? 'personalización' : 'personalization'}</span>
+          </h1>
+        </div>
+      </header>
 
       <div className="space-y-4">
 
