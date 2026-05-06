@@ -586,47 +586,73 @@ export function AIChatHub({
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'assistant' && (
-              <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-                style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)` }}>
-                <span className="material-symbols-outlined text-[12px]"
-                  style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>
-                  auto_awesome
-                </span>
+        {messages.map((msg, i) => {
+          const isUser = msg.role === 'user'
+          const timeLabel = new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+          return (
+            <div key={i} className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
+              {!isUser && (
+                <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 18%, transparent)' }}>
+                  <span className="material-symbols-outlined text-[14px]"
+                    style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
+                    auto_awesome
+                  </span>
+                </div>
+              )}
+              <div className="max-w-[78%]">
+                <div className={`flex items-baseline gap-2 mb-1 ${isUser ? 'justify-end' : ''}`}>
+                  <span className="text-[10px] font-semibold" style={{ color: isUser ? 'var(--color-primary)' : 'var(--color-tertiary)' }}>
+                    {isUser ? (language === 'es' ? 'Tú' : 'You') : 'AI'}
+                  </span>
+                  <span className="mono text-[9.5px]" style={{ color: 'var(--color-outline)' }}>{timeLabel}</span>
+                </div>
+                <div className="rounded-2xl px-4 py-3 whitespace-pre-wrap"
+                  style={{
+                    fontSize: '13px',
+                    lineHeight: 1.55,
+                    backgroundColor: isUser
+                      ? 'color-mix(in srgb, var(--color-primary) 14%, var(--s-base))'
+                      : 'color-mix(in srgb, var(--color-tertiary) 10%, var(--s-base))',
+                    color: 'var(--on-surface)',
+                    borderBottomRightRadius: isUser ? '4px' : undefined,
+                    borderBottomLeftRadius:  !isUser ? '4px' : undefined,
+                    border: `1px solid color-mix(in srgb, ${isUser ? 'var(--color-primary)' : 'var(--color-tertiary)'} 22%, transparent)`,
+                  }}>
+                  {msg.content}
+                </div>
               </div>
-            )}
-            <div className="max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
-              style={{
-                backgroundColor: msg.role === 'user'
-                  ? (activeSubject?.color ?? 'var(--color-primary)')
-                  : 'var(--s-base)',
-                color:           msg.role === 'user' ? 'white' : 'var(--on-surface)',
-                borderBottomRightRadius: msg.role === 'user'      ? '4px' : undefined,
-                borderBottomLeftRadius:  msg.role === 'assistant' ? '4px' : undefined,
-                border: msg.role === 'assistant' ? '1px solid var(--border-subtle)' : undefined,
-              }}>
-              {msg.content}
+              {isUser && (
+                <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)' }}>
+                  <span className="material-symbols-outlined text-[14px]"
+                    style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                    person
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {loading && (
           <div className="flex gap-2.5 justify-start">
-            <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center"
-              style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)` }}>
-              <span className="material-symbols-outlined text-[12px]"
-                style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>
+            <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 18%, transparent)' }}>
+              <span className="material-symbols-outlined text-[14px]"
+                style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
                 auto_awesome
               </span>
             </div>
             <div className="rounded-2xl rounded-bl-[4px] px-4 py-3"
-              style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 10%, var(--s-base))',
+                border: '1px solid color-mix(in srgb, var(--color-tertiary) 22%, transparent)',
+              }}>
               <div className="flex gap-1 items-center h-5">
                 {[0, 1, 2].map(i => (
                   <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
-                    style={{ backgroundColor: 'var(--color-outline)', animationDelay: `${i * 0.15}s` }} />
+                    style={{ backgroundColor: 'var(--color-tertiary)', animationDelay: `${i * 0.15}s` }} />
                 ))}
               </div>
             </div>
