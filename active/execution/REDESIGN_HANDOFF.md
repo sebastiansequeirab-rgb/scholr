@@ -1,6 +1,6 @@
 # Skolar — Rediseño visual v2 (Swiss editorial académica)
 
-> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane).
+> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane), `f9427c5` (AI bubbles).
 
 ---
 
@@ -245,12 +245,16 @@ Mobile: las carpetas se colapsan en un bloque al tope del pane de lista, manteni
 
 ### Media prioridad
 
-**4) `/ai` — AIChatHub interior** — `features/ai/components/AIChatHub.tsx`.
-El hero del page ya está. Falta el thread:
-- Sidebar con FIJADOS + RECIENTES + uso este mes
-- Thread: cada `.ai-msg` con avatar 28x28 (tertiary 18% bg para AI, primary container para user) + bubble con header "name + time mono" + texto 13px line-height 1.55
-- Suggestions row: `.ai-chip` border radius-full
-- Composer sticky bottom: input flex-1 + attach + graphic_eq + primary button
+**4) `/ai` — AIChatHub interior** — ✅ THREAD HECHO (commit `f9427c5`, 2026-05-06).
+- Avatares 28x28: AI con bg tertiary 18% + icono auto_awesome; user con bg primary 18% + icono person
+- Bubble AI: bg tertiary 10% / border tertiary 22% / text-on-surface 13px line-height 1.55
+- Bubble user: bg primary 14% / border primary 22% (no más solid subject color, más legible)
+- Header del mensaje: rol (Tú/AI) + time mono 9.5px
+
+**Pendientes restantes del AIChatHub** (bajo riesgo):
+- Sidebar: hoy organiza por General + Subjects (más útil que FIJADOS/RECIENTES del canvas, dejar como está)
+- Composer: ya tiene attach PDF + image + voice + send; podría agregarse `graphic_eq` para waveform (decorativo, opcional)
+- Suggestions row al iniciar: hoy son cards 2-col, podrían convertirse en `.ai-chip` rounded-full estilo canvas
 
 **5) Pages internas del profesor** — `app/(teacher)/teacher/courses/[id]/{grades,announcements,documents,schedules,students}/page.tsx`.
 Aplicar `screen-head` con kicker + serif italic title. El cuerpo de cada una usar `.card`, `.row`, `.btn-*`.
