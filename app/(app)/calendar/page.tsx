@@ -191,8 +191,35 @@ const SANCTUARY_CALENDAR_CSS = `
   .fc .fc-timegrid-slot-label-cushion {
     font-family: 'JetBrains Mono', monospace !important;
     font-size: 10px !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
     color: var(--color-outline) !important;
     padding-right: 12px !important;
+  }
+  /* Hour-axis column — wider for readability */
+  .fc .fc-timegrid-axis,
+  .fc .fc-timegrid-slot-label { width: 56px !important; }
+  .fc .fc-timegrid-axis-frame { justify-content: flex-end !important; }
+
+  /* Dashed horizontal slot dividers (editorial week feel) */
+  .fc .fc-timegrid-slot {
+    border-top: 1px dashed var(--border-subtle) !important;
+    border-bottom: 0 !important;
+  }
+  .fc .fc-timegrid-slot.fc-timegrid-slot-minor {
+    border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 55%, transparent) !important;
+  }
+  .fc .fc-timegrid-slot:first-child { border-top: 0 !important; }
+
+  /* Day column header — today gets primary emphasis */
+  .fc .fc-timegrid-col.fc-day-today,
+  .fc .fc-daygrid-day.fc-day-today {
+    background: color-mix(in srgb, var(--color-primary) 7%, transparent) !important;
+  }
+  .fc-timeGridWeek-view .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion,
+  .fc-timeGridDay-view  .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+    color: var(--color-primary) !important;
   }
 
   /* Week/Day events: enforce minimum 48px height */
@@ -495,7 +522,7 @@ export default function CalendarPage() {
           title:           subject.name,
           start:           `${dateStr}T${s.start_time}`,
           end:             `${dateStr}T${s.end_time}`,
-          backgroundColor: `color-mix(in srgb, ${subject.color} 50%, var(--s-base))`,
+          backgroundColor: `color-mix(in srgb, ${subject.color} 14%, var(--s-low))`,
           borderColor:     subject.color,
           textColor:       subject.color,
           classNames:      ['fc-ev-schedule'],
@@ -515,7 +542,7 @@ export default function CalendarPage() {
       title:           e.title,
       start:           e.exam_time ? `${e.exam_date}T${e.exam_time}` : e.exam_date,
       allDay:          !e.exam_time,
-      backgroundColor: `color-mix(in srgb, ${typeColor} 35%, var(--s-base))`,
+      backgroundColor: `color-mix(in srgb, ${typeColor} 18%, var(--s-low))`,
       borderColor:     typeColor,
       textColor:       typeColor,
       classNames:      ['fc-ev-exam'],
@@ -537,7 +564,7 @@ export default function CalendarPage() {
       title:           task.text,
       start:           task.due_date,
       allDay:          true,
-      backgroundColor: `color-mix(in srgb, ${color} 28%, var(--s-base))`,
+      backgroundColor: `color-mix(in srgb, ${color} 12%, var(--s-low))`,
       borderColor:     color,
       textColor:       color,
       classNames:      ['fc-ev-task'],
