@@ -24,17 +24,21 @@ export function IconPicker({ currentIcon, subjectColor, onSelect, onClose }: Ico
 
       {/* Picker popover */}
       <div
-        className="absolute top-14 left-0 z-50 p-3 rounded-2xl shadow-2xl animate-slide-up"
+        className="absolute top-14 left-0 z-50 p-3 animate-slide-up"
         style={{
           backgroundColor: 'var(--s-high)',
           border: '1px solid var(--border-strong)',
+          borderRadius: 'var(--radius-xl)',
           boxShadow: '0 20px 60px var(--overlay-bg)',
-          width: '220px',
+          width: '236px',
         }}
       >
-        <p className="mono text-[10px] uppercase tracking-widest mb-2.5 px-1" style={{ color: 'var(--color-outline)' }}>
-          Elegir ícono
-        </p>
+        <div className="flex items-center justify-between mb-2.5 px-1">
+          <span className="kicker">Elegir ícono</span>
+          <span className="mono text-[9px]" style={{ color: 'var(--color-outline)', letterSpacing: '0.06em' }}>
+            {ICONS.length}
+          </span>
+        </div>
         <div className="grid grid-cols-6 gap-1">
           {ICONS.map(icon => {
             const isSelected = currentIcon === icon
@@ -42,12 +46,14 @@ export function IconPicker({ currentIcon, subjectColor, onSelect, onClose }: Ico
               <button
                 key={icon}
                 onClick={() => { onSelect(icon); onClose() }}
-                className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 hover:scale-110"
+                className="w-9 h-9 flex items-center justify-center transition-all duration-150 hover:scale-110"
                 style={{
                   backgroundColor: isSelected
-                    ? `color-mix(in srgb, ${subjectColor} 20%, transparent)`
+                    ? `color-mix(in srgb, ${subjectColor} 18%, transparent)`
                     : 'transparent',
-                  outline: isSelected ? `2px solid ${subjectColor}60` : 'none',
+                  borderRadius: 'var(--radius)',
+                  outline: isSelected ? `1.5px solid color-mix(in srgb, ${subjectColor} 45%, transparent)` : 'none',
+                  outlineOffset: '-1px',
                 }}
                 title={icon}
               >

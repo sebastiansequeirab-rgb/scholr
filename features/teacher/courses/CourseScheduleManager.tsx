@@ -105,93 +105,93 @@ export function CourseScheduleManager({
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Back */}
+    <div className="max-w-2xl mx-auto reveal-stagger">
       <Link
         href={`/teacher/courses/${courseId}`}
-        className="flex items-center gap-1.5 text-sm font-medium hover:underline"
-        style={{ color: 'var(--color-outline)' }}
+        className="kicker inline-flex items-center gap-1.5 mb-3 hover:opacity-70 transition-opacity"
       >
-        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+        <span className="material-symbols-outlined text-[14px]">arrow_back</span>
         {courseName}
       </Link>
 
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-extrabold" style={{ color: 'var(--on-surface)' }}>
-          {t('teacher.schedules.title')}
-        </h1>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-semibold transition-all"
-          style={{
-            backgroundColor: syncing
-              ? 'color-mix(in srgb, var(--color-primary) 8%, transparent)'
-              : 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
-            color: 'var(--color-primary)',
-            border: '1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)',
-          }}
-          title={t('teacher.schedules.syncTitle')}
-        >
-          <span className="material-symbols-outlined text-[14px]">
-            {syncing ? 'hourglass_empty' : 'sync'}
-          </span>
-          {syncing ? t('common.loading') : t('teacher.schedules.sync')}
-        </button>
-      </div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker" style={{ color: courseColor }}>Curso · {schedules.length} {schedules.length === 1 ? 'franja' : 'franjas'}</span>
+          <h1 className="screen-head__title">
+            <span className="serif">{t('teacher.schedules.title').toLowerCase()}</span>
+          </h1>
+          <p className="screen-head__sub">
+            {t('teacher.schedules.propagatedNote')}
+          </p>
+        </div>
+        <div className="screen-head__actions">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="btn btn-secondary"
+            title={t('teacher.schedules.syncTitle')}
+          >
+            <span className="material-symbols-outlined">
+              {syncing ? 'hourglass_empty' : 'sync'}
+            </span>
+            {syncing ? t('common.loading') : t('teacher.schedules.sync')}
+          </button>
+        </div>
+      </header>
 
       {syncMsg && (
-        <div className="rounded-xl px-4 py-2.5 text-xs font-medium"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--success) 12%, transparent)',
-            color: 'var(--success)',
-            border: '1px solid color-mix(in srgb, var(--success) 25%, transparent)',
-          }}>
-          {syncMsg}
+        <div className="card mb-4" style={{
+          background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+          borderColor: 'color-mix(in srgb, var(--success) 30%, var(--border-subtle))',
+          color: 'var(--success)',
+        }}>
+          <p className="text-xs font-medium">{syncMsg}</p>
         </div>
       )}
 
       {/* Existing schedules */}
       {schedules.length === 0 ? (
-        <div className="card p-10 text-center">
-          <span className="material-symbols-outlined text-5xl mb-3 block"
+        <div className="card p-10 text-center mb-4">
+          <span className="material-symbols-outlined text-4xl mb-2 block"
             style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
             calendar_month
           </span>
-          <p className="font-semibold" style={{ color: 'var(--on-surface)' }}>
+          <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>
             {t('teacher.schedules.noSchedules')}
           </p>
-          <p className="text-sm mt-1" style={{ color: 'var(--on-surface-variant)' }}>
+          <p className="text-xs mt-1" style={{ color: 'var(--on-surface-variant)' }}>
             {t('teacher.schedules.noSchedulesDesc')}
           </p>
         </div>
       ) : (
-        <div className="card divide-y">
+        <div className="card mb-4" style={{ padding: 6 }}>
           {schedules.map((s) => (
-            <div key={s.id} className="flex items-center gap-3 px-4 py-3.5">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: `color-mix(in srgb, ${courseColor} 12%, transparent)` }}>
-                <span className="material-symbols-outlined text-[18px]"
-                  style={{ color: courseColor, fontVariationSettings: "'FILL' 1" }}>
-                  schedule
-                </span>
+            <div key={s.id} className="row" style={{ ['--accent-color' as string]: courseColor }}>
+              <div className="row__time flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: `color-mix(in srgb, ${courseColor} 14%, transparent)` }}>
+                  <span className="material-symbols-outlined text-[16px]"
+                    style={{ color: courseColor, fontVariationSettings: "'FILL' 1" }}>
+                    schedule
+                  </span>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm" style={{ color: 'var(--on-surface)' }}>
+              <div className="row__main">
+                <div className="row__title" style={{ color: courseColor }}>
                   {t(`subjects.days.${s.day_of_week}`)}
-                </p>
-                <p className="text-[11px] mt-0.5 font-mono" style={{ color: 'var(--on-surface-variant)' }}>
+                </div>
+                <div className="row__meta font-mono tabular">
                   {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
                   {s.room && <span style={{ color: 'var(--color-outline)' }}> · {s.room}</span>}
-                </p>
+                </div>
               </div>
               <button
                 onClick={() => handleDelete(s.id)}
                 disabled={deleting === s.id}
-                className="p-2 rounded-lg transition-colors hover:text-red-400"
-                style={{ color: 'var(--color-outline)' }}
+                className="btn btn-icon btn-ghost"
+                aria-label={t('common.delete')}
               >
-                <span className="material-symbols-outlined text-[18px]">
+                <span className="material-symbols-outlined">
                   {deleting === s.id ? 'hourglass_empty' : 'delete'}
                 </span>
               </button>
@@ -202,19 +202,25 @@ export function CourseScheduleManager({
 
       {/* Add form */}
       <div className="card p-5 space-y-4">
-        <h2 className="font-bold text-sm" style={{ color: 'var(--on-surface)' }}>
-          {t('teacher.schedules.addSchedule')}
-        </h2>
+        <div>
+          <span className="kicker">Nueva franja</span>
+          <h2 className="text-[18px] font-bold mt-0.5" style={{ color: 'var(--on-surface)', letterSpacing: '-0.015em' }}>
+            <span className="serif">{t('teacher.schedules.addSchedule').toLowerCase()}</span>
+          </h2>
+        </div>
 
-        <select
-          value={day}
-          onChange={(e) => setDay(Number(e.target.value))}
-          className="input w-full"
-        >
-          {DAYS.map((d) => (
-            <option key={d} value={d}>{t(`subjects.days.${d}`)}</option>
-          ))}
-        </select>
+        <div>
+          <label className="label">Día</label>
+          <select
+            value={day}
+            onChange={(e) => setDay(Number(e.target.value))}
+            className="input w-full"
+          >
+            {DAYS.map((d) => (
+              <option key={d} value={d}>{t(`subjects.days.${d}`)}</option>
+            ))}
+          </select>
+        </div>
 
         <div className="grid grid-cols-3 gap-3">
           <div>
@@ -223,7 +229,7 @@ export function CourseScheduleManager({
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="input"
+              className="input tabular"
             />
           </div>
           <div>
@@ -232,7 +238,7 @@ export function CourseScheduleManager({
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="input"
+              className="input tabular"
             />
           </div>
           <div>
@@ -248,7 +254,7 @@ export function CourseScheduleManager({
         </div>
 
         {error && (
-          <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg p-2.5">
+          <p className="text-xs" style={{ color: 'var(--danger)' }}>
             {error}
           </p>
         )}
@@ -256,9 +262,9 @@ export function CourseScheduleManager({
         <button
           onClick={handleAdd}
           disabled={adding}
-          className="btn-primary w-full flex items-center justify-center gap-2"
+          className="btn btn-primary w-full"
         >
-          <span className="material-symbols-outlined text-[18px]">
+          <span className="material-symbols-outlined">
             {adding ? 'hourglass_empty' : 'add'}
           </span>
           {adding ? t('common.loading') : t('teacher.schedules.addSchedule')}

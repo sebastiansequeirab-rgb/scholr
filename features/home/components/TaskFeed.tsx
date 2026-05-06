@@ -130,37 +130,36 @@ export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject
           <p className="text-xs" style={{ color: 'var(--color-outline)' }}>{t('feeds.noTasks')}</p>
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {visible.map(task => {
             const subject   = subjects.find(s => s.id === task.subject_id)
             const days      = task.due_date ? daysUntilDate(task.due_date) : null
             const dueColor  = days === null ? undefined : days <= 0 ? 'var(--danger)' : days === 1 ? 'var(--warning)' : 'var(--color-outline)'
+            const accent    = subject?.color ?? PRIORITY_COLOR[task.priority || 'mid']
             return (
-              <div key={task.id}
-                className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
-                style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
-                <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                  style={{ backgroundColor: PRIORITY_COLOR[task.priority || 'mid'] }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-bold leading-snug" style={{ color: 'var(--on-surface)' }}>
-                    {task.text}
-                  </p>
+              <div key={task.id} className="row" style={{ ['--accent-color' as string]: accent }}>
+                <div className="row__time flex items-center justify-center">
+                  <span className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: PRIORITY_COLOR[task.priority || 'mid'] }} />
+                </div>
+                <div className="row__main">
+                  <div className="row__title">{task.text}</div>
                   {subject && (
-                    <span className="text-[10px] font-semibold" style={{ color: subject.color }}>
-                      {subject.name}
-                    </span>
+                    <div className="row__meta" style={{ color: subject.color }}>
+                      <span className="font-semibold">{subject.name}</span>
+                    </div>
                   )}
                 </div>
                 {days !== null && (
-                  <span className="mono text-[10px] font-bold flex-shrink-0 mt-0.5" style={{ color: dueColor }}>
+                  <div className="row__right text-[11px]" style={{ color: dueColor }}>
                     {days <= 0 ? t('feeds.today') : days === 1 ? t('feeds.tmrwShort') : `${days}d`}
-                  </span>
+                  </div>
                 )}
               </div>
             )
           })}
           {extra > 0 && (
-            <p className="text-center mono text-[10px] pt-0.5" style={{ color: 'var(--color-outline)' }}>
+            <p className="text-center mono text-[10px] pt-1" style={{ color: 'var(--color-outline)' }}>
               {t('feeds.moreCount').replace('{n}', String(extra))}
             </p>
           )}

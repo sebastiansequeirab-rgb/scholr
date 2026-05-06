@@ -39,55 +39,60 @@ export default async function StudentsPage({ params }: { params: { id: string } 
   })
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <Link href={`/teacher/courses/${params.id}`} className="flex items-center gap-1.5 text-sm font-medium hover:underline"
-        style={{ color: 'var(--color-outline)' }}>
-        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+    <div className="max-w-2xl mx-auto reveal-stagger">
+      <Link href={`/teacher/courses/${params.id}`} className="kicker inline-flex items-center gap-1.5 mb-3 hover:opacity-70 transition-opacity">
+        <span className="material-symbols-outlined text-[14px]">arrow_back</span>
         {course.name as string}
       </Link>
 
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-extrabold" style={{ color: 'var(--on-surface)' }}>
-          Estudiantes inscritos
-        </h1>
-        <span className="text-sm font-semibold px-2.5 py-1 rounded-full"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)', color: 'var(--color-primary)' }}>
-          {students.length}
-        </span>
-      </div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">Curso · {students.length} {students.length === 1 ? 'estudiante' : 'estudiantes'}</span>
+          <h1 className="screen-head__title">
+            <span className="serif">estudiantes</span> inscritos
+          </h1>
+          <p className="screen-head__sub">
+            Quienes accedieron al curso con el código compartido.
+          </p>
+        </div>
+      </header>
 
       {students.length === 0 ? (
-        <div className="card p-12 text-center">
-          <span className="material-symbols-outlined text-5xl mb-3 block"
+        <div className="card p-10 text-center">
+          <span className="material-symbols-outlined text-4xl mb-2 block"
             style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
             group
           </span>
-          <p className="font-semibold" style={{ color: 'var(--on-surface)' }}>Sin estudiantes aún</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--on-surface-variant)' }}>
+          <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>Sin estudiantes aún</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--on-surface-variant)' }}>
             Comparte el código de acceso para que se inscriban.
           </p>
         </div>
       ) : (
-        <div className="card divide-y">
+        <div className="card" style={{ padding: 6 }}>
           {students.map((student, i) => (
-            <div key={student.id || i} className="flex items-center gap-3 px-5 py-4">
-              <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-[11px] font-bold"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
-                  color: 'var(--color-primary)',
-                }}>
-                {student.avatar_url
-                  ? <img src={student.avatar_url} alt={student.full_name} className="w-full h-full object-cover" />
-                  : getInitials(student.full_name)
-                }
+            <div key={student.id || i} className="row" style={{ ['--accent-color' as string]: 'var(--color-primary)' }}>
+              <div className="row__time flex items-center justify-center">
+                <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
+                    color: 'var(--color-primary)',
+                  }}>
+                  {student.avatar_url
+                    ? <img src={student.avatar_url} alt={student.full_name} className="w-full h-full object-cover" />
+                    : getInitials(student.full_name)
+                  }
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm" style={{ color: 'var(--on-surface)' }}>
-                  {student.full_name}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--on-surface-variant)' }}>
+              <div className="row__main">
+                <div className="row__title">{student.full_name}</div>
+                <div className="row__meta">
+                  <span className="material-symbols-outlined mi">event_available</span>
                   Inscrito {new Date(student.joined_at).toLocaleDateString()}
-                </p>
+                </div>
+              </div>
+              <div className="row__right text-[10px]" style={{ color: 'var(--color-outline)' }}>
+                #{String(i + 1).padStart(2, '0')}
               </div>
             </div>
           ))}

@@ -113,19 +113,28 @@ export function DocumentsClient({ courseId, courseName, teacherId, initialDocume
 
   const deleteDoc = documents.find((d) => d.id === deleteId)
 
+  const totalSize = documents.reduce((acc, d) => acc + (d.size_bytes ?? 0), 0)
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <Link href={`/teacher/courses/${courseId}`} className="flex items-center gap-1.5 text-sm font-medium hover:underline"
-        style={{ color: 'var(--color-outline)' }}>
-        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+    <div className="max-w-2xl mx-auto reveal-stagger">
+      <Link href={`/teacher/courses/${courseId}`} className="kicker inline-flex items-center gap-1.5 mb-3 hover:opacity-70 transition-opacity">
+        <span className="material-symbols-outlined text-[14px]">arrow_back</span>
         {courseName}
       </Link>
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold" style={{ color: 'var(--on-surface)' }}>
-          {t('teacher.documents.title')}
-        </h1>
-        <div>
+      <header className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker">Curso · {documents.length} {documents.length === 1 ? 'archivo' : 'archivos'}</span>
+          <h1 className="screen-head__title">
+            <span className="serif">{t('teacher.documents.title').toLowerCase()}</span>
+          </h1>
+          <p className="screen-head__sub">
+            {documents.length === 0
+              ? 'Material disponible para los alumnos del curso.'
+              : <><span className="font-mono tabular">{formatFileSize(totalSize)}</span> en total</>}
+          </p>
+        </div>
+        <div className="screen-head__actions">
           <input
             ref={fileInputRef}
             type="file"
@@ -136,78 +145,79 @@ export function DocumentsClient({ courseId, courseName, teacherId, initialDocume
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="btn-primary flex items-center gap-2"
+            className="btn btn-primary"
           >
-            <span className="material-symbols-outlined text-[18px]">
+            <span className="material-symbols-outlined">
               {uploading ? 'hourglass_empty' : 'upload'}
             </span>
             {uploading ? t('teacher.documents.uploading') : t('teacher.documents.upload')}
           </button>
         </div>
-      </div>
+      </header>
 
       {uploadError && (
-        <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg p-2.5">
-          {uploadError}
-        </p>
+        <div className="card mb-3" style={{ borderColor: 'color-mix(in srgb, var(--danger) 35%, var(--border-subtle))' }}>
+          <p className="text-xs" style={{ color: 'var(--danger)' }}>
+            {uploadError}
+          </p>
+        </div>
       )}
 
       {documents.length === 0 ? (
-        <div className="card p-12 text-center">
-          <span className="material-symbols-outlined text-5xl mb-3 block"
+        <div className="card p-10 text-center">
+          <span className="material-symbols-outlined text-4xl mb-2 block"
             style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
             folder_open
           </span>
-          <p className="font-semibold" style={{ color: 'var(--on-surface)' }}>
+          <p className="text-sm font-semibold" style={{ color: 'var(--on-surface)' }}>
             {t('teacher.documents.noDocuments')}
           </p>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="btn-primary mt-4 inline-flex items-center gap-2"
+            className="btn btn-primary mt-4 inline-flex"
           >
-            <span className="material-symbols-outlined text-[18px]">upload</span>
+            <span className="material-symbols-outlined">upload</span>
             {t('teacher.documents.upload')}
           </button>
         </div>
       ) : (
-        <div className="card divide-y">
+        <div className="card" style={{ padding: 6 }}>
           {documents.map((doc) => {
             const icon = FILE_ICONS[doc.file_type ?? ''] ?? 'insert_drive_file'
             return (
-              <div key={doc.id} className="flex items-center gap-3 px-4 py-3.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)' }}>
-                  <span className="material-symbols-outlined text-[18px]"
-                    style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
-                    {icon}
-                  </span>
+              <div key={doc.id} className="row" style={{ ['--accent-color' as string]: 'var(--color-primary)' }}>
+                <div className="row__time flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)' }}>
+                    <span className="material-symbols-outlined text-[16px]"
+                      style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
+                      {icon}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate" style={{ color: 'var(--on-surface)' }}>
-                    {doc.title}
-                  </p>
-                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--on-surface-variant)' }}>
-                    {doc.size_bytes != null ? formatFileSize(doc.size_bytes) : '—'}
-                    {' · '}
-                    {new Date(doc.created_at).toLocaleDateString()}
-                  </p>
+                <div className="row__main">
+                  <div className="row__title truncate">{doc.title}</div>
+                  <div className="row__meta">
+                    <span className="font-mono tabular">{doc.size_bytes != null ? formatFileSize(doc.size_bytes) : '—'}</span>
+                    <span>·</span>
+                    <span>{new Date(doc.created_at).toLocaleDateString()}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="row__right flex items-center gap-1">
                   <button
                     onClick={() => handleDownload(doc)}
-                    className="p-2 rounded-lg hover:bg-[var(--s-low)] transition-all"
+                    className="btn btn-icon btn-ghost"
                     style={{ color: 'var(--color-primary)' }}
                     title={t('teacher.documents.download')}
                   >
-                    <span className="material-symbols-outlined text-[18px]">download</span>
+                    <span className="material-symbols-outlined">download</span>
                   </button>
                   <button
                     onClick={() => setDeleteId(doc.id)}
-                    className="p-2 rounded-lg hover:text-red-400 transition-colors"
-                    style={{ color: 'var(--color-outline)' }}
+                    className="btn btn-icon btn-ghost"
                     title={t('teacher.documents.delete')}
                   >
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                    <span className="material-symbols-outlined">delete</span>
                   </button>
                 </div>
               </div>
@@ -218,17 +228,18 @@ export function DocumentsClient({ courseId, courseName, teacherId, initialDocume
 
       {/* Delete confirm */}
       {deleteId && deleteDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}>
-          <div className="w-full max-w-sm rounded-2xl p-6 space-y-4"
-            style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
-            <h2 className="font-bold" style={{ color: 'var(--on-surface)' }}>{t('teacher.documents.deleteTitle')}</h2>
-            <p className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>
-              <strong>{deleteDoc.title}</strong> {t('teacher.documents.deleteConfirm')}
+        <div className="modal-overlay" onClick={() => setDeleteId(null)}>
+          <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
+            <span className="kicker" style={{ color: 'var(--danger)' }}>Confirmación</span>
+            <h2 className="text-[20px] font-bold mt-1 mb-3" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+              <span className="serif">{t('teacher.documents.deleteTitle').replace('?', '').toLowerCase()}</span>
+            </h2>
+            <p className="text-sm mb-5" style={{ color: 'var(--on-surface-variant)' }}>
+              <strong style={{ color: 'var(--on-surface)' }}>{deleteDoc.title}</strong> {t('teacher.documents.deleteConfirm')}
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="btn-secondary flex-1">{t('common.cancel')}</button>
-              <button onClick={() => handleDelete(deleteDoc)} className="btn-danger flex-1">{t('common.delete')}</button>
+              <button onClick={() => setDeleteId(null)} className="btn btn-secondary flex-1">{t('common.cancel')}</button>
+              <button onClick={() => handleDelete(deleteDoc)} className="btn btn-danger flex-1">{t('common.delete')}</button>
             </div>
           </div>
         </div>

@@ -130,24 +130,30 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
 
   // ─── Shared header ────────────────────────────────────────────────────────
   const Header = () => (
-    <div className="flex items-center justify-between">
-      <div>
-        <Link href={`/teacher/courses/${courseId}`} className="flex items-center gap-1.5 text-sm font-medium hover:underline mb-2"
-          style={{ color: 'var(--color-outline)' }}>
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          {courseName}
-        </Link>
-        <h1 className="text-xl font-extrabold" style={{ color: 'var(--on-surface)' }}>
-          {t('teacher.grades.title')}
-        </h1>
+    <header className="reveal-stagger">
+      <Link href={`/teacher/courses/${courseId}`} className="kicker inline-flex items-center gap-1.5 mb-3 hover:opacity-70 transition-opacity">
+        <span className="material-symbols-outlined text-[14px]">arrow_back</span>
+        {courseName}
+      </Link>
+      <div className="screen-head">
+        <div className="screen-head__left">
+          <span className="kicker" style={{ color: courseColor }}>Curso · {students.length} {students.length === 1 ? 'estudiante' : 'estudiantes'}</span>
+          <h1 className="screen-head__title">
+            <span className="serif">{t('teacher.grades.title').toLowerCase()}</span>
+          </h1>
+          <p className="screen-head__sub">
+            <span className="font-mono tabular">{exams.length}</span> {exams.length === 1 ? 'actividad' : 'actividades'} · auto-guardado al editar
+          </p>
+        </div>
+        <div className="screen-head__actions">
+          <button onClick={openModal} className="btn btn-primary"
+            style={{ background: courseColor, color: 'white', borderColor: courseColor }}>
+            <span className="material-symbols-outlined">add</span>
+            {t('teacher.grades.addActivity')}
+          </button>
+        </div>
       </div>
-      <button onClick={openModal}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-        style={{ backgroundColor: courseColor, color: 'white' }}>
-        <span className="material-symbols-outlined text-[18px]">add</span>
-        {t('teacher.grades.addActivity')}
-      </button>
-    </div>
+    </header>
   )
 
   // ─── Empty states ─────────────────────────────────────────────────────────
@@ -155,8 +161,8 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         <Header />
-        <div className="card p-12 text-center">
-          <span className="material-symbols-outlined text-5xl mb-3 block"
+        <div className="card p-10 text-center">
+          <span className="material-symbols-outlined text-4xl mb-2 block"
             style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
             group
           </span>
@@ -173,21 +179,20 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         <Header />
-        <div className="card p-12 text-center">
-          <span className="material-symbols-outlined text-5xl mb-3 block"
+        <div className="card p-10 text-center">
+          <span className="material-symbols-outlined text-4xl mb-2 block"
             style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
             grade
           </span>
-          <p className="text-sm mb-4" style={{ color: 'var(--on-surface-variant)' }}>
+          <p className="text-sm mb-2" style={{ color: 'var(--on-surface)' }}>
             {t('teacher.grades.noExams')}
           </p>
-          <p className="text-xs mb-6" style={{ color: 'var(--color-outline)' }}>
+          <p className="text-xs mb-5" style={{ color: 'var(--color-outline)' }}>
             {t('teacher.grades.noExamsHint')}
           </p>
-          <button onClick={openModal}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold mx-auto transition-all"
-            style={{ backgroundColor: courseColor, color: 'white' }}>
-            <span className="material-symbols-outlined text-[18px]">add</span>
+          <button onClick={openModal} className="btn btn-primary mx-auto"
+            style={{ background: courseColor, color: 'white', borderColor: courseColor }}>
+            <span className="material-symbols-outlined">add</span>
             {t('teacher.grades.addActivity')}
           </button>
         </div>
@@ -201,21 +206,19 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
     return (
       <div className="modal-overlay" onClick={() => setModalOpen(false)}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-          <h2 className="text-lg font-bold mb-5" style={{ color: 'var(--on-surface)' }}>
-            {t('teacher.grades.addActivity')}
+          <span className="kicker" style={{ color: courseColor }}>Nueva entrada</span>
+          <h2 className="text-[22px] font-bold mt-1 mb-5" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+            <span className="serif">{t('teacher.grades.addActivity').toLowerCase()}</span>
           </h2>
           <form onSubmit={handleAddActivity} className="space-y-4">
             {/* Title */}
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--on-surface-variant)' }}>
-                {t('teacher.grades.activityTitle')} *
-              </label>
+              <label className="label">{t('teacher.grades.activityTitle')} *</label>
               <input
                 type="text"
                 value={newTitle}
                 onChange={e => setNewTitle(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                style={{ background: 'var(--s-low)', border: '1px solid var(--border-subtle)', color: 'var(--on-surface)' }}
+                className="input"
                 placeholder={t('teacher.grades.activityTitle')}
                 autoFocus
               />
@@ -223,23 +226,22 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
 
             {/* Type */}
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--on-surface-variant)' }}>
-                {t('teacher.grades.activityType')}
-              </label>
-              <div className="flex flex-wrap gap-2">
+              <label className="label">{t('teacher.grades.activityType')}</label>
+              <div className="flex flex-wrap gap-2 mt-1">
                 {EXAM_TYPES.map(type => {
                   const cfg = ACTIVITY_TYPES[type]
                   const label = language === 'es' ? cfg.label_es : cfg.label_en
+                  const active = newType === type
                   return (
                     <button key={type} type="button"
                       onClick={() => setNewType(type)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                      className="chip"
                       style={{
-                        background: newType === type ? cfg.color : 'var(--s-low)',
-                        color: newType === type ? 'white' : 'var(--on-surface-variant)',
-                        border: `1px solid ${newType === type ? cfg.color : 'var(--border-subtle)'}`,
+                        background: active ? `color-mix(in srgb, ${cfg.color} 16%, transparent)` : 'transparent',
+                        color: active ? cfg.color : 'var(--on-surface-variant)',
+                        border: `1px solid ${active ? `color-mix(in srgb, ${cfg.color} 35%, transparent)` : 'var(--border-subtle)'}`,
                       }}>
-                      <span className="material-symbols-outlined text-[13px]"
+                      <span className="material-symbols-outlined text-[14px]"
                         style={{ fontVariationSettings: "'FILL' 1" }}>
                         {cfg.icon}
                       </span>
@@ -253,21 +255,16 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
             {/* Date + Percentage */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--on-surface-variant)' }}>
-                  {t('teacher.grades.activityDate')} *
-                </label>
+                <label className="label">{t('teacher.grades.activityDate')} *</label>
                 <input
                   type="date"
                   value={newDate}
                   onChange={e => setNewDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                  style={{ background: 'var(--s-low)', border: '1px solid var(--border-subtle)', color: 'var(--on-surface)' }}
+                  className="input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--on-surface-variant)' }}>
-                  {t('teacher.grades.activityPercentage')}
-                </label>
+                <label className="label">{t('teacher.grades.activityPercentage')}</label>
                 <input
                   type="number"
                   min="0"
@@ -275,8 +272,7 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
                   step="1"
                   value={newPct}
                   onChange={e => setNewPct(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                  style={{ background: 'var(--s-low)', border: '1px solid var(--border-subtle)', color: 'var(--on-surface)' }}
+                  className="input tabular"
                   placeholder={t('teacher.grades.activityPercentagePlaceholder')}
                 />
               </div>
@@ -287,14 +283,11 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
             )}
 
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: 'var(--s-low)', color: 'var(--on-surface)' }}>
+              <button type="button" onClick={() => setModalOpen(false)} className="btn btn-secondary flex-1">
                 {t('common.cancel')}
               </button>
-              <button type="submit" disabled={modalLoading}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-                style={{ backgroundColor: courseColor, color: 'white' }}>
+              <button type="submit" disabled={modalLoading} className="btn btn-primary flex-1"
+                style={{ background: courseColor, color: 'white', borderColor: courseColor }}>
                 {modalLoading ? '...' : t('common.save')}
               </button>
             </div>
@@ -425,7 +418,7 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
         </div>
       </div>
 
-      <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
+      <p className="kicker" style={{ marginTop: 4 }}>
         {t('teacher.grades.autoSaveNote')}
       </p>
 
@@ -435,21 +428,18 @@ export function GradeTable({ courseId, courseName, courseColor, teacherId, exams
       {deleteId && (
         <div className="modal-overlay" onClick={() => setDeleteId(null)}>
           <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold mb-3" style={{ color: 'var(--on-surface)' }}>
-              {t('teacher.grades.deleteActivity')}
+            <span className="kicker" style={{ color: 'var(--danger)' }}>Confirmación</span>
+            <h3 className="text-[20px] font-bold mt-1 mb-3" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+              <span className="serif">{t('teacher.grades.deleteActivity').toLowerCase()}</span>
             </h3>
             <p className="text-sm mb-6" style={{ color: 'var(--on-surface-variant)' }}>
               {t('teacher.grades.deleteActivityConfirm')}
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: 'var(--s-low)', color: 'var(--on-surface)' }}>
+              <button onClick={() => setDeleteId(null)} className="btn btn-secondary flex-1">
                 {t('common.cancel')}
               </button>
-              <button onClick={() => handleDeleteActivity(deleteId)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: 'var(--danger)', color: 'white' }}>
+              <button onClick={() => handleDeleteActivity(deleteId)} className="btn btn-danger flex-1">
                 {t('common.delete')}
               </button>
             </div>

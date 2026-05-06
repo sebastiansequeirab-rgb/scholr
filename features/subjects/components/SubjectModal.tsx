@@ -62,8 +62,9 @@ export function SubjectModal({ subject, onClose, onSaved }: SubjectModalProps) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--on-surface)' }}>
-          {isEditing ? t('subjects.edit') : t('subjects.add')}
+        <span className="kicker" style={{ color }}>{isEditing ? 'Editar' : 'Nueva'}</span>
+        <h2 className="text-[22px] font-bold mt-1 mb-5" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+          <span className="serif">{(isEditing ? t('subjects.edit') : t('subjects.add')).toLowerCase()}</span>
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -148,35 +149,44 @@ export function SubjectModal({ subject, onClose, onSaved }: SubjectModalProps) {
           <div>
             <span className="label">{t('subjects.color')}</span>
             <div className="flex flex-wrap gap-2 mt-1">
-              {SUBJECT_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className="w-7 h-7 rounded-full transition-transform hover:scale-110"
-                  style={{
-                    backgroundColor: c,
-                    outline: color === c ? `3px solid ${c}` : 'none',
-                    outlineOffset: '2px',
-                  }}
-                  aria-label={`Color ${c}`}
-                  aria-pressed={color === c}
-                />
-              ))}
+              {SUBJECT_COLORS.map((c) => {
+                const active = color === c
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className="relative w-8 h-8 rounded-full transition-transform hover:scale-110 flex items-center justify-center"
+                    style={{
+                      backgroundColor: c,
+                      boxShadow: active ? `0 0 0 2px var(--s-base), 0 0 0 4px ${c}` : 'none',
+                    }}
+                    aria-label={`Color ${c}`}
+                    aria-pressed={active}
+                  >
+                    {active && (
+                      <span className="material-symbols-outlined text-[14px]" style={{ color: 'white', fontVariationSettings: "'FILL' 1" }}>
+                        check
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
           {error && (
-            <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg p-2.5" role="alert">
+            <p className="text-xs" style={{ color: 'var(--danger)' }} role="alert">
               {error}
             </p>
           )}
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">
+            <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
               {t('subjects.cancel')}
             </button>
-            <button type="submit" disabled={loading} className="btn-primary flex-1">
+            <button type="submit" disabled={loading} className="btn btn-primary flex-1"
+              style={{ background: color, color: 'white', borderColor: color }}>
               {loading ? t('common.loading') : t('subjects.save')}
             </button>
           </div>
@@ -246,31 +256,33 @@ export function ScheduleManager({ subject, schedules, onUpdated }: ScheduleManag
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold" style={{ color: 'var(--color-muted)' }}>
-        {t('subjects.schedules')}
-      </h3>
+      <span className="kicker">{t('subjects.schedules')}</span>
 
       {/* Existing schedules */}
-      <div className="space-y-2">
-        {schedules.map((s) => (
-          <div key={s.id} className="flex items-center justify-between text-sm rounded-xl px-3 py-2.5"
-            style={{ backgroundColor: 'var(--s-base)' }}>
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: subject.color }} />
-              <span className="font-semibold text-xs" style={{ color: subject.color }}>{t(`subjects.days.${s.day_of_week}`)}</span>
+      {schedules.length > 0 && (
+        <div className="space-y-1" style={{ marginTop: -2 }}>
+          {schedules.map((s) => (
+            <div key={s.id} className="row" style={{ ['--accent-color' as string]: subject.color }}>
+              <div className="row__time">{t(`subjects.days.${s.day_of_week}`).slice(0, 3)}</div>
+              <div className="row__main">
+                <div className="row__title font-mono tabular text-[12px]">
+                  {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                </div>
+                {s.room && (
+                  <div className="row__meta">{s.room}</div>
+                )}
+              </div>
+              <button
+                onClick={() => handleDelete(s.id)}
+                className="btn btn-icon btn-ghost"
+                aria-label="Delete schedule"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="mono text-xs" style={{ color: 'var(--on-surface)' }}>{s.start_time} – {s.end_time}</span>
-              {s.room && (
-                <span className="mono text-[10px]" style={{ color: 'var(--color-outline)' }}>{s.room}</span>
-              )}
-            </div>
-            <button onClick={() => handleDelete(s.id)} className="p-1 rounded-lg hover:bg-red-400/10 text-red-400 transition-colors" aria-label="Delete schedule">
-              <span className="material-symbols-outlined text-[14px]">close</span>
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Add new — row 1: day */}
       <div className="space-y-2">
@@ -291,14 +303,14 @@ export function ScheduleManager({ subject, schedules, onUpdated }: ScheduleManag
             type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            className="input"
+            className="input tabular"
             aria-label={t('subjects.startTime')}
           />
           <input
             type="time"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
-            className="input"
+            className="input tabular"
             aria-label={t('subjects.endTime')}
           />
           <input
@@ -313,17 +325,18 @@ export function ScheduleManager({ subject, schedules, onUpdated }: ScheduleManag
       </div>
 
       {conflict && (
-        <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
-          ⚠️ {t('subjects.conflict')}
+        <p className="text-xs" style={{ color: 'var(--warning)' }}>
+          ⚠ {t('subjects.conflict')}
         </p>
       )}
 
       <button
         onClick={handleAdd}
         disabled={loadingAdd}
-        className="btn-secondary w-full text-sm"
+        className="btn btn-secondary w-full text-sm"
       >
-        + {t('subjects.addSchedule')}
+        <span className="material-symbols-outlined">add</span>
+        {t('subjects.addSchedule')}
       </button>
     </div>
   )

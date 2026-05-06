@@ -121,49 +121,49 @@ export function ExamFeed({ exams, subjects }: { exams: Exam[]; subjects: Subject
           <p className="text-xs" style={{ color: 'var(--color-outline)' }}>{t('feeds.noActivities')}</p>
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {visible.map(exam => {
             const subject  = subjects.find(s => s.id === exam.subject_id)
             const actCfg   = ACTIVITY_TYPES[(exam.activity_type || 'exam') as keyof typeof ACTIVITY_TYPES]
             const days     = daysUntilDate(exam.exam_date)
             const urgency  = days < 3 ? 'var(--danger)' : days < 7 ? 'var(--warning)' : actCfg?.color || 'var(--color-primary)'
+            const accent   = subject?.color ?? urgency
             return (
-              <div key={exam.id}
-                className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
+              <div key={exam.id} className="row"
                 style={{
-                  backgroundColor: days < 3 ? 'var(--priority-high-bg)' : 'var(--s-base)',
-                  border: `1px solid color-mix(in srgb, ${urgency} 18%, var(--border-subtle))`,
+                  ['--accent-color' as string]: accent,
+                  background: days < 3 ? `color-mix(in srgb, var(--danger) 6%, transparent)` : undefined,
                 }}>
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ backgroundColor: `color-mix(in srgb, ${urgency} 16%, transparent)` }}>
-                  <span className="material-symbols-outlined text-[13px]"
-                    style={{ color: urgency, fontVariationSettings: "'FILL' 1" }}>
-                    {actCfg?.icon || 'event_upcoming'}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-bold leading-snug" style={{ color: 'var(--on-surface)' }}>
-                    {exam.title}
-                  </p>
-                  {subject && (
-                    <span className="text-[10px] font-semibold" style={{ color: subject.color }}>
-                      {subject.name}
+                <div className="row__time flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `color-mix(in srgb, ${urgency} 16%, transparent)` }}>
+                    <span className="material-symbols-outlined text-[13px]"
+                      style={{ color: urgency, fontVariationSettings: "'FILL' 1" }}>
+                      {actCfg?.icon || 'event_upcoming'}
                     </span>
+                  </div>
+                </div>
+                <div className="row__main">
+                  <div className="row__title">{exam.title}</div>
+                  {subject && (
+                    <div className="row__meta" style={{ color: subject.color }}>
+                      <span className="font-semibold">{subject.name}</span>
+                    </div>
                   )}
                 </div>
-                <div className="flex-shrink-0 text-right mt-0.5">
-                  <p className="mono text-[12px] font-black leading-none" style={{ color: urgency }}>
+                <div className="row__right text-right leading-tight">
+                  <div className="text-[12px] font-black" style={{ color: urgency }}>
                     {days === 0 ? t('feeds.today') : days === 1 ? t('feeds.tmrwShort') : `${days}d`}
-                  </p>
-                  <p className="mono text-[9px] mt-0.5" style={{ color: 'var(--color-outline)' }}>
+                  </div>
+                  <div className="text-[9px] mt-0.5" style={{ color: 'var(--color-outline)' }}>
                     {new Date(exam.exam_date + 'T00:00:00').toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short' })}
-                  </p>
+                  </div>
                 </div>
               </div>
             )
           })}
           {extra > 0 && (
-            <p className="text-center mono text-[10px] pt-0.5" style={{ color: 'var(--color-outline)' }}>
+            <p className="text-center mono text-[10px] pt-1" style={{ color: 'var(--color-outline)' }}>
               {t('feeds.moreCount').replace('{n}', String(extra))}
             </p>
           )}
