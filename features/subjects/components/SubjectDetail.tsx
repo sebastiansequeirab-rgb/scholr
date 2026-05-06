@@ -41,9 +41,11 @@ export function SubjectDetail({
   const [teacherGrades, setTeacherGrades] = useState<Record<string, number | null>>({})
   const [loading, setLoading] = useState(true)
 
-  // Local edit state (what-if simulator)
+  // Local edit state (what-if simulator + dirty tracking)
   const [localScores, setLocalScores] = useState<Record<string, number | null>>({})
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({})
+  // Per-exam save state for the persistence UI ('idle' | 'saving' | 'saved' | 'error')
+  const [saveStatus, setSaveStatus] = useState<Record<string, 'idle' | 'saving' | 'saved' | 'error'>>({})
 
   const fetchExams = useCallback(async () => {
     const supabase = createClient()
@@ -156,6 +158,47 @@ export function SubjectDetail({
     if (Number.isNaN(n)) return
     setLocalWeights(prev => ({ ...prev, [id]: Math.max(0, Math.min(100, n)) }))
   }
+
+  // Persist on blur. Student-owned exams (assigned_by IS NULL) save grade + percentage.
+  // Teacher-owned exams stay as local what-if (RLS would deny anyway).
+  const persistExam = useCallback(async (exam: Exam) => {
+    if (exam.assigned_by != null) return // teacher exam — local-only
+
+    const newScore = localScores[exam.id] ?? null
+    const newWeight = localWeights[exam.id] ?? 0
+
+    // No-op if nothing changed
+    const serverScore = exam.grade ?? null
+    const serverWeight = exam.percentage ?? 0
+    if (newScore === serverScore && newWeight === serverWeight) return
+
+    setSaveStatus(prev => ({ ...prev, [exam.id]: 'saving' }))
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('exams')
+      .update({
+        grade: newScore,
+        percentage: newWeight,
+        submission_status: newScore != null ? 'graded' : (exam.submission_status ?? 'pending'),
+      })
+      .eq('id', exam.id)
+
+    if (error) {
+      console.error('Save grade error:', error)
+      setSaveStatus(prev => ({ ...prev, [exam.id]: 'error' }))
+      return
+    }
+
+    // Reflect new server state locally so future blurs detect "no change"
+    setExams(prev => prev.map(e =>
+      e.id === exam.id ? { ...e, grade: newScore, percentage: newWeight } : e,
+    ))
+    setSaveStatus(prev => ({ ...prev, [exam.id]: 'saved' }))
+    // Clear the "saved" indicator after a beat
+    setTimeout(() => {
+      setSaveStatus(prev => ({ ...prev, [exam.id]: 'idle' }))
+    }, 1400)
+  }, [localScores, localWeights])
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -528,9 +571,11 @@ export function SubjectDetail({
                             max={100}
                             step={1}
                             value={weight}
+                            disabled={isTeacher}
                             onChange={e => updateWeight(exam.id, e.target.value)}
+                            onBlur={() => persistExam(exam)}
                             className="grade-input"
-                            style={{ width: '100%' }}
+                            style={{ width: '100%', opacity: isTeacher ? 0.55 : 1 }}
                             aria-label="Weight"
                           />
 
@@ -541,27 +586,32 @@ export function SubjectDetail({
                             max={MAX_SCORE}
                             step={0.1}
                             value={score ?? ''}
+                            disabled={isTeacher}
                             onChange={e => updateScore(exam.id, e.target.value)}
+                            onBlur={() => persistExam(exam)}
                             placeholder="—"
                             className={`grade-input ${cls === 'pending' ? '' : cls}`}
-                            style={{ width: '100%' }}
+                            style={{ width: '100%', opacity: isTeacher ? 0.55 : 1 }}
                             aria-label="Score"
                           />
 
-                          {/* Contribution */}
-                          <span
-                            className="font-mono tabular text-right"
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 700,
-                              color:
-                                contribution == null
-                                  ? 'var(--color-outline)'
-                                  : 'var(--success)',
-                            }}
-                          >
-                            {contribution != null ? `+${contribution.toFixed(2)}` : '—'}
-                          </span>
+                          {/* Contribution + save status */}
+                          <div className="flex items-center justify-end gap-1.5 min-w-0">
+                            <SaveBadge status={saveStatus[exam.id] ?? 'idle'} isTeacher={isTeacher} lang={language as 'es' | 'en'} />
+                            <span
+                              className="font-mono tabular text-right"
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color:
+                                  contribution == null
+                                    ? 'var(--color-outline)'
+                                    : 'var(--success)',
+                              }}
+                            >
+                              {contribution != null ? `+${contribution.toFixed(2)}` : '—'}
+                            </span>
+                          </div>
                         </div>
                       )
                     })}
@@ -573,8 +623,8 @@ export function SubjectDetail({
                     style={{ fontSize: 10.5, letterSpacing: '0.04em', color: 'var(--color-outline)', lineHeight: 1.5 }}
                   >
                     {language === 'es'
-                      ? 'Editá pesos y notas para simular escenarios. Los cambios no se guardan — usá la sección Evaluaciones para guardar.'
-                      : 'Edit weights and grades to simulate. Changes are not saved — use the Evaluations section to persist.'}
+                      ? 'Editá pesos y notas — los cambios se guardan automáticamente al salir del campo. Las evaluaciones del profesor (con candado) son sólo lectura.'
+                      : 'Edit weights and grades — changes save automatically when you leave the field. Teacher-assigned evaluations (with lock icon) are read-only.'}
                   </p>
                 </section>
 
@@ -706,6 +756,55 @@ function KpiBox({
       </span>
       {hint && <span className="kpi__hint">{hint}</span>}
     </div>
+  )
+}
+
+function SaveBadge({
+  status,
+  isTeacher,
+  lang,
+}: {
+  status: 'idle' | 'saving' | 'saved' | 'error'
+  isTeacher: boolean
+  lang: 'es' | 'en'
+}) {
+  if (isTeacher) return null
+  if (status === 'idle') return null
+
+  const config = {
+    saving: {
+      icon: 'progress_activity',
+      color: 'var(--color-outline)',
+      label: lang === 'es' ? 'Guardando' : 'Saving',
+      animate: true,
+    },
+    saved: {
+      icon: 'check_circle',
+      color: 'var(--success)',
+      label: lang === 'es' ? 'Guardado' : 'Saved',
+      animate: false,
+    },
+    error: {
+      icon: 'error',
+      color: 'var(--danger)',
+      label: lang === 'es' ? 'Error' : 'Error',
+      animate: false,
+    },
+  }[status]
+
+  return (
+    <span
+      title={config.label}
+      className={config.animate ? 'animate-spin' : ''}
+      style={{ display: 'inline-flex', flexShrink: 0 }}
+    >
+      <span
+        className="material-symbols-outlined"
+        style={{ fontSize: 13, color: config.color, fontVariationSettings: status === 'saved' ? "'FILL' 1" : "'FILL' 0" }}
+      >
+        {config.icon}
+      </span>
+    </span>
   )
 }
 
