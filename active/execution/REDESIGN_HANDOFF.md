@@ -1,6 +1,8 @@
 # Skolar — Rediseño visual v2 (Swiss editorial académica)
 
-> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane), `f9427c5` (AI bubbles), `311bc5d` (teacher pages internas + feeds + SubjectModal/IconPicker), `71bd262` (UrgentTasks + SubjectChat + Wizards).
+> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane), `f9427c5` (AI bubbles), `311bc5d` (teacher pages internas + feeds + SubjectModal/IconPicker), `71bd262` (UrgentTasks + SubjectChat + Wizards), `4778a9a` (settings + teacher dashboard/courses + NoteEditor toolbar).
+>
+> **Status: rebuild completo al 100%** — todos los pendientes priorizados están cerrados. Lo que pueda surgir nuevo se documenta abajo.
 
 ---
 
@@ -276,9 +278,23 @@ Migradas con `screen-head + kicker + serif italic` y body con `.card`/`.row`/`.b
 
 ### Baja prioridad
 
-**7) Settings/Personalization secciones** — los headers están migrados, pero las secciones internas tienen patrón viejo. Reescribir cada section como `.card` con `.section-head` + `.row` items para los toggles/selectores.
+**7) Settings/Personalization secciones** — ✅ HECHO (commit `4778a9a`, 2026-05-06).
+- `/settings`: Profile y Plan ahora son `.card` con header `.section-head`; Skolar premium/free con kicker + serif italic
+- `/personalization`: Section helper a `.card`+`.section-head`; theme cards con kicker + serif del nombre; toggles con border-subtle 1px; horarios con `tabular`
+- `/ai-settings`: card con badge llama-3.3-70b, info box tinta tertiary, empty state con kicker + serif italic
 
-**8) Body de Teacher Dashboard + Courses** — los headers cambiaron pero los stats cards y la grid de cursos del profesor mantienen el look viejo.
+**8) Body de Teacher Dashboard + Courses** — ✅ HECHO (commit `4778a9a`, 2026-05-06).
+- TeacherDashboard: stats a `.kpi` (sub + num tabular + hint); cursos con `section-head` + `.row` pattern
+- CoursesClient: grid de cards con barra superior 2px del courseColor, kicker "Curso" tintado, nombre en serif italic
+- CourseOverview: header con icon inline + serif del nombre, access code en card con barra superior, quick action tabs con icon pill del courseColor, students preview con `.row`
+- CourseModal: pasado a `modal-overlay`/`modal-content` + kicker+serif, color picker con check blanco
+
+### Bonus cerrado
+
+**NoteEditor toolbar** (era pendiente bajo riesgo de #3) — ✅ HECHO (commit `4778a9a`, 2026-05-06).
+- Tools agrupados en 4 bloques separados por dividers verticales: text-size · format(B/I/S/code) · lists/blocks(bullet/numbered/checklist/quote) · attachments(image/voice)
+- Botones a `radius-sm` (más editorial, sin rounded-lg agresivo)
+- Recording state usa overlay animado correcto sin `rounded-lg` legacy
 
 ---
 
