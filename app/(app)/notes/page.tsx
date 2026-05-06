@@ -511,6 +511,65 @@ export default function NotesPage() {
   // Mobile: show editor panel if a note is active
   const mobileShowEditor = !!activeNote
 
+  // ── Subject filter — shared markup for desktop sidebar + mobile collapsed list
+  const subjectFilterButtons = (
+    <div className="space-y-0.5">
+      <button
+        onClick={() => setActiveSubject('all')}
+        className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
+        style={{
+          backgroundColor: activeSubject === 'all' ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : 'transparent',
+          color:           activeSubject === 'all' ? 'var(--color-primary)' : 'var(--color-outline)',
+          borderLeft: `2px solid ${activeSubject === 'all' ? 'var(--color-primary)' : 'transparent'}`,
+        }}>
+        <span>{t('notes.allSubjects')}</span>
+        <span className="mono text-[10px] px-1.5 py-0.5 rounded-full"
+          style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
+          {notes.length}
+        </span>
+      </button>
+
+      {subjects.filter(s => countBySubject(s.id) > 0).map(s => (
+        <button
+          key={s.id}
+          onClick={() => setActiveSubject(s.id)}
+          className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between gap-2"
+          style={{
+            backgroundColor: activeSubject === s.id ? `color-mix(in srgb, ${s.color} 10%, transparent)` : 'transparent',
+            color:           activeSubject === s.id ? s.color : 'var(--color-outline)',
+            borderLeft: `2px solid ${activeSubject === s.id ? s.color : 'transparent'}`,
+          }}
+        >
+          <span className="flex items-center gap-1.5 min-w-0">
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+            <span className="truncate">{s.name}</span>
+          </span>
+          <span className="mono text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
+            {countBySubject(s.id)}
+          </span>
+        </button>
+      ))}
+
+      {countNoSubject > 0 && (
+        <button
+          onClick={() => setActiveSubject('none')}
+          className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
+          style={{
+            backgroundColor: activeSubject === 'none' ? 'color-mix(in srgb, var(--color-outline) 10%, transparent)' : 'transparent',
+            color:           activeSubject === 'none' ? 'var(--on-surface)' : 'var(--color-outline)',
+            borderLeft: activeSubject === 'none' ? '2px solid var(--color-outline)' : '2px solid transparent',
+          }}>
+          <span>{t('notes.noSubjectNotes')}</span>
+          <span className="mono text-[10px] px-1.5 py-0.5 rounded-full"
+            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
+            {countNoSubject}
+          </span>
+        </button>
+      )}
+    </div>
+  )
+
   return (
     <div style={{ height: 'calc(100vh - 4rem)' }} className="flex flex-col animate-fade-in -m-4 lg:-m-8">
 
@@ -518,9 +577,9 @@ export default function NotesPage() {
       <div className={`flex items-center justify-between px-5 py-3.5 flex-shrink-0 ${mobileShowEditor ? 'hidden lg:flex' : 'flex'}`}
         style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div>
-          <span className="kicker block mb-0.5">Notebook</span>
+          <span className="kicker block mb-0.5">{language === 'es' ? 'Cuaderno' : 'Notebook'} · {notes.length}</span>
           <h1 className="text-[20px] font-bold tracking-tight" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
-            <span className="serif">{t('notes.title').toLowerCase()}</span>
+            <span className="serif">{language === 'es' ? 'apuntes' : 'notes'}</span>
           </h1>
         </div>
         <button onClick={createNote} className="btn btn-primary" id="add-note-btn">
@@ -529,17 +588,35 @@ export default function NotesPage() {
         </button>
       </div>
 
-      {/* Two-panel layout */}
+      {/* Three-panel desktop layout (subjects · notes · editor) — collapses to one panel on mobile */}
       <div className="flex flex-1 min-h-0">
 
-        {/* Left panel — hidden on mobile when editor is open */}
-        <div className={`flex-shrink-0 flex flex-col overflow-hidden ${mobileShowEditor ? 'hidden lg:flex' : 'flex w-full'} lg:w-64 xl:w-72`}
+        {/* Pane 1 — Subjects (folders). Desktop only. */}
+        <aside className="hidden lg:flex flex-shrink-0 flex-col w-[220px] overflow-hidden"
+          style={{ backgroundColor: 'var(--s-low)', borderRight: '1px solid var(--border-subtle)' }}>
+          <div className="px-3 pt-3 pb-2 flex-shrink-0">
+            <span className="kicker block mb-2.5">{language === 'es' ? 'Carpetas' : 'Folders'}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto px-2 pb-3">
+            {subjectFilterButtons}
+          </div>
+        </aside>
+
+        {/* Pane 2 — Notes list. Desktop fixed 280px, mobile full width when editor closed. */}
+        <div className={`flex-shrink-0 flex flex-col overflow-hidden ${mobileShowEditor ? 'hidden lg:flex' : 'flex w-full'} lg:w-[280px]`}
           style={{ backgroundColor: 'var(--s-low)', borderRight: '1px solid var(--border-subtle)' }}>
 
-          {/* Filter header */}
+          {/* Mobile-only subject filter (collapsed at top of notes list) */}
+          <div className="lg:hidden px-3 pt-3 pb-2 flex-shrink-0"
+            style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <span className="kicker block mb-2">{language === 'es' ? 'Carpetas' : 'Folders'}</span>
+            {subjectFilterButtons}
+          </div>
+
+          {/* List header: count + sort */}
           <div className="px-3 pt-3 pb-2 flex-shrink-0">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-sm font-bold" style={{ color: 'var(--on-surface)' }}>
+            <div className="flex items-center justify-between">
+              <span className="kicker">
                 {filteredNotes.length} {filteredNotes.length === 1 ? t('notes.title').toLowerCase().slice(0, -1) : t('notes.title').toLowerCase()}
               </span>
               <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: 'var(--s-base)' }}>
@@ -562,63 +639,6 @@ export default function NotesPage() {
                   {t('notes.sortAlpha')}
                 </button>
               </div>
-            </div>
-
-            {/* Subject filter */}
-            <div className="space-y-0.5">
-              <button
-                onClick={() => setActiveSubject('all')}
-                className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
-                style={{
-                  backgroundColor: activeSubject === 'all' ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : 'transparent',
-                  color:           activeSubject === 'all' ? 'var(--color-primary)' : 'var(--color-outline)',
-                  borderLeft: `2px solid ${activeSubject === 'all' ? 'var(--color-primary)' : 'transparent'}`,
-                }}>
-                <span>{t('notes.allSubjects')}</span>
-                <span className="mono text-[10px] px-1.5 py-0.5 rounded-full"
-                  style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
-                  {notes.length}
-                </span>
-              </button>
-
-              {subjects.filter(s => countBySubject(s.id) > 0).map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => setActiveSubject(s.id)}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between gap-2"
-                  style={{
-                    backgroundColor: activeSubject === s.id ? `color-mix(in srgb, ${s.color} 10%, transparent)` : 'transparent',
-                    color:           activeSubject === s.id ? s.color : 'var(--color-outline)',
-                    borderLeft: `2px solid ${activeSubject === s.id ? s.color : 'transparent'}`,
-                  }}
-                >
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                    <span className="truncate">{s.name}</span>
-                  </span>
-                  <span className="mono text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
-                    {countBySubject(s.id)}
-                  </span>
-                </button>
-              ))}
-
-              {countNoSubject > 0 && (
-                <button
-                  onClick={() => setActiveSubject('none')}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between"
-                  style={{
-                    backgroundColor: activeSubject === 'none' ? 'color-mix(in srgb, var(--color-outline) 10%, transparent)' : 'transparent',
-                    color:           activeSubject === 'none' ? 'var(--on-surface)' : 'var(--color-outline)',
-                    borderLeft: activeSubject === 'none' ? '2px solid var(--color-outline)' : '2px solid transparent',
-                  }}>
-                  <span>{t('notes.noSubjectNotes')}</span>
-                  <span className="mono text-[10px] px-1.5 py-0.5 rounded-full"
-                    style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
-                    {countNoSubject}
-                  </span>
-                </button>
-              )}
             </div>
           </div>
 
