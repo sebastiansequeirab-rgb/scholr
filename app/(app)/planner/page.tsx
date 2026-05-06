@@ -866,6 +866,201 @@ function EditExamModal({
   )
 }
 
+// ─── Compact kanban cards ────────────────────────────────────────────────────
+function TaskKanCard({
+  task,
+  subjects,
+  onDelete,
+  onRefresh,
+}: {
+  task: Task
+  subjects: Subject[]
+  onDelete: (id: string) => void
+  onRefresh: () => void
+}) {
+  const { t, language } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
+  const subject = subjects.find(s => s.id === task.subject_id)
+  const accent = subject?.color || 'var(--color-primary)'
+  const isDone = !!task.is_done
+
+  if (expanded) {
+    return (
+      <div className="animate-slide-up">
+        <TaskCard task={task} subjects={subjects} onDelete={onDelete} onRefresh={onRefresh} />
+        <button
+          onClick={() => setExpanded(false)}
+          className="mono text-[10px] uppercase tracking-wider -mt-1 mb-1 ml-2 flex items-center gap-1 hover:opacity-80"
+          style={{ color: 'var(--color-outline)' }}
+        >
+          <span className="material-symbols-outlined text-[12px]">unfold_less</span>
+          {t('planner.collapse')}
+        </button>
+      </div>
+    )
+  }
+
+  let dueLabel: string | null = null
+  let dueColor: string | null = null
+  if (task.due_date) {
+    const days = daysUntil(task.due_date)
+    if (isToday(task.due_date)) {
+      dueLabel = t('planner.today')
+      dueColor = 'var(--danger)'
+    } else if (isTomorrow(task.due_date)) {
+      dueLabel = t('planner.tomorrow')
+      dueColor = 'var(--warning)'
+    } else if (days < 0) {
+      dueLabel = language === 'es' ? `Hace ${Math.abs(days)}d` : `${Math.abs(days)}d ago`
+      dueColor = 'var(--color-outline)'
+    } else {
+      dueLabel = `${days}d`
+    }
+  }
+
+  const prioLabel = task.priority === 'high'
+    ? (language === 'es' ? 'ALTA' : 'HIGH')
+    : task.priority === 'mid'
+    ? (language === 'es' ? 'MEDIA' : 'MED')
+    : (language === 'es' ? 'BAJA' : 'LOW')
+
+  return (
+    <div
+      className={`kan-card ${isDone ? 'is-done' : ''}`}
+      style={{ ['--accent-color' as string]: accent } as React.CSSProperties}
+      role="button"
+      tabIndex={0}
+      onClick={() => setExpanded(true)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(true) } }}
+    >
+      <div className="kan-card__head">
+        {subject && (
+          <span
+            className="badge"
+            style={{
+              background: `color-mix(in srgb, ${subject.color} 18%, transparent)`,
+              color: subject.color,
+            }}
+          >
+            {subject.name}
+          </span>
+        )}
+        {task.priority && (
+          <span className={`badge badge--prio-${task.priority}`}>{prioLabel}</span>
+        )}
+      </div>
+      <div className="kan-card__title">{task.text}</div>
+      <div className="kan-card__foot">
+        <span>
+          {dueLabel ? (
+            <>
+              <span className="material-symbols-outlined mi">schedule</span>
+              <span style={dueColor ? { color: dueColor } : undefined}>{dueLabel}</span>
+            </>
+          ) : (
+            <>
+              <span className="material-symbols-outlined mi">edit_note</span>
+              {t('planner.notes')}
+            </>
+          )}
+        </span>
+        {isDone && (
+          <span className="check"><span className="material-symbols-outlined mi">check_circle</span></span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ExamKanCard({
+  exam,
+  subjects,
+  onEdit,
+}: {
+  exam: Exam
+  subjects: Subject[]
+  onEdit: (exam: Exam) => void
+}) {
+  const { language } = useTranslation()
+  const subject = subjects.find(s => s.id === exam.subject_id)
+  const typeCfg = ACTIVITY_TYPES[exam.activity_type || 'exam']
+  const accent = subject?.color || typeCfg.color
+  const date = new Date(exam.exam_date + 'T00:00:00')
+  const days = daysUntil(exam.exam_date)
+  const isPast = days < 0
+  const status = (exam.submission_status || 'pending') as SubmissionStatus
+  const isGraded = status === 'graded'
+  const isDimmed = isPast || isGraded
+
+  const dayLabel = isPast
+    ? (language === 'es' ? 'Pasado' : 'Past')
+    : days === 0
+    ? (language === 'es' ? 'Hoy' : 'Today')
+    : days === 1
+    ? (language === 'es' ? 'Mañana' : 'Tomorrow')
+    : `${days}d`
+
+  const shortDate = date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short' })
+
+  return (
+    <div
+      className={`kan-card ${isDimmed ? 'is-done' : ''}`}
+      style={{ ['--accent-color' as string]: accent } as React.CSSProperties}
+      role="button"
+      tabIndex={0}
+      onClick={() => onEdit(exam)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEdit(exam) } }}
+    >
+      <div className="kan-card__head">
+        {subject && (
+          <span
+            className="badge"
+            style={{
+              background: `color-mix(in srgb, ${subject.color} 18%, transparent)`,
+              color: subject.color,
+            }}
+          >
+            {subject.name}
+          </span>
+        )}
+        <span
+          className="badge"
+          style={{
+            background: `color-mix(in srgb, ${typeCfg.color} 14%, transparent)`,
+            color: typeCfg.color,
+          }}
+        >
+          {language === 'es' ? typeCfg.label_es : typeCfg.label_en}
+        </span>
+        {exam.percentage != null && (
+          <span className="badge">{exam.percentage}%</span>
+        )}
+        {isGraded && exam.grade != null && (
+          <span className="badge badge--success" style={{ marginLeft: 'auto' }}>
+            {exam.grade}/{exam.max_grade ?? 20}
+          </span>
+        )}
+      </div>
+      <div className="kan-card__title">{exam.title}</div>
+      <div className="kan-card__foot">
+        <span>
+          <span className="material-symbols-outlined mi">event</span>
+          {shortDate} · {dayLabel}
+        </span>
+        {status === 'submitted' && (
+          <span style={{ color: 'var(--warning)' }}>
+            <span className="material-symbols-outlined mi">upload_file</span>
+            {language === 'es' ? 'Entregada' : 'Submitted'}
+          </span>
+        )}
+        {isGraded && (
+          <span className="check"><span className="material-symbols-outlined mi">check_circle</span></span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function PlannerPage() {
   const { t, language } = useTranslation()
@@ -886,6 +1081,7 @@ export default function PlannerPage() {
   const [submissionFilter,  setSubmissionFilter]  = useState<SubmissionFilter>('all')
   const [percentageFilter,  setPercentageFilter]  = useState<PercentageFilter>('all')
   const [filterOpen,        setFilterOpen]        = useState(false)
+  const [viewMode,          setViewMode]          = useState<'kanban' | 'list'>('kanban')
 
   const handleTypeFilter = (t: TypeFilter) => {
     setTypeFilter(t)
@@ -1059,16 +1255,55 @@ export default function PlannerPage() {
     { key: 'completed',   label: t('planner.completed')   },
   ]
 
+  // ── Kanban buckets ─────────────────────────────────────────────────────────
+  const todoTaskItems  = filteredTasks.filter(task => !task.is_done && (task.status || 'not_started') === 'not_started')
+  const doingTaskItems = filteredTasks.filter(task => !task.is_done && task.status === 'in_progress')
+  const doneTaskItems  = filteredTasks.filter(task => task.is_done)
+  const todoExamItems  = filteredExams.filter(e => (e.submission_status || 'pending') === 'pending'   && e.exam_date >= todayStr)
+  const doingExamItems = filteredExams.filter(e => (e.submission_status || 'pending') === 'submitted')
+  const doneExamItems  = filteredExams.filter(e => (e.submission_status || 'pending') === 'graded'    || e.exam_date < todayStr)
+
+  const kanbanCounts = {
+    todo:  todoTaskItems.length  + todoExamItems.length,
+    doing: doingTaskItems.length + doingExamItems.length,
+    done:  doneTaskItems.length  + doneExamItems.length,
+  }
+
+  const isKanban = viewMode === 'kanban'
+  const containerWidth = isKanban ? 'max-w-[1100px]' : 'max-w-3xl'
+
   return (
-    <div className="max-w-3xl mx-auto reveal-stagger pb-32 lg:pb-10">
+    <div className={`${containerWidth} mx-auto reveal-stagger pb-32 lg:pb-10`}>
 
       {/* Header */}
       <header className="screen-head">
         <div className="screen-head__left">
           <span className="kicker">{t('nav.tasks')} · 2026</span>
           <h1 className="screen-head__title">
-            <span className="serif">plan de trabajo</span>
+            <span className="serif">{language === 'es' ? 'plan de trabajo' : 'plan of work'}</span>
           </h1>
+        </div>
+        <div className="screen-head__actions">
+          <div className="seg" role="tablist" aria-label={t('planner.title')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'kanban'}
+              className={viewMode === 'kanban' ? 'active' : ''}
+              onClick={() => setViewMode('kanban')}
+            >
+              {t('planner.viewKanban')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'list'}
+              className={viewMode === 'list' ? 'active' : ''}
+              onClick={() => setViewMode('list')}
+            >
+              {t('planner.viewList')}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1359,8 +1594,8 @@ export default function PlannerPage() {
         </div>
       )}
 
-      {/* Items */}
-      {!loading && !isEmpty && (
+      {/* Items — list view */}
+      {!loading && !isEmpty && !isKanban && (
         <div>
           {/* Pending tasks + upcoming exams */}
           {pendingTasks.map(task => (
@@ -1390,6 +1625,82 @@ export default function PlannerPage() {
               </div>
             </details>
           )}
+        </div>
+      )}
+
+      {/* Items — kanban view */}
+      {!loading && !isEmpty && isKanban && (
+        <div className="kanban">
+          {/* Pendientes */}
+          <div className="kan-col kan-col--todo">
+            <div className="kan-col__head">
+              <span className="kan-col__title">
+                {t('planner.col_todo')}
+                <span className="section-head__count">{kanbanCounts.todo}</span>
+              </span>
+            </div>
+            <div className="kan-col__list">
+              {todoTaskItems.length + todoExamItems.length === 0 && (
+                <p className="kan-col__empty">{t('planner.emptyTodo')}</p>
+              )}
+              {todoTaskItems.map(task => (
+                <TaskKanCard key={`kt-${task.id}`} task={task} subjects={subjects} onDelete={deleteTask} onRefresh={fetchData} />
+              ))}
+              {todoExamItems.map(exam => (
+                <ExamKanCard key={`ke-${exam.id}`} exam={exam} subjects={subjects} onEdit={setEditingExam} />
+              ))}
+            </div>
+            <button
+              type="button"
+              className="add-row"
+              onClick={() => { setSheetType('task'); setSheetOpen(true) }}
+            >
+              <span className="material-symbols-outlined mi">add</span>
+              {t('planner.addTask')}
+            </button>
+          </div>
+
+          {/* En curso */}
+          <div className="kan-col kan-col--doing">
+            <div className="kan-col__head">
+              <span className="kan-col__title">
+                {t('planner.col_doing')}
+                <span className="section-head__count">{kanbanCounts.doing}</span>
+              </span>
+            </div>
+            <div className="kan-col__list">
+              {doingTaskItems.length + doingExamItems.length === 0 && (
+                <p className="kan-col__empty">{t('planner.emptyDoing')}</p>
+              )}
+              {doingTaskItems.map(task => (
+                <TaskKanCard key={`kt-${task.id}`} task={task} subjects={subjects} onDelete={deleteTask} onRefresh={fetchData} />
+              ))}
+              {doingExamItems.map(exam => (
+                <ExamKanCard key={`ke-${exam.id}`} exam={exam} subjects={subjects} onEdit={setEditingExam} />
+              ))}
+            </div>
+          </div>
+
+          {/* Hechas */}
+          <div className="kan-col kan-col--done">
+            <div className="kan-col__head">
+              <span className="kan-col__title">
+                {t('planner.col_done')}
+                <span className="section-head__count">{kanbanCounts.done}</span>
+              </span>
+            </div>
+            <div className="kan-col__list">
+              {doneTaskItems.length + doneExamItems.length === 0 && (
+                <p className="kan-col__empty">{t('planner.emptyDone')}</p>
+              )}
+              {doneTaskItems.map(task => (
+                <TaskKanCard key={`kt-${task.id}`} task={task} subjects={subjects} onDelete={deleteTask} onRefresh={fetchData} />
+              ))}
+              {doneExamItems.map(exam => (
+                <ExamKanCard key={`ke-${exam.id}`} exam={exam} subjects={subjects} onEdit={setEditingExam} />
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

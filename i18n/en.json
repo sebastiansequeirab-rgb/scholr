@@ -212,7 +212,17 @@
     "subtasks": "Subtasks",
     "notes": "Notes",
     "filterBySubject": "Filter by subject",
-    "filterByStatus": "Filter by status"
+    "filterByStatus": "Filter by status",
+    "viewKanban": "Kanban",
+    "viewList": "List",
+    "col_todo": "To do",
+    "col_doing": "In progress",
+    "col_done": "Done",
+    "addTask": "Add task",
+    "collapse": "Collapse",
+    "emptyTodo": "Nothing to do",
+    "emptyDoing": "Nothing in progress",
+    "emptyDone": "Nothing done yet"
   },
   "tasks": {
     "title": "Tasks",

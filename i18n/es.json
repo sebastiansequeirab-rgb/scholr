@@ -212,7 +212,17 @@
     "subtasks": "Subtareas",
     "notes": "Notas",
     "filterBySubject": "Filtrar por materia",
-    "filterByStatus": "Filtrar por estado"
+    "filterByStatus": "Filtrar por estado",
+    "viewKanban": "Kanban",
+    "viewList": "Lista",
+    "col_todo": "Pendientes",
+    "col_doing": "En curso",
+    "col_done": "Hechas",
+    "addTask": "Agregar tarea",
+    "collapse": "Compactar",
+    "emptyTodo": "Sin pendientes",
+    "emptyDoing": "Nada en curso",
+    "emptyDone": "Aún nada hecho"
   },
   "tasks": {
     "title": "Pendientes",

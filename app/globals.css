@@ -1101,6 +1101,183 @@ em.serif,
     mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/></svg>");
   }
+
+  /* ─────────── Kanban (planner) ─────────── */
+  .kanban {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 900px) {
+    .kanban { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  .kan-col {
+    background: var(--s-low);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 360px;
+  }
+  .kan-col__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .kan-col__title {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--on-surface);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .kan-col--todo  .kan-col__title { color: var(--danger); }
+  .kan-col--doing .kan-col__title { color: var(--color-primary); }
+  .kan-col--done  .kan-col__title { color: var(--success); }
+  .kan-col__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .kan-col__empty {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 12px;
+    color: var(--color-outline);
+    text-align: center;
+    padding: 14px 6px;
+  }
+
+  .kan-card {
+    background: var(--s-bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 10px 10px 9px 14px;
+    position: relative;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .kan-card:hover {
+    border-color: var(--border-strong);
+  }
+  .kan-card:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent-color, var(--color-primary)) 55%, transparent);
+    outline-offset: 1px;
+  }
+  .kan-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--accent-color, var(--color-primary));
+  }
+  .kan-card.is-done {
+    opacity: 0.55;
+  }
+  .kan-card__head {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .kan-card__title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--on-surface);
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+  }
+  .kan-card.is-done .kan-card__title {
+    text-decoration: line-through;
+    color: var(--on-surface-variant);
+  }
+  .kan-card__desc {
+    font-size: 10.5px;
+    color: var(--on-surface-variant);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+  .kan-card .progress-track {
+    margin-top: 8px;
+  }
+  .kan-card__foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-outline);
+  }
+  .kan-card__foot .mi {
+    font-size: 11px;
+    margin-right: 2px;
+    vertical-align: middle;
+  }
+  .kan-card__foot .check {
+    color: var(--success);
+  }
+
+  .add-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-outline);
+    border: 1px dashed var(--border-subtle);
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .add-row:hover {
+    border-color: var(--border-strong);
+    color: var(--on-surface-variant);
+    background: var(--s-bg);
+  }
+  .add-row .mi { font-size: 13px; }
+
+  /* Segmented (view toggle) */
+  .seg {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 999px;
+    background: var(--s-low);
+    border: 1px solid var(--border-subtle);
+  }
+  .seg button {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 5px 12px;
+    border-radius: 999px;
+    color: var(--color-outline);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    transition: background .15s, color .15s;
+  }
+  .seg button.active {
+    background: var(--s-base);
+    color: var(--on-surface);
+  }
 }
 
 /* ═══════════════════════════════════════════════
