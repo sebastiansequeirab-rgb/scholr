@@ -1,6 +1,6 @@
 # Skolar — Rediseño visual v2 (Swiss editorial académica)
 
-> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban).
+> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane).
 
 ---
 
@@ -220,22 +220,28 @@ import {
 - i18n: `planner.viewKanban/viewList/col_todo/col_doing/col_done/addTask/collapse/emptyTodo/emptyDoing/emptyDone`
 - **No se implementó drag-and-drop** — las tareas cambian de columna mediante el `cycleStatus` ya existente al expandir. Si más adelante se quiere DnD: usar `@dnd-kit/core` + actualizar `tasks.status`/`is_done` desde el handler
 
-**2) `/calendar` body (week grid)** — `app/(app)/calendar/page.tsx` (944 líneas).
-Header migrado. El grid:
-- Vista semana → 56px sidebar de horas + 7 columnas de días (15 horas: 07:00–21:00)
-- Cells con dashed horizontal borders
-- Eventos: `.cal-event` con barra lateral 2px coloreada (subject color), font 11px, badge para tipo
-- Exam events: bg más oscuro + border rojo
-- Today highlighted en primary
-- Reference: `Screens2.js` en el canvas
+**2) `/calendar` body (week grid)** — ✅ HECHO (commit `1729295`, 2026-05-06).
+Decisión arquitectural: NO se reemplazó FullCalendar (perdería month/day/DnD/popovers + 800 líneas de SANCTUARY CSS ya bien ajustadas). En su lugar se refinó el SANCTUARY CSS para acercarse al canvas:
+- Slot dividers horizontales en `dashed` (`border-top: 1px dashed var(--border-subtle)`)
+- Hour-axis ensanchada a 56px con labels mono uppercase tracking 0.06em
+- Today: tinte primary 7% en columna + day-name del header en color primary (week+day views)
+- Eventos suavizados: schedule mix 14%, exam mix 18%, task mix 12% sobre `s-low` (antes 50/35/28% sobre `s-base` — saturado)
+- Bordes laterales de evento siguen al subject color a saturación plena
 
-**3) `/notes` body (editor 3-pane)** — `app/(app)/notes/page.tsx` (796 líneas).
-Header + título del apunte ya migrados. Falta:
-- Layout: 220px folder sidebar + 280px notes list + editor flex-1
-- `.notes-sidebar`: header "CARPETAS" mono + lista con dot color + count mono
-- `.notes-list`: header con count + "+ Add" + items con título 13px bold + fecha mono + preview 2-line
-- `.notes-toolbar` agrupado (text style / formatting / lists / blocks / attachments) con dividers
-- Reference: `Screens3.js`
+**Si más adelante se quiere reemplazar FullCalendar wholesale** (canvas: `cal-grid`, `cal-day`, `cal-cell`, `cal-event`):
+- Implementación de referencia: `re design/_src/skolar-2/project/components/Screens2.js`
+- CSS: `re design/_src/skolar-2/project/styles.css` líneas 1463-1532 + 2242-2302
+- Trade-off: perdés DnD + multi-vista + popovers a cambio de ~600 líneas de control total
+
+**3) `/notes` body (3-pane)** — ✅ HECHO (commit `62a4e43`, 2026-05-06).
+Layout desktop:
+- Pane 1 (220px): kicker "CARPETAS" + lista de subjects con dot color + count mono
+- Pane 2 (280px): kicker "{count} apuntes" + sort toggle + lista de notas con preview
+- Pane 3: editor (flex-1, intacto — `NoteEditor` no se tocó)
+
+Mobile: las carpetas se colapsan en un bloque al tope del pane de lista, manteniendo el flujo single-pane y la full-screen del editor cuando hay nota activa. `subjectFilterButtons` extraído como JSX reutilizable.
+
+**Pendiente del editor (bajo riesgo, alta visibilidad si se hace):** la `.notes-toolbar` interior del `NoteEditor` (líneas 32-411 del page.tsx) sigue con su look viejo. Para migrar: agrupar text-style / formatting / lists / blocks / attachments con dividers verticales, ver canvas `Screens3.js` sección NoteEditor.
 
 ### Media prioridad
 
