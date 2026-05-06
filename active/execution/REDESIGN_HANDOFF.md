@@ -8,7 +8,7 @@
 
 El usuario rediseñó Skolar en Claude Design (canvas HTML/CSS/React-via-CDN) y lo portamos al app Next.js de producción. La carpeta original del canvas vive en `/Users/sebastiansequeira/Library/Mobile Documents/com~apple~CloudDocs/Scholar/re design/_src/skolar-2/project/` — usala como **fuente visual de verdad** cuando necesites ver cómo se veía algo.
 
-**Producción:** https://scholr-5x9n.vercel.app/ — auto-deploy desde `main` en Vercel proyecto `scholr`.
+**Producción:** https://skolar-kappa.vercel.app/ — auto-deploy desde `main` en Vercel proyecto `skolar` (NO `scholr` — ese era un duplicado, ignorar).
 
 **Stack:** Next.js 14 App Router · TypeScript strict · Tailwind · Supabase · `next-themes` (attribute=class) · Inter + Instrument Serif + JetBrains Mono via Google Fonts.
 
@@ -285,7 +285,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 git push origin main
 
 # 5. Confirmar deploy
-vercel ls scholr   # debería ver Ready en ~50s
+vercel ls skolar   # debería ver Ready en ~50s
 ```
 
 ### Reglas duras (CLAUDE.md)

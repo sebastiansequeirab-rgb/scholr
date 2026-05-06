@@ -3,7 +3,7 @@
 ## What is this
 
 Academic platform ES/EN — two connected portals: Student + Teacher.
-Production: https://scholr-5x9n.vercel.app/ · Supabase ID: xawgomhknzdnhkxcegqi
+Production: https://skolar-kappa.vercel.app/ (Vercel project: `skolar`) · Supabase ID: xawgomhknzdnhkxcegqi
 
 ## Stack
 
