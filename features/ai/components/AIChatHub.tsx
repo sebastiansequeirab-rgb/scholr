@@ -1,47 +1,78 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Subject } from '@/types'
+import { useTranslation } from '@/hooks/useTranslation'
 import type { AppContext } from '@/features/ai/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface AISession {
-  id: string
-  subject_id: string | null
-  title: string | null
-  created_at: string
-  last_message_at: string
-}
-
 interface LocalMessage {
   role: 'user' | 'assistant'
   content: string
+  time?: string
 }
 
-const GENERAL_ID = '__general__'
+type DotColor = 'purple' | 'green' | 'blue' | 'rose' | 'amber' | 'cyan'
 
-const QUICK_ACTIONS_ES = [
-  { icon: 'calendar_today',  label: '¿Qué tengo esta semana?',  action: '¿Qué tengo esta semana en clases, tareas y evaluaciones?' },
-  { icon: 'school',          label: 'Próximos exámenes',         action: 'Resume mis próximos exámenes y su porcentaje en la nota final.' },
-  { icon: 'priority_high',   label: '¿Qué es más urgente?',     action: '¿Qué es lo más urgente que debo hacer hoy o esta semana?' },
-  { icon: 'auto_fix_high',   label: 'Organizar mi semana',       action: 'Ayúdame a organizar mi semana académica según materias, tareas y evaluaciones.' },
-  { icon: 'add_task',        label: 'Agregar tarea',             action: 'Quiero agregar una tarea nueva. ¿Me ayudas a registrarla?' },
-  { icon: 'event',           label: 'Agregar examen',            action: 'Quiero registrar un examen nuevo. ¿Me ayudas?' },
-  { icon: 'assignment',      label: 'Agregar assignment',        action: 'Quiero agregar un assignment o entrega nueva. ¿Me ayudas?' },
-  { icon: 'upload_file',     label: 'Resumir archivo',           action: 'Quiero subir un archivo para que lo analices y resumas.' },
+interface SidebarItem {
+  id: string
+  dot: DotColor
+  title: string
+  time: string
+  pinned?: boolean
+}
+
+const DOT_COLOR: Record<DotColor, string> = {
+  purple: 'var(--color-tertiary)',
+  green:  'var(--success)',
+  blue:   'var(--color-primary)',
+  rose:   'var(--danger)',
+  amber:  'var(--warning)',
+  cyan:   'var(--color-secondary)',
+}
+
+const MOCK_PINNED: SidebarItem[] = [
+  { id: 'pin-1', dot: 'purple', title: 'Plan de estudio · Quiz MATE', time: 'Hoy · 18:41', pinned: true },
+  { id: 'pin-2', dot: 'purple', title: 'Cómo entregar el Taller',     time: 'Hoy · 17:20', pinned: true },
 ]
 
-const QUICK_ACTIONS_EN = [
-  { icon: 'calendar_today',  label: 'What do I have this week?', action: 'What do I have this week in classes, tasks and exams?' },
-  { icon: 'school',          label: 'Upcoming exams',            action: 'Summarize my upcoming exams and their weight in my final grade.' },
-  { icon: 'priority_high',   label: "What's most urgent?",      action: 'What is the most urgent thing I need to do today or this week?' },
-  { icon: 'auto_fix_high',   label: 'Organize my week',          action: 'Help me organize my academic week based on subjects, tasks, and evaluations.' },
-  { icon: 'add_task',        label: 'Add task',                  action: 'I want to add a new task. Can you help me register it?' },
-  { icon: 'event',           label: 'Add exam',                  action: 'I want to register a new exam. Can you help?' },
-  { icon: 'assignment',      label: 'Add assignment',            action: 'I want to add a new assignment or submission. Can you help?' },
-  { icon: 'upload_file',     label: 'Summarize file',            action: 'I want to upload a file for you to analyze and summarize.' },
+const MOCK_RECENT: SidebarItem[] = [
+  { id: 'rec-1', dot: 'green',  title: 'Resumen Cap. 3 Mate',         time: 'Ayer'   },
+  { id: 'rec-2', dot: 'blue',   title: 'Plan de la semana',           time: 'Lun'    },
+  { id: 'rec-3', dot: 'rose',   title: 'Dudas sobre TRAD',            time: '21 abr' },
+  { id: 'rec-4', dot: 'amber',  title: 'Proyección de notas',         time: '20 abr' },
+  { id: 'rec-5', dot: 'cyan',   title: 'Qué hacer en 30 min libres',  time: '18 abr' },
+  { id: 'rec-6', dot: 'purple', title: 'Tip para Cálculo',            time: '15 abr' },
+]
+
+const INITIAL_MESSAGES: LocalMessage[] = [
+  {
+    role: 'assistant',
+    time: '18:40',
+    content:
+      'Hola Sebastián. Veo que tenés el taller de Instalaciones cerrando hoy a las 23:59. ¿Querés que arme un plan rápido para terminarlo?',
+  },
+  {
+    role: 'user',
+    time: '18:41',
+    content:
+      'Sí, pero antes resumime el cap. 4 de Mate Financieras para el quiz de mañana.',
+  },
+  {
+    role: 'assistant',
+    time: '18:41',
+    content:
+      'Cap. 4 cubre anualidades vencidas y anticipadas. Tres ideas clave:\n\n1. Anualidad vencida — pagos al fin del período. VP = R · [1 – (1+i)^–n] / i.\n2. Anualidad anticipada — multiplicar la fórmula por (1+i).\n3. Diferenciar tasa nominal vs efectiva al armar las equivalencias.\n\n¿Querés que te genere 5 ejercicios tipo quiz para practicar?',
+  },
+]
+
+const SUGGESTIONS = [
+  { icon: 'menu_book',   label: 'Resumime el cap. 4 de MATE'        },
+  { icon: 'task_alt',    label: 'Plan para terminar el taller hoy'  },
+  { icon: 'quiz',        label: '5 ejercicios tipo quiz'            },
+  { icon: 'event',       label: '¿Qué tengo mañana?'                },
+  { icon: 'trending_up', label: '¿Cómo subo mi promedio en CALC?'   },
 ]
 
 // ─── AIChatHub ────────────────────────────────────────────────────────────────
@@ -53,29 +84,25 @@ export function AIChatHub({
   language: 'es' | 'en'
   ctxExtra: { subject_count: number; pending_task_count: number; next_exam_date: string | null } | null
 }) {
-  const [subjects,      setSubjects]      = useState<Subject[]>([])
-  const [sessions,      setSessions]      = useState<AISession[]>([])
-  const [loadingData,   setLoadingData]   = useState(true)
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
-  const [activeSubjectId, setActiveSubjectId] = useState<string>(GENERAL_ID)
-  const [activeSubjectName, setActiveSubjectName] = useState(language === 'es' ? 'General' : 'General')
-  const [messages,      setMessages]      = useState<LocalMessage[]>([])
-  const [input,         setInput]         = useState('')
-  const [loading,       setLoading]       = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [mobileShowList, setMobileShowList] = useState(false)
-  const [pdfText,        setPdfText]        = useState<string | null>(null)
-  const [pdfName,        setPdfName]        = useState<string | null>(null)
-  const [pdfLoading,     setPdfLoading]     = useState(false)
-  const [imageFile,      setImageFile]      = useState<File | null>(null)
+  const { t } = useTranslation()
+
+  const [messages,   setMessages]   = useState<LocalMessage[]>(INITIAL_MESSAGES)
+  const [input,      setInput]      = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [activeSidebarId, setActiveSidebarId] = useState<string | null>('pin-1')
+  const [mobileShowList,  setMobileShowList]  = useState(false)
+  const [pdfText,         setPdfText]         = useState<string | null>(null)
+  const [pdfName,         setPdfName]         = useState<string | null>(null)
+  const [pdfLoading,      setPdfLoading]      = useState(false)
+  const [imageFile,       setImageFile]       = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [userInitials,    setUserInitials]    = useState<string>('SS')
 
   const currentSessionIdRef = useRef<string | null>(null)
-  const pendingSubjectIdRef = useRef<string | null>(GENERAL_ID)
   const bottomRef           = useRef<HTMLDivElement>(null)
   const inputRef            = useRef<HTMLInputElement>(null)
   const aiRecognitionRef    = useRef<{ stop: () => void } | null>(null)
-  const imageInputRef       = useRef<HTMLInputElement>(null)
+  const attachInputRef      = useRef<HTMLInputElement>(null)
   const [isAIRecording, setIsAIRecording] = useState(false)
 
   const hasSpeechRecognition = typeof window !== 'undefined' &&
@@ -104,7 +131,7 @@ export function AIChatHub({
       return
     }
     const recognition = new SRCtor()
-    recognition.lang = 'es-ES'
+    recognition.lang = language === 'es' ? 'es-ES' : 'en-US'
     recognition.continuous = false
     recognition.interimResults = false
     recognition.onresult = (e) => {
@@ -117,38 +144,22 @@ export function AIChatHub({
     setIsAIRecording(true)
   }
 
-  // ── Load data & auto-open General ─────────────────────────────────────────
+  // ── Load user initials for avatar ─────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient()
-    Promise.all([
-      supabase.from('subjects')
-        .select('id, name, color, icon, user_id, professor, room, credits, created_at, access_code, teacher_id, evaluation_plan')
-        .order('name'),
-      supabase.from('ai_sessions')
-        .select('id, subject_id, title, created_at, last_message_at')
-        .order('last_message_at', { ascending: false }),
-    ]).then(async ([sRes, sessRes]) => {
-      setSubjects((sRes.data ?? []) as import('@/types').Subject[])
-      const sess = sessRes.data ?? []
-      setSessions(sess)
-      setLoadingData(false)
-
-      // Auto-open most recent General session
-      const generalSess = sess.filter(s => !s.subject_id)
-      if (generalSess.length > 0) {
-        const first = generalSess[0]
-        currentSessionIdRef.current = first.id
-        pendingSubjectIdRef.current = null
-        setActiveSessionId(first.id)
-        const { data } = await supabase
-          .from('ai_session_messages')
-          .select('role, content')
-          .eq('session_id', first.id)
-          .order('created_at', { ascending: true })
-          .limit(60)
-        setMessages(data ?? [])
-      }
-      // else: pending new General chat — messages stay empty, quick actions shown
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle()
+      const fullName = prof?.full_name ?? user.email ?? ''
+      const parts = fullName.trim().split(/\s+/).filter(Boolean)
+      const initials = parts.length >= 2
+        ? (parts[0][0] + parts[1][0]).toUpperCase()
+        : (parts[0]?.slice(0, 2) ?? 'SS').toUpperCase()
+      if (initials) setUserInitials(initials)
     })
   }, [])
 
@@ -156,98 +167,21 @@ export function AIChatHub({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  // ── Refresh subject_ai_contexts when switching to a subject chat ───────────
-  useEffect(() => {
-    if (activeSubjectId === GENERAL_ID) return
-
-    const refreshContext = async () => {
-      const supabase = createClient()
-      const { data: { session: authSession } } = await supabase.auth.getSession()
-      if (!authSession) return
-
-      const { data: ctx } = await supabase
-        .from('subject_ai_contexts')
-        .select('last_updated_at')
-        .eq('user_id', authSession.user.id)
-        .eq('subject_id', activeSubjectId)
-        .maybeSingle()
-
-      const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
-      const isStale = !ctx?.last_updated_at ||
-        (Date.now() - new Date(ctx.last_updated_at).getTime()) > TWENTY_FOUR_HOURS
-
-      if (isStale) {
-        await fetch('/api/ai/summarize-context', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ subject_id: activeSubjectId, access_token: authSession.access_token }),
-        }).catch(() => { /* non-blocking — context refresh is best-effort */ })
-      }
-    }
-
-    refreshContext()
-  }, [activeSubjectId])
-
-  // ── Navigation ─────────────────────────────────────────────────────────────
-
-  const selectSession = useCallback(async (session: AISession) => {
-    if (currentSessionIdRef.current === session.id) {
-      setMobileShowList(false)
-      return
-    }
-    const subId = session.subject_id
-    currentSessionIdRef.current = session.id
-    pendingSubjectIdRef.current = null
-    setActiveSessionId(session.id)
-    setActiveSubjectId(subId ?? GENERAL_ID)
-    setActiveSubjectName(
-      subId
-        ? (subjects.find(s => s.id === subId)?.name ?? '')
-        : (language === 'es' ? 'General' : 'General')
-    )
-    setMobileShowList(false)
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('ai_session_messages')
-      .select('role, content')
-      .eq('session_id', session.id)
-      .order('created_at', { ascending: true })
-      .limit(60)
-    setMessages(data ?? [])
-    setTimeout(() => inputRef.current?.focus(), 80)
-  }, [subjects, language])
-
-  const startNewChat = useCallback((subjectId: string, subjectName: string) => {
+  // ── New chat: clear conversation, reset session ───────────────────────────
+  const startNewChat = useCallback(() => {
     currentSessionIdRef.current = null
-    pendingSubjectIdRef.current = subjectId
-    setActiveSessionId(null)
-    setActiveSubjectId(subjectId)
-    setActiveSubjectName(subjectName)
     setMessages([])
+    setActiveSidebarId(null)
     setMobileShowList(false)
     setTimeout(() => inputRef.current?.focus(), 80)
   }, [])
-
-  const confirmDelete = useCallback(async (sessionId: string) => {
-    await createClient().from('ai_sessions').delete().eq('id', sessionId)
-    setSessions(prev => prev.filter(s => s.id !== sessionId))
-    setDeleteConfirm(null)
-    // If deleted the active session, reset to pending new General chat
-    if (currentSessionIdRef.current === sessionId) {
-      currentSessionIdRef.current = null
-      pendingSubjectIdRef.current = GENERAL_ID
-      setActiveSessionId(null)
-      setActiveSubjectId(GENERAL_ID)
-      setActiveSubjectName(language === 'es' ? 'General' : 'General')
-      setMessages([])
-    }
-  }, [language])
 
   // ── Send message ───────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return
 
-    const userMsg: LocalMessage = { role: 'user', content: text }
+    const now = new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+    const userMsg: LocalMessage = { role: 'user', content: text, time: now }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
@@ -261,10 +195,7 @@ export function AIChatHub({
       }
       if (!authSession) return
 
-      const rawSubjectId = pendingSubjectIdRef.current ?? activeSubjectId
-      const subjectId    = rawSubjectId === GENERAL_ID ? null : rawSubjectId
-
-      // Create session on first message
+      // Create session on first message (always General — no subject_id)
       let sessionId = currentSessionIdRef.current
       if (!sessionId) {
         const { data: { user } } = await supabase.auth.getUser()
@@ -273,7 +204,7 @@ export function AIChatHub({
             .from('ai_sessions')
             .insert({
               user_id:    user.id,
-              subject_id: subjectId,
+              subject_id: null,
               title:      text.length > 50 ? text.slice(0, 49) + '…' : text,
             })
             .select()
@@ -281,16 +212,12 @@ export function AIChatHub({
           if (newSess) {
             sessionId                   = newSess.id
             currentSessionIdRef.current = sessionId
-            pendingSubjectIdRef.current = null
-            setActiveSessionId(sessionId)
-            setSessions(prev => [newSess, ...prev])
           }
         }
       }
 
       const app_context: AppContext = {
         current_page:       'ai',
-        active_subject_id:  subjectId ?? undefined,
         language,
         subject_count:      ctxExtra?.subject_count,
         pending_task_count: ctxExtra?.pending_task_count,
@@ -298,11 +225,10 @@ export function AIChatHub({
       }
 
       const currentPdfText = pdfText
-      if (pdfText) { setPdfText(null); setPdfName(null) } // consume PDF on first message
+      if (pdfText) { setPdfText(null); setPdfName(null) }
 
-      // Convert attached image to base64
-      let imageBase64:     string | undefined
-      let imageMediaType:  string | undefined
+      let imageBase64:    string | undefined
+      let imageMediaType: string | undefined
       if (imageFile) {
         imageMediaType = imageFile.type || 'image/jpeg'
         imageBase64 = await new Promise<string>((resolve, reject) => {
@@ -313,7 +239,6 @@ export function AIChatHub({
         })
         setImageFile(null)
         setImagePreviewUrl(null)
-        if (imageInputRef.current) imageInputRef.current.value = ''
       }
 
       const res = await fetch('/api/ai', {
@@ -321,7 +246,7 @@ export function AIChatHub({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message:      text,
-          history:      messages.slice(-8),
+          history:      messages.slice(-8).map(m => ({ role: m.role, content: m.content })),
           app_context,
           access_token: authSession.access_token,
           pdf_text:     currentPdfText ?? undefined,
@@ -333,6 +258,7 @@ export function AIChatHub({
       if (res.status === 429) {
         setMessages(prev => [...prev, {
           role: 'assistant',
+          time: now,
           content: language === 'es'
             ? 'Demasiadas solicitudes. Espera un momento.'
             : 'Too many requests. Please wait.',
@@ -344,6 +270,7 @@ export function AIChatHub({
         const data = await res.json().catch(() => ({}))
         setMessages(prev => [...prev, {
           role: 'assistant',
+          time: now,
           content: data.error ?? (language === 'es' ? 'Error al procesar.' : 'Error processing.'),
         }])
         return
@@ -351,7 +278,8 @@ export function AIChatHub({
 
       const data = await res.json()
       const assistantContent = data.reply ?? '...'
-      setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }])
+      const replyTime = new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantContent, time: replyTime }])
 
       if (sessionId) {
         const { data: { user } } = await supabase.auth.getUser()
@@ -373,335 +301,260 @@ export function AIChatHub({
     } finally {
       setLoading(false)
     }
-  }, [loading, messages, activeSubjectId, language, ctxExtra, imageFile])
+  }, [loading, messages, language, ctxExtra, imageFile, pdfText])
 
-  // ── Derived values ─────────────────────────────────────────────────────────
-  const isGeneral     = activeSubjectId === GENERAL_ID
-  const activeSubject = !isGeneral ? subjects.find(s => s.id === activeSubjectId) : null
-  const accentColor   = activeSubject?.color ?? 'var(--color-tertiary)'
-  const quickActions  = language === 'es' ? QUICK_ACTIONS_ES : QUICK_ACTIONS_EN
+  const usageText = useMemo(
+    () => t('ai.messages_used').replace('{used}', '340').replace('{total}', '1,000'),
+    [t]
+  )
 
-  // ── Sidebar ────────────────────────────────────────────────────────────────
+  // ── Sidebar ───────────────────────────────────────────────────────────────
 
-  const SessionRow = ({ session }: { session: AISession }) => {
-    const subId     = session.subject_id
-    const sub       = subId ? subjects.find(s => s.id === subId) : null
-    const color     = sub?.color ?? 'var(--color-tertiary)'
-    const sessionIcon = sub?.icon || (sub ? 'menu_book' : 'auto_awesome')
-    const isActive  = activeSessionId === session.id
-
-    if (deleteConfirm === session.id) {
-      return (
-        <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg mb-0.5"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--danger) 10%, transparent)' }}>
-          <span className="text-[10px] flex-1" style={{ color: 'var(--on-surface)' }}>
-            {language === 'es' ? '¿Eliminar?' : 'Delete?'}
-          </span>
-          <button onClick={() => confirmDelete(session.id)}
-            className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-            style={{ backgroundColor: 'var(--danger)', color: 'white' }}>
-            {language === 'es' ? 'Sí' : 'Yes'}
-          </button>
-          <button onClick={() => setDeleteConfirm(null)}
-            className="text-[10px] px-1.5 py-0.5 rounded"
-            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)' }}>
-            No
-          </button>
-        </div>
-      )
-    }
-
-    return (
+  const SidebarBody = (
+    <>
+      {/* Botón Nuevo chat */}
       <button
-        onClick={() => selectSession(session)}
-        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5 text-left group transition-colors"
+        onClick={startNewChat}
+        className="w-full flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
         style={{
-          backgroundColor: isActive
-            ? `color-mix(in srgb, ${color} 12%, transparent)`
-            : 'transparent',
-        }}>
-        <span className="material-symbols-outlined text-[12px] flex-shrink-0"
-          style={{ color, fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
-          {sessionIcon}
-        </span>
-        <span className="text-[11px] truncate flex-1"
-          style={{ color: isActive ? 'var(--on-surface)' : 'var(--color-secondary)' }}>
-          {session.title ?? (language === 'es' ? 'Sin título' : 'Untitled')}
-        </span>
-        <button
-          onClick={e => { e.stopPropagation(); setDeleteConfirm(session.id) }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-0.5 rounded"
-          style={{ color: 'var(--danger)' }}>
-          <span className="material-symbols-outlined text-[12px]">close</span>
-        </button>
+          background:    'var(--color-tertiary-container)',
+          color:         '#fff',
+          padding:       '10px 14px',
+          borderRadius:  10,
+          fontSize:      14,
+          fontWeight:    600,
+          marginBottom:  20,
+        }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+        {t('ai.new_chat')}
       </button>
-    )
-  }
 
-  const SidebarContent = () => {
-    const generalSessions = sessions.filter(s => !s.subject_id)
+      {/* FIJADOS */}
+      <SidebarSection
+        icon="push_pin"
+        label={t('ai.pinned')}
+        items={MOCK_PINNED}
+        activeId={activeSidebarId}
+        onSelect={(id) => { setActiveSidebarId(id); setMobileShowList(false) }}
+      />
 
-    return (
-      <div className="space-y-3">
-        {/* General */}
-        <div>
-          <div className="flex items-center justify-between px-1 py-0.5 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: 'var(--color-outline)' }}>
-              General
-            </span>
-            <button
-              onClick={() => startNewChat(GENERAL_ID, language === 'es' ? 'General' : 'General')}
-              className="rounded p-0.5 hover:opacity-70 transition-opacity"
-              style={{ color: 'var(--color-outline)' }}
-              title={language === 'es' ? 'Nuevo chat' : 'New chat'}>
-              <span className="material-symbols-outlined text-[14px]">add</span>
-            </button>
-          </div>
-          {generalSessions.length === 0 ? (
-            <button
-              onClick={() => startNewChat(GENERAL_ID, language === 'es' ? 'General' : 'General')}
-              className="w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-colors"
-              style={{ color: 'var(--color-outline)' }}>
-              {language === 'es' ? '+ Nuevo chat' : '+ New chat'}
-            </button>
-          ) : (
-            generalSessions.map(s => <SessionRow key={s.id} session={s} />)
-          )}
-        </div>
+      {/* RECIENTES */}
+      <SidebarSection
+        icon="schedule"
+        label={t('ai.recent')}
+        items={MOCK_RECENT}
+        activeId={activeSidebarId}
+        onSelect={(id) => { setActiveSidebarId(id); setMobileShowList(false) }}
+      />
+    </>
+  )
 
-        {/* Subjects */}
-        {!loadingData && subjects.map(subject => {
-          const subSessions = sessions.filter(s => s.subject_id === subject.id)
-          return (
-            <div key={subject.id}>
-              <div className="flex items-center justify-between px-1 py-0.5 mb-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="material-symbols-outlined text-[11px] flex-shrink-0"
-                    style={{ color: subject.color, fontVariationSettings: "'FILL' 1" }}>
-                    {subject.icon || 'menu_book'}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest truncate"
-                    style={{ color: 'var(--color-outline)' }}>
-                    {subject.name}
-                  </span>
-                </div>
-                <button
-                  onClick={() => startNewChat(subject.id, subject.name)}
-                  className="rounded p-0.5 hover:opacity-70 transition-opacity flex-shrink-0"
-                  style={{ color: 'var(--color-outline)' }}>
-                  <span className="material-symbols-outlined text-[14px]">add</span>
-                </button>
-              </div>
-              {subSessions.length === 0 ? (
-                <button
-                  onClick={() => startNewChat(subject.id, subject.name)}
-                  className="w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-colors"
-                  style={{ color: 'var(--color-outline)' }}>
-                  {language === 'es' ? '+ Nuevo chat' : '+ New chat'}
-                </button>
-              ) : (
-                subSessions.map(s => <SessionRow key={s.id} session={s} />)
-              )}
-            </div>
-          )
-        })}
-
-        {loadingData && (
-          <div className="space-y-1.5 px-1 pt-1">
-            {[1, 2, 3].map(i => <div key={i} className="skeleton h-6 rounded-lg" />)}
-          </div>
-        )}
+  const SidebarFooter = (
+    <div
+      className="px-3 pt-3 pb-3 flex-shrink-0"
+      style={{ borderTop: '1px solid var(--border-subtle)' }}
+    >
+      <div
+        className="mono"
+        style={{
+          fontSize:       11,
+          letterSpacing:  '0.12em',
+          textTransform:  'uppercase',
+          color:          'var(--color-outline)',
+          marginBottom:   8,
+        }}
+      >
+        {t('ai.usage_this_month')}
       </div>
-    )
-  }
+      <div
+        style={{
+          height:       4,
+          background:   'var(--s-base)',
+          borderRadius: 999,
+          overflow:     'hidden',
+          marginBottom: 8,
+        }}
+      >
+        <div
+          style={{
+            width:        '34%',
+            height:       '100%',
+            background:   'var(--color-tertiary)',
+            borderRadius: 999,
+          }}
+        />
+      </div>
+      <div
+        className="mono"
+        style={{ fontSize: 11, color: 'var(--color-outline)' }}
+      >
+        {usageText}
+      </div>
+    </div>
+  )
 
-  // ── Chat area ──────────────────────────────────────────────────────────────
+  // ── Chat area ─────────────────────────────────────────────────────────────
 
-  const ChatArea = () => (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-2 pb-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-
-        {/* Mobile: hamburger to open list */}
+  const ChatArea = (
+    <div className="flex flex-col h-full min-h-0">
+      {/* Mobile header (only the hamburger to open list) */}
+      <div className="md:hidden flex items-center pb-2 flex-shrink-0">
         <button
           onClick={() => setMobileShowList(true)}
-          className="md:hidden p-1 rounded-lg flex-shrink-0"
-          style={{ color: 'var(--color-outline)' }}>
-          <span className="material-symbols-outlined text-[18px]">menu</span>
-        </button>
-
-        <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)` }}>
-          <span className="material-symbols-outlined text-[12px]"
-            style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>
-            {isGeneral ? 'auto_awesome' : (activeSubject?.icon || 'menu_book')}
-          </span>
-        </div>
-        <p className="text-sm font-semibold flex-1 truncate" style={{ color: 'var(--on-surface)' }}>
-          {activeSubjectName}
-        </p>
-        <button
-          onClick={() => startNewChat(activeSubjectId, activeSubjectName)}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold flex-shrink-0 transition-all"
-          style={{
-            backgroundColor: `color-mix(in srgb, ${accentColor} 10%, transparent)`,
-            color:            accentColor,
-            border:           `1px solid color-mix(in srgb, ${accentColor} 22%, transparent)`,
-          }}>
-          <span className="material-symbols-outlined text-[12px]">add</span>
-          {language === 'es' ? 'Nuevo' : 'New'}
+          className="p-1 rounded-lg"
+          style={{ color: 'var(--color-outline)' }}
+        >
+          <span className="material-symbols-outlined text-[20px]">menu</span>
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-3 min-h-0 space-y-4">
-        {messages.length === 0 && (
-          <div className="pt-1 pb-2">
-            <p className="text-[11px] font-semibold mb-3 px-0.5"
-              style={{ color: 'var(--color-outline)' }}>
-              {language === 'es' ? 'Acciones rápidas' : 'Quick actions'}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {quickActions.map((action, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(action.action)}
-                  className="flex items-center gap-2 p-3 rounded-xl text-left transition-all active:scale-[0.97]"
-                  style={{
-                    backgroundColor: 'var(--s-base)',
-                    border:          '1px solid var(--border-subtle)',
-                  }}>
-                  <span className="material-symbols-outlined text-[16px] flex-shrink-0"
-                    style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>
-                    {action.icon}
-                  </span>
-                  <span className="text-xs font-medium leading-tight"
-                    style={{ color: 'var(--on-surface)' }}>
-                    {action.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '24px 24px 0 24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+          {messages.map((msg, i) => (
+            <MessageRow
+              key={i}
+              msg={msg}
+              userInitials={userInitials}
+              language={language}
+            />
+          ))}
 
-        {messages.map((msg, i) => {
-          const isUser = msg.role === 'user'
-          const timeLabel = new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-          return (
-            <div key={i} className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
-              {!isUser && (
-                <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 18%, transparent)' }}>
-                  <span className="material-symbols-outlined text-[14px]"
-                    style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
-                    auto_awesome
-                  </span>
-                </div>
-              )}
-              <div className="max-w-[78%]">
-                <div className={`flex items-baseline gap-2 mb-1 ${isUser ? 'justify-end' : ''}`}>
-                  <span className="text-[10px] font-semibold" style={{ color: isUser ? 'var(--color-primary)' : 'var(--color-tertiary)' }}>
-                    {isUser ? (language === 'es' ? 'Tú' : 'You') : 'AI'}
-                  </span>
-                  <span className="mono text-[9.5px]" style={{ color: 'var(--color-outline)' }}>{timeLabel}</span>
-                </div>
-                <div className="rounded-2xl px-4 py-3 whitespace-pre-wrap"
-                  style={{
-                    fontSize: '13px',
-                    lineHeight: 1.55,
-                    backgroundColor: isUser
-                      ? 'var(--accent-soft)'
-                      : 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)',
-                    color: 'var(--on-surface)',
-                    borderBottomRightRadius: isUser ? '4px' : undefined,
-                    borderBottomLeftRadius:  !isUser ? '4px' : undefined,
-                    border: `1px solid color-mix(in srgb, ${isUser ? 'var(--color-primary)' : 'var(--color-tertiary)'} 30%, transparent)`,
-                  }}>
-                  {msg.content}
-                </div>
+          {loading && (
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 18%, transparent)' }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 16, color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}
+                >
+                  auto_awesome
+                </span>
               </div>
-              {isUser && (
-                <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 18%, transparent)' }}>
-                  <span className="material-symbols-outlined text-[14px]"
-                    style={{ color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
-                    person
-                  </span>
-                </div>
-              )}
-            </div>
-          )
-        })}
-
-        {loading && (
-          <div className="flex gap-2.5 justify-start">
-            <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 18%, transparent)' }}>
-              <span className="material-symbols-outlined text-[14px]"
-                style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
-                auto_awesome
-              </span>
-            </div>
-            <div className="rounded-2xl rounded-bl-[4px] px-4 py-3"
-              style={{
-                backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 10%, var(--s-base))',
-                border: '1px solid color-mix(in srgb, var(--color-tertiary) 22%, transparent)',
-              }}>
-              <div className="flex gap-1 items-center h-5">
-                {[0, 1, 2].map(i => (
-                  <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
-                    style={{ backgroundColor: 'var(--color-tertiary)', animationDelay: `${i * 0.15}s` }} />
+              <div className="flex gap-1 items-center">
+                {[0, 1, 2].map(d => (
+                  <div
+                    key={d}
+                    className="rounded-full animate-bounce"
+                    style={{
+                      width:           6,
+                      height:          6,
+                      backgroundColor: 'var(--color-tertiary)',
+                      animationDelay:  `${d * 0.15}s`,
+                    }}
+                  />
                 ))}
               </div>
             </div>
-          </div>
-        )}
-        <div ref={bottomRef} />
+          )}
+
+          <div ref={bottomRef} />
+        </div>
       </div>
 
-      {/* Input */}
-      <div className="pt-2 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+      {/* Suggestion chips + Input */}
+      <div className="flex-shrink-0" style={{ padding: '16px 24px 20px 24px' }}>
+        {/* Suggestion chips */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {SUGGESTIONS.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => sendMessage(s.label)}
+              disabled={loading}
+              className="inline-flex items-center gap-2 transition-colors hover:bg-[var(--s-high)]"
+              style={{
+                background:    'var(--s-low)',
+                border:        '1px solid var(--border-subtle)',
+                padding:       '8px 14px',
+                borderRadius:  999,
+                fontSize:      13,
+                color:         'var(--on-surface)',
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 14, color: 'var(--color-outline)' }}
+              >
+                {s.icon}
+              </span>
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         {/* PDF badge */}
         {pdfName && (
-          <div className="flex items-center gap-1.5 mb-1.5 px-1">
-            <span className="material-symbols-outlined text-[14px]" style={{ color: 'var(--warning)' }}>picture_as_pdf</span>
-            <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--on-surface)' }}>{pdfName}</span>
-            <button onClick={() => { setPdfText(null); setPdfName(null) }}
-              className="text-[10px]" style={{ color: 'var(--color-outline)' }}>
-              <span className="material-symbols-outlined text-[14px]">close</span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'var(--warning)' }}>picture_as_pdf</span>
+            <span className="text-[12px] flex-1 truncate" style={{ color: 'var(--on-surface)' }}>{pdfName}</span>
+            <button onClick={() => { setPdfText(null); setPdfName(null) }} style={{ color: 'var(--color-outline)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
             </button>
           </div>
         )}
 
         {/* Image preview badge */}
         {imagePreviewUrl && (
-          <div className="flex items-center gap-2 mb-1.5 px-1">
+          <div className="flex items-center gap-2 mb-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imagePreviewUrl} alt="preview" className="h-10 w-10 rounded-lg object-cover flex-shrink-0"
-              style={{ border: '1px solid var(--border-subtle)' }} />
-            <span className="text-[11px] flex-1 truncate" style={{ color: 'var(--color-secondary)' }}>
+            <img
+              src={imagePreviewUrl}
+              alt="preview"
+              className="rounded-lg object-cover flex-shrink-0"
+              style={{ height: 36, width: 36, border: '1px solid var(--border-subtle)' }}
+            />
+            <span className="text-[12px] flex-1 truncate" style={{ color: 'var(--color-secondary)' }}>
               {imageFile?.name}
             </span>
-            <button type="button" onClick={() => { setImageFile(null); setImagePreviewUrl(null) }}
-              style={{ color: 'var(--color-outline)' }}>
-              <span className="material-symbols-outlined text-[14px]">close</span>
+            <button type="button" onClick={() => { setImageFile(null); setImagePreviewUrl(null) }} style={{ color: 'var(--color-outline)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
             </button>
           </div>
         )}
 
-        <form onSubmit={e => { e.preventDefault(); sendMessage(input) }} className="flex gap-2">
-          {/* PDF attach button */}
-          <label className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl cursor-pointer transition-all hover:bg-black/10 dark:hover:bg-white/10"
-            style={{ color: pdfText ? 'var(--warning)' : 'var(--color-outline)', border: '1px solid var(--border-subtle)' }}
-            title={language === 'es' ? 'Adjuntar PDF' : 'Attach PDF'}>
-            <span className="material-symbols-outlined text-[18px]">{pdfLoading ? 'hourglass_empty' : 'picture_as_pdf'}</span>
-            <input type="file" accept="application/pdf" className="hidden" disabled={pdfLoading || loading}
-              onChange={async (e) => {
-                const file = e.target.files?.[0]
-                if (!file) return
+        {/* Input bar */}
+        <form
+          onSubmit={e => { e.preventDefault(); sendMessage(input) }}
+          className="flex items-center gap-3"
+          style={{
+            background:    'var(--s-low)',
+            border:        '1px solid var(--border-subtle)',
+            borderRadius:  14,
+            padding:       '10px 12px',
+          }}
+        >
+          {/* Single attach button (PDF or image) */}
+          <button
+            type="button"
+            onClick={() => attachInputRef.current?.click()}
+            disabled={loading || pdfLoading}
+            className="flex items-center justify-center transition-opacity hover:opacity-70"
+            style={{
+              width:  36,
+              height: 36,
+              color:  pdfText || imageFile ? 'var(--color-tertiary)' : 'var(--color-outline)',
+              background: 'transparent',
+              border: 'none',
+            }}
+            title={language === 'es' ? 'Adjuntar' : 'Attach'}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              {pdfLoading ? 'hourglass_empty' : 'attach_file'}
+            </span>
+          </button>
+          <input
+            ref={attachInputRef}
+            type="file"
+            accept="application/pdf,image/jpeg,image/png,image/webp"
+            className="hidden"
+            disabled={loading || pdfLoading}
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              if (file.type === 'application/pdf') {
                 setPdfLoading(true)
                 try {
                   const fd = new FormData()
@@ -716,153 +569,385 @@ export function AIChatHub({
                   setPdfLoading(false)
                   e.target.value = ''
                 }
-              }}
-            />
-          </label>
-          {/* Image attach button */}
-          <button
-            type="button"
-            onClick={() => imageInputRef.current?.click()}
-            disabled={loading}
-            className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-all"
-            style={{
-              color:  imageFile ? 'var(--color-primary)' : 'var(--color-outline)',
-              border: `1px solid ${imageFile ? 'var(--color-primary)' : 'var(--border-subtle)'}`,
-            }}
-            title={language === 'es' ? 'Adjuntar imagen' : 'Attach image'}
-          >
-            <span className="material-symbols-outlined text-[18px]">image</span>
-          </button>
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            disabled={loading}
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (!file) return
-              setImageFile(file)
-              setImagePreviewUrl(URL.createObjectURL(file))
+              } else if (file.type.startsWith('image/')) {
+                setImageFile(file)
+                setImagePreviewUrl(URL.createObjectURL(file))
+                e.target.value = ''
+              }
             }}
           />
 
-          {/* Voice input */}
+          {/* Text input */}
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder={t('ai.placeholder_ask')}
+            disabled={loading}
+            style={{
+              flex:       1,
+              background: 'transparent',
+              border:     'none',
+              outline:    'none',
+              fontSize:   15,
+              color:      'var(--on-surface)',
+            }}
+          />
+
+          {/* Voice button (pelado) */}
           {hasSpeechRecognition && (
             <button
               type="button"
               onClick={handleAIVoiceToggle}
               disabled={loading}
-              className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-all relative"
+              className="flex items-center justify-center transition-opacity hover:opacity-70"
               style={{
-                color:  isAIRecording ? 'var(--sc-error)' : 'var(--color-outline)',
-                border: '1px solid var(--border-subtle)',
-                backgroundColor: isAIRecording
-                  ? 'color-mix(in srgb, var(--sc-error) 12%, transparent)'
-                  : 'transparent',
+                width:      36,
+                height:     36,
+                color:      isAIRecording ? 'var(--danger)' : 'var(--color-outline)',
+                background: 'transparent',
+                border:     'none',
               }}
               title={isAIRecording
                 ? (language === 'es' ? 'Detener dictado' : 'Stop dictating')
                 : (language === 'es' ? 'Dictar' : 'Dictate')}
               aria-pressed={isAIRecording}
             >
-              {isAIRecording && (
-                <span className="absolute inset-0 rounded-xl animate-pulse"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--sc-error) 10%, transparent)' }} />
-              )}
-              <span className="material-symbols-outlined text-[18px] relative z-10"
-                style={{ fontVariationSettings: isAIRecording ? "'FILL' 1" : "'FILL' 0" }}>
-                mic
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 20, fontVariationSettings: isAIRecording ? "'FILL' 1" : "'FILL' 0" }}
+              >
+                graphic_eq
               </span>
             </button>
           )}
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder={language === 'es' ? 'Escribe un mensaje…' : 'Type a message…'}
-            className="input flex-1 text-sm"
-            disabled={loading}
-          />
-          <button type="submit" disabled={loading || !input.trim()} className="btn-primary px-4"
-            style={{ opacity: (!input.trim() || loading) ? 0.5 : 1 }}>
-            <span className="material-symbols-outlined text-[18px]">send</span>
+
+          {/* Send button (circular violeta) */}
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="flex items-center justify-center transition-opacity"
+            style={{
+              width:        40,
+              height:       40,
+              borderRadius: '50%',
+              background:   'var(--color-tertiary-container)',
+              color:        '#fff',
+              border:       'none',
+              opacity:      (!input.trim() || loading) ? 0.5 : 1,
+              cursor:       (!input.trim() || loading) ? 'not-allowed' : 'pointer',
+            }}
+            aria-label={t('ai.send')}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_upward</span>
           </button>
         </form>
       </div>
     </div>
   )
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
-      {/* ── Desktop: two-column ─────────────────────────────────────────── */}
-      <div className="hidden md:flex rounded-2xl overflow-hidden"
+      {/* Desktop: sidebar 280 + chat fluid */}
+      <div
+        className="hidden md:flex rounded-2xl overflow-hidden"
         style={{
-          border:          '1px solid var(--border-subtle)',
-          height:          '600px',
-          backgroundColor: 'var(--s-low)',
-        }}>
+          border:     '1px solid var(--border-subtle)',
+          background: 'var(--s-low)',
+          minHeight:  680,
+        }}
+      >
         {/* Sidebar */}
-        <div className="w-[210px] flex-shrink-0 flex flex-col overflow-hidden"
-          style={{ borderRight: '1px solid var(--border-subtle)' }}>
-          <div className="px-3 pt-3 pb-2 flex-shrink-0"
-            style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <span className="mono text-[9px] tracking-[0.18em] uppercase font-bold"
-              style={{ color: 'var(--color-outline)' }}>
-              {language === 'es' ? 'Conversaciones' : 'Conversations'}
-            </span>
+        <aside
+          className="flex flex-col flex-shrink-0"
+          style={{
+            width:        280,
+            borderRight:  '1px solid var(--border-subtle)',
+            background:   'var(--s-low)',
+          }}
+        >
+          <div className="flex-1 overflow-y-auto" style={{ padding: '20px 16px' }}>
+            {SidebarBody}
           </div>
-          <div className="flex-1 overflow-y-auto p-2.5">
-            {SidebarContent()}
-          </div>
-        </div>
+          {SidebarFooter}
+        </aside>
 
         {/* Chat */}
-        <div className="flex-1 p-4 min-w-0 overflow-hidden">
-          {ChatArea()}
+        <div className="flex-1 min-w-0 flex flex-col" style={{ background: 'var(--s-base)' }}>
+          {ChatArea}
         </div>
       </div>
 
-      {/* ── Mobile: chat + slide-over list ──────────────────────────────── */}
+      {/* Mobile: chat + slide-over list */}
       <div className="md:hidden">
-        {/* List slide-over */}
         {mobileShowList && (
           <div className="animate-fade-in">
-            <div className="flex items-center gap-2 mb-4">
-              <button onClick={() => setMobileShowList(false)}
-                className="p-1.5 rounded-lg" style={{ color: 'var(--color-outline)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => setMobileShowList(false)}
+                className="p-1.5 rounded-lg"
+                style={{ color: 'var(--color-outline)' }}
+              >
                 <span className="material-symbols-outlined text-[20px]">arrow_back</span>
               </button>
               <h2 className="text-sm font-bold" style={{ color: 'var(--on-surface)' }}>
-                {language === 'es' ? 'Conversaciones' : 'Conversations'}
+                {t('ai.title')}
               </h2>
             </div>
-            <div className="rounded-2xl p-4"
-              style={{ border: '1px solid var(--border-subtle)', backgroundColor: 'var(--s-low)' }}>
-              {SidebarContent()}
+            <div
+              className="rounded-2xl flex flex-col"
+              style={{
+                border:     '1px solid var(--border-subtle)',
+                background: 'var(--s-low)',
+                minHeight:  '60vh',
+              }}
+            >
+              <div className="flex-1 overflow-y-auto" style={{ padding: '20px 16px' }}>
+                {SidebarBody}
+              </div>
+              {SidebarFooter}
             </div>
           </div>
         )}
 
-        {/* Chat */}
         {!mobileShowList && (
-          <div className="rounded-2xl overflow-hidden animate-fade-in"
+          <div
+            className="rounded-2xl overflow-hidden animate-fade-in flex flex-col"
             style={{
-              border:          '1px solid var(--border-subtle)',
-              backgroundColor: 'var(--s-low)',
-              height:          'calc(100svh - 180px)',
-              minHeight:       '480px',
-            }}>
-            <div className="p-4 h-full">
-              {ChatArea()}
-            </div>
+              border:     '1px solid var(--border-subtle)',
+              background: 'var(--s-base)',
+              height:     'calc(100svh - 200px)',
+              minHeight:  520,
+            }}
+          >
+            {ChatArea}
           </div>
         )}
       </div>
     </>
+  )
+}
+
+// ─── Sidebar helpers ─────────────────────────────────────────────────────────
+
+function SidebarSection({
+  icon,
+  label,
+  items,
+  activeId,
+  onSelect,
+}: {
+  icon: string
+  label: string
+  items: SidebarItem[]
+  activeId: string | null
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div
+        className="mono flex items-center gap-1.5"
+        style={{
+          fontSize:       11,
+          letterSpacing:  '0.12em',
+          textTransform:  'uppercase',
+          color:          'var(--color-outline)',
+          marginBottom:   8,
+          paddingLeft:    4,
+        }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{icon}</span>
+        {label}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {items.map(item => (
+          <SidebarRow
+            key={item.id}
+            item={item}
+            active={activeId === item.id}
+            onClick={() => onSelect(item.id)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SidebarRow({
+  item,
+  active,
+  onClick,
+}: {
+  item: SidebarItem
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-start gap-2.5 transition-colors text-left"
+      style={{
+        padding:      '10px 12px',
+        borderRadius: 10,
+        background:   active ? 'color-mix(in srgb, var(--color-tertiary) 14%, transparent)' : 'transparent',
+      }}
+    >
+      <span
+        style={{
+          width:        6,
+          height:       6,
+          borderRadius: '50%',
+          background:   DOT_COLOR[item.dot],
+          flexShrink:   0,
+          marginTop:    7,
+        }}
+      />
+      <div className="flex-1 min-w-0">
+        <div
+          className="truncate"
+          style={{ fontSize: 14, color: 'var(--on-surface)', lineHeight: 1.3 }}
+        >
+          {item.title}
+        </div>
+        <div
+          className="mono"
+          style={{ fontSize: 11, color: 'var(--color-outline)', marginTop: 2 }}
+        >
+          {item.time}
+        </div>
+      </div>
+      {item.pinned && (
+        <span
+          className="material-symbols-outlined flex-shrink-0"
+          style={{
+            fontSize:              14,
+            color:                 'var(--color-outline)',
+            marginTop:             4,
+            fontVariationSettings: "'FILL' 1",
+          }}
+        >
+          push_pin
+        </span>
+      )}
+    </button>
+  )
+}
+
+// ─── Message renderer (no bubbles) ──────────────────────────────────────────
+
+function MessageRow({
+  msg,
+  userInitials,
+  language,
+}: {
+  msg: LocalMessage
+  userInitials: string
+  language: 'es' | 'en'
+}) {
+  const isUser = msg.role === 'user'
+  const time = msg.time ?? new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+  const name = isUser ? (language === 'es' ? 'Sebastián' : 'You') : 'Skolar IA'
+
+  if (isUser) {
+    return (
+      <div
+        style={{
+          marginLeft: 'auto',
+          maxWidth:   720,
+          width:      '100%',
+        }}
+      >
+        <div className="flex items-center justify-end gap-3" style={{ marginBottom: 6 }}>
+          <span
+            style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}
+          >
+            {name}
+          </span>
+          <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)' }}>{time}</span>
+          <UserAvatar initials={userInitials} />
+        </div>
+        <div
+          style={{
+            fontSize:    15,
+            lineHeight:  1.6,
+            color:       'var(--on-surface)',
+            whiteSpace:  'pre-wrap',
+            paddingLeft: 0,
+            textAlign:   'left',
+          }}
+        >
+          {msg.content}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ width: '100%' }}>
+      <div className="flex items-center gap-3" style={{ marginBottom: 6 }}>
+        <AIAvatar />
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{name}</span>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)', marginLeft: 'auto' }}>
+          {time}
+        </span>
+      </div>
+      <div
+        style={{
+          fontSize:    15,
+          lineHeight:  1.6,
+          color:       'var(--on-surface)',
+          whiteSpace:  'pre-wrap',
+          paddingLeft: 44,
+        }}
+      >
+        {msg.content}
+      </div>
+    </div>
+  )
+}
+
+function AIAvatar() {
+  return (
+    <div
+      className="rounded-full flex items-center justify-center flex-shrink-0"
+      style={{
+        width:           32,
+        height:          32,
+        background:      'color-mix(in srgb, var(--color-tertiary) 22%, transparent)',
+        border:          '1px solid color-mix(in srgb, var(--color-tertiary) 35%, transparent)',
+      }}
+    >
+      <span
+        className="material-symbols-outlined"
+        style={{
+          fontSize:              16,
+          color:                 'var(--color-tertiary)',
+          fontVariationSettings: "'FILL' 1",
+        }}
+      >
+        auto_awesome
+      </span>
+    </div>
+  )
+}
+
+function UserAvatar({ initials }: { initials: string }) {
+  return (
+    <div
+      className="rounded-full flex items-center justify-center flex-shrink-0"
+      style={{
+        width:      32,
+        height:     32,
+        background: 'color-mix(in srgb, var(--color-primary) 25%, transparent)',
+        border:     '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
+        color:      'var(--color-primary)',
+        fontSize:   12,
+        fontWeight: 700,
+      }}
+    >
+      {initials}
+    </div>
   )
 }
