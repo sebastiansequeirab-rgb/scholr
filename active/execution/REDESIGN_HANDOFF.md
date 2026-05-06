@@ -1,6 +1,6 @@
 # Skolar — Rediseño visual v2 (Swiss editorial académica)
 
-> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane), `f9427c5` (AI bubbles), `311bc5d` (teacher pages internas + feeds + SubjectModal/IconPicker).
+> **Para Claude Code en próximas sesiones.** Este doc es lo único que necesitás leer para retomar el rebuild visual sin contexto previo. Última actualización 2026-05-06 — commits `ef1439e`, `1a71889`, `88d8ea4`, `9d3ea24` (planner kanban), `1729295` (calendar editorial), `62a4e43` (notes 3-pane), `f9427c5` (AI bubbles), `311bc5d` (teacher pages internas + feeds + SubjectModal/IconPicker), `71bd262` (UrgentTasks + SubjectChat + Wizards).
 
 ---
 
@@ -269,10 +269,10 @@ Migradas con `screen-head + kicker + serif italic` y body con `.card`/`.row`/`.b
 - `features/subjects/components/SubjectModal.tsx` — ✅ kicker+serif italic en header, color picker con check blanco, submit con accent del color elegido; ScheduleManager interno ahora con `.row`
 - `features/subjects/components/IconPicker.tsx` — ✅ popover con kicker, radius-xl, outline color-mix más Swiss
 
-**Pendientes 6 que quedan** (bajo riesgo):
-- `features/home/components/UrgentTasksSection.tsx` — sigue con look viejo de tarjetas; portar a `.card` con `.row` items con accent rojo
-- `features/subjects/components/SubjectChat.tsx` — aún no migrado (usado dentro del tab "Chat IA" del SubjectDetail)
-- `features/ai/components/{ScheduleImportWizard,EvaluationImportWizard}.tsx` — wizards modales del AI; aplicar kicker+serif+`.label`/`.input`
+**Pendientes 6 que quedan** — ✅ TODOS HECHOS (commit `71bd262`, 2026-05-06).
+- `features/home/components/UrgentTasksSection.tsx` — ✅ ahora `.row` con accent del subject (cae al urgencyColor si la tarea no tiene materia), prio dot en `row__time`, `live-dot` para hoy + tinte rojo de fondo
+- `features/subjects/components/SubjectChat.tsx` — ✅ bubbles AI bg `subject 18%`, user bg `subject 14%` sobre `s-low` (más legible que solid color); empty state con kicker + serif italic; composer send hereda `subject.color`
+- `features/ai/components/{ScheduleImportWizard,EvaluationImportWizard}.tsx` — ✅ todos los wrappers a `.card`, cada step (upload/parsing/saving/done) con kicker color-tertiary + serif italic, `.btn-tertiary` (lavanda AI) para "Analizar con IA", `.progress-bar.lg` para barras de progreso
 
 ### Baja prioridad
 
