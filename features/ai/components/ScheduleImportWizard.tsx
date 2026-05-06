@@ -227,8 +227,14 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
         className="hidden" onChange={handleFileChange} />
 
-      <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-        <p className="text-sm mb-4" style={{ color: 'var(--color-outline)' }}>
+      <div className="card p-5">
+        <span className="kicker" style={{ color: 'var(--color-tertiary)' }}>
+          {t('Importar', 'Import')} · {t('horario', 'schedule')}
+        </span>
+        <h3 className="text-[20px] font-bold mt-1 mb-3" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+          <span className="serif">{t('subí tu horario', 'upload your schedule')}</span>
+        </h3>
+        <p className="text-xs mb-4" style={{ color: 'var(--color-outline)' }}>
           {t(
             'Sube la foto de tu horario universitario. La IA lo analiza, tú revisas y corriges, luego guardas.',
             'Upload a photo of your university schedule. AI analyzes it, you review and edit, then save.'
@@ -237,34 +243,33 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
 
         {!imagePreview ? (
           <button onClick={() => fileInputRef.current?.click()}
-            className="w-full rounded-2xl border-2 border-dashed py-12 flex flex-col items-center gap-3 transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5"
-            style={{ borderColor: 'var(--border-default)', color: 'var(--color-outline)' }}>
-            <span className="material-symbols-outlined text-[40px]">add_photo_alternate</span>
+            className="w-full border-2 border-dashed py-12 flex flex-col items-center gap-2 transition-all hover:border-[var(--color-primary)]"
+            style={{ borderColor: 'var(--border-default)', color: 'var(--color-outline)', borderRadius: 'var(--radius-xl)' }}>
+            <span className="material-symbols-outlined text-[36px]">add_photo_alternate</span>
             <span className="text-sm font-semibold">{t('Toca para subir imagen', 'Tap to upload image')}</span>
-            <span className="text-xs opacity-60">JPG · PNG · WEBP · máx 10 MB</span>
+            <span className="kicker">JPG · PNG · WEBP · máx 10 MB</span>
           </button>
         ) : (
           <div className="space-y-3">
-            <div className="relative rounded-xl overflow-hidden">
-              <img src={imagePreview} alt="preview" className="w-full max-h-64 object-contain rounded-xl"
-                style={{ backgroundColor: 'var(--s-base)' }} />
+            <div className="relative overflow-hidden" style={{ borderRadius: 'var(--radius-lg)' }}>
+              <img src={imagePreview} alt="preview" className="w-full max-h-64 object-contain"
+                style={{ backgroundColor: 'var(--s-base)', borderRadius: 'var(--radius-lg)' }} />
               <button
                 onClick={() => { setImageFile(null); setImagePreview(null); setParseError('') }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                style={{ backgroundColor: 'var(--s-high)', color: 'var(--color-outline)' }}>
-                <span className="material-symbols-outlined text-[16px]">close</span>
+                className="absolute top-2 right-2 btn btn-icon btn-ghost"
+                style={{ background: 'var(--s-high)' }}>
+                <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <button onClick={handleParse} className="btn-primary w-full flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+            <button onClick={handleParse} className="btn btn-tertiary w-full">
+              <span className="material-symbols-outlined">auto_awesome</span>
               {t('Analizar con IA', 'Analyze with AI')}
             </button>
           </div>
         )}
 
         {parseError && (
-          <p className="mt-3 text-xs px-3 py-2.5 rounded-xl"
-            style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
+          <p className="mt-3 text-xs" style={{ color: 'var(--danger)' }}>
             {parseError}
           </p>
         )}
@@ -274,18 +279,20 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
 
   /* ─── STEP: parsing ───────────────────────────────────────────────────── */
   if (step === 'parsing') return (
-    <div className="rounded-2xl p-14 flex flex-col items-center gap-6"
-      style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)' }}>
-        <span className="material-symbols-outlined text-[32px] animate-spin"
+    <div className="card p-14 flex flex-col items-center gap-6">
+      <div className="w-16 h-16 flex items-center justify-center"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 14%, transparent)', borderRadius: 'var(--radius-xl)' }}>
+        <span className="material-symbols-outlined text-[30px] animate-spin"
           style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
           progress_activity
         </span>
       </div>
       <div className="text-center">
-        <p className="font-bold text-sm" style={{ color: 'var(--on-surface)' }}>
-          {t('Analizando tu horario…', 'Analyzing your schedule…')}
+        <span className="kicker block" style={{ color: 'var(--color-tertiary)' }}>
+          {t('IA · análisis', 'AI · analysis')}
+        </span>
+        <p className="text-base font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+          <span className="serif">{t('analizando tu horario…', 'analyzing your schedule…')}</span>
         </p>
         <p className="text-xs mt-1" style={{ color: 'var(--color-outline)' }}>
           {t('La IA está extrayendo materias y bloques horarios', 'AI is extracting subjects and time blocks')}
@@ -300,28 +307,34 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
     return (
       <div className="space-y-4">
         {/* Header info */}
-        <div className="rounded-2xl px-5 py-4 space-y-3"
-          style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
+        <div className="card p-5 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)' }}>
+            <div className="w-10 h-10 flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 14%, transparent)', borderRadius: 'var(--radius-lg)' }}>
               <span className="material-symbols-outlined text-[18px]"
                 style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
                 auto_awesome
               </span>
             </div>
-            <div>
-              <p className="font-bold text-sm" style={{ color: 'var(--on-surface)' }}>
-                {subjects.length} {t('materia(s) detectada(s)', 'subject(s) detected')}
+            <div className="min-w-0">
+              <span className="kicker block" style={{ color: 'var(--color-tertiary)' }}>
+                {t('Revisión', 'Review')}
+              </span>
+              <p className="text-base font-bold" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+                <span className="font-mono tabular">{subjects.length}</span> <span className="serif">{t('materias detectadas', 'subjects detected')}</span>
               </p>
-              <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-outline)' }}>
                 {t('Revisa y corrige antes de guardar. Todos los campos son editables.', 'Review and correct before saving. All fields are editable.')}
               </p>
             </div>
           </div>
           {matchCount > 0 && (
-            <div className="flex items-start gap-2 text-xs px-3 py-2.5 rounded-xl"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', color: 'var(--color-primary)' }}>
+            <div className="flex items-start gap-2 text-xs px-3 py-2.5"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
+                color: 'var(--color-primary)',
+                borderRadius: 'var(--radius)',
+              }}>
               <span className="material-symbols-outlined text-[14px] flex-shrink-0 mt-0.5">sync</span>
               <span>
                 {t(
@@ -479,13 +492,11 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
 
         {/* Save mode selector — only when user already has subjects */}
         {hasExisting && (
-          <div className="rounded-2xl px-5 py-4 space-y-3"
-            style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--on-surface)' }}>
-              {t('Modo de guardado', 'Save mode')}
-            </p>
+          <div className="card p-5 space-y-2">
+            <span className="kicker">{t('Modo de guardado', 'Save mode')}</span>
             {(['merge', 'replace'] as SaveMode[]).map(mode => (
-              <label key={mode} className="flex items-start gap-3 cursor-pointer p-2 rounded-xl transition-all hover:bg-white/5">
+              <label key={mode} className="flex items-start gap-3 cursor-pointer p-2 transition-all"
+                style={{ borderRadius: 'var(--radius)' }}>
                 <input type="radio" name="saveMode" value={mode}
                   checked={saveMode === mode} onChange={() => setSaveMode(mode)}
                   className="mt-0.5 flex-shrink-0 accent-[var(--color-primary)]" />
@@ -498,7 +509,7 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
                   <p className="text-xs mt-0.5" style={{ color: 'var(--color-outline)' }}>
                     {mode === 'merge'
                       ? t('Crea materias nuevas y actualiza horarios de las que coinciden. No toca el resto.', 'Creates new subjects and updates schedules for matching ones. Leaves others untouched.')
-                      : t('⚠️ Borra todas las materias y horarios actuales. Acción irreversible.', '⚠️ Deletes all current subjects and schedules. Irreversible action.')}
+                      : t('⚠ Borra todas las materias y horarios actuales. Acción irreversible.', '⚠ Deletes all current subjects and schedules. Irreversible action.')}
                   </p>
                 </div>
               </label>
@@ -508,19 +519,17 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
 
         {/* Action buttons */}
         <div className="flex gap-3">
-          <button onClick={reset} className="btn-secondary flex-1">
+          <button onClick={reset} className="btn btn-secondary flex-1">
             {t('Cancelar', 'Cancel')}
           </button>
           <button onClick={handleSave} disabled={includedCount === 0}
-            className="btn-primary flex-1"
-            style={{ opacity: includedCount === 0 ? 0.5 : 1 }}>
+            className="btn btn-primary flex-1">
             {t(`Guardar ${includedCount} materia(s)`, `Save ${includedCount} subject(s)`)}
           </button>
         </div>
 
         {parseError && (
-          <p className="text-xs px-3 py-2.5 rounded-xl"
-            style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
+          <p className="text-xs" style={{ color: 'var(--danger)' }}>
             {parseError}
           </p>
         )}
@@ -530,25 +539,26 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
 
   /* ─── STEP: saving ────────────────────────────────────────────────────── */
   if (step === 'saving') return (
-    <div className="rounded-2xl p-14 flex flex-col items-center gap-6"
-      style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ backgroundColor: 'color-mix(in srgb, var(--success) 12%, transparent)' }}>
-        <span className="material-symbols-outlined text-[32px] animate-spin"
+    <div className="card p-14 flex flex-col items-center gap-6">
+      <div className="w-16 h-16 flex items-center justify-center"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--success) 14%, transparent)', borderRadius: 'var(--radius-xl)' }}>
+        <span className="material-symbols-outlined text-[30px] animate-spin"
           style={{ color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>
           progress_activity
         </span>
       </div>
       <div className="text-center">
-        <p className="font-bold text-sm" style={{ color: 'var(--on-surface)' }}>
-          {t('Guardando…', 'Saving…')} {saveProgress.current}/{saveProgress.total}
+        <span className="kicker block" style={{ color: 'var(--success)' }}>
+          {t('Guardando', 'Saving')} · <span className="font-mono tabular">{saveProgress.current}/{saveProgress.total}</span>
+        </span>
+        <p className="text-base font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+          <span className="serif">{t('escribiendo en supabase…', 'writing to supabase…')}</span>
         </p>
-        <div className="mt-3 w-48 h-1.5 rounded-full overflow-hidden mx-auto"
-          style={{ backgroundColor: 'var(--s-high)' }}>
-          <div className="h-full rounded-full transition-all duration-300"
+        <div className="progress-bar lg mt-4 mx-auto" style={{ width: '192px' }}>
+          <div className="progress-fill"
             style={{
               width: `${saveProgress.total > 0 ? (saveProgress.current / saveProgress.total) * 100 : 0}%`,
-              backgroundColor: 'var(--success)',
+              background: 'var(--success)',
             }} />
         </div>
       </div>
@@ -557,35 +567,37 @@ export function ScheduleImportWizard({ language, onDone }: Props) {
 
   /* ─── STEP: done ──────────────────────────────────────────────────────── */
   return (
-    <div className="rounded-2xl p-12 flex flex-col items-center gap-5 text-center"
-      style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ backgroundColor: 'color-mix(in srgb, var(--success) 12%, transparent)' }}>
-        <span className="material-symbols-outlined text-[36px]"
+    <div className="card p-12 flex flex-col items-center gap-5 text-center">
+      <div className="w-16 h-16 flex items-center justify-center"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--success) 14%, transparent)', borderRadius: 'var(--radius-xl)' }}>
+        <span className="material-symbols-outlined text-[34px]"
           style={{ color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>
           check_circle
         </span>
       </div>
       <div>
-        <p className="font-bold text-base" style={{ color: 'var(--on-surface)' }}>
-          {t('¡Horario importado!', 'Schedule imported!')}
+        <span className="kicker block" style={{ color: 'var(--success)' }}>
+          {t('Listo', 'Done')}
+        </span>
+        <p className="text-[22px] font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+          <span className="serif">{t('horario importado', 'schedule imported')}</span>
         </p>
-        <p className="text-sm mt-1" style={{ color: 'var(--color-outline)' }}>
+        <p className="text-xs mt-1" style={{ color: 'var(--color-outline)' }}>
           {t('Tus materias y horarios están listos.', 'Your subjects and schedules are ready.')}
         </p>
       </div>
       <div className="flex gap-3">
-        <a href="/subjects" className="btn-secondary flex items-center gap-2 text-sm">
-          <span className="material-symbols-outlined text-[16px]">menu_book</span>
+        <a href="/subjects" className="btn btn-secondary text-sm">
+          <span className="material-symbols-outlined">menu_book</span>
           {t('Ver materias', 'View subjects')}
         </a>
-        <a href="/calendar" className="btn-primary flex items-center gap-2 text-sm">
-          <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+        <a href="/calendar" className="btn btn-primary text-sm">
+          <span className="material-symbols-outlined">calendar_month</span>
           {t('Ver calendario', 'View calendar')}
         </a>
       </div>
       <button onClick={() => { reset(); onDone() }}
-        className="text-xs transition-all hover:opacity-70" style={{ color: 'var(--color-outline)' }}>
+        className="kicker hover:opacity-70 transition-opacity">
         {t('Importar otro horario', 'Import another schedule')}
       </button>
     </div>

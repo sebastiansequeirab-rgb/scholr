@@ -225,51 +225,63 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
         className="hidden" onChange={handleFileChange} />
 
-      <div className="rounded-2xl p-5 space-y-4"
-        style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-        <p className="text-sm" style={{ color: 'var(--color-outline)' }}>
-          {t(
-            'Sube la foto de tu plan de evaluación o pega el texto. La IA extrae cada evaluación para que revises antes de guardar.',
-            'Upload a photo of your evaluation plan or paste the text. AI extracts each evaluation for you to review before saving.'
-          )}
-        </p>
+      <div className="card p-5 space-y-4">
+        <div>
+          <span className="kicker" style={{ color: 'var(--color-tertiary)' }}>
+            {t('Importar', 'Import')} · {t('plan de evaluación', 'evaluation plan')}
+          </span>
+          <h3 className="text-[20px] font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+            <span className="serif">{t('subí o pegá tu plan', 'upload or paste your plan')}</span>
+          </h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-outline)' }}>
+            {t(
+              'Sube la foto de tu plan de evaluación o pega el texto. La IA extrae cada evaluación para que revises antes de guardar.',
+              'Upload a photo of your evaluation plan or paste the text. AI extracts each evaluation for you to review before saving.'
+            )}
+          </p>
+        </div>
 
         {/* Input mode toggle */}
-        <div className="flex gap-1 p-1 rounded-xl self-start" style={{ backgroundColor: 'var(--s-base)' }}>
-          {(['image', 'text'] as InputMode[]).map(mode => (
-            <button key={mode} onClick={() => { setInputMode(mode); setParseError('') }}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
-              style={{
-                backgroundColor: inputMode === mode ? 'var(--s-high)' : 'transparent',
-                color: inputMode === mode ? 'var(--on-surface)' : 'var(--color-outline)',
-              }}>
-              <span className="material-symbols-outlined text-[14px]">
-                {mode === 'image' ? 'photo_camera' : 'text_fields'}
-              </span>
-              {mode === 'image' ? t('Imagen', 'Image') : t('Texto', 'Text')}
-            </button>
-          ))}
+        <div className="flex gap-1 p-1 self-start"
+          style={{ backgroundColor: 'var(--s-base)', borderRadius: 'var(--radius)' }}>
+          {(['image', 'text'] as InputMode[]).map(mode => {
+            const active = inputMode === mode
+            return (
+              <button key={mode} onClick={() => { setInputMode(mode); setParseError('') }}
+                className="px-3 py-1.5 text-xs font-semibold transition-all flex items-center gap-1.5"
+                style={{
+                  backgroundColor: active ? 'var(--s-high)' : 'transparent',
+                  color: active ? 'var(--on-surface)' : 'var(--color-outline)',
+                  borderRadius: 'var(--radius-sm)',
+                }}>
+                <span className="material-symbols-outlined text-[14px]">
+                  {mode === 'image' ? 'photo_camera' : 'text_fields'}
+                </span>
+                {mode === 'image' ? t('Imagen', 'Image') : t('Texto', 'Text')}
+              </button>
+            )
+          })}
         </div>
 
         {/* Image input */}
         {inputMode === 'image' && (
           !imagePreview ? (
             <button onClick={() => fileInputRef.current?.click()}
-              className="w-full rounded-2xl border-2 border-dashed py-10 flex flex-col items-center gap-3 transition-all hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5"
-              style={{ borderColor: 'var(--border-default)', color: 'var(--color-outline)' }}>
-              <span className="material-symbols-outlined text-[36px]">add_photo_alternate</span>
+              className="w-full border-2 border-dashed py-10 flex flex-col items-center gap-2 transition-all hover:border-[var(--color-primary)]"
+              style={{ borderColor: 'var(--border-default)', color: 'var(--color-outline)', borderRadius: 'var(--radius-xl)' }}>
+              <span className="material-symbols-outlined text-[34px]">add_photo_alternate</span>
               <span className="text-sm font-semibold">{t('Toca para subir imagen', 'Tap to upload image')}</span>
-              <span className="text-xs opacity-60">JPG · PNG · WEBP · máx 10 MB</span>
+              <span className="kicker">JPG · PNG · WEBP · máx 10 MB</span>
             </button>
           ) : (
             <div className="space-y-3">
-              <div className="relative rounded-xl overflow-hidden">
-                <img src={imagePreview} alt="preview" className="w-full max-h-56 object-contain rounded-xl"
-                  style={{ backgroundColor: 'var(--s-base)' }} />
+              <div className="relative overflow-hidden" style={{ borderRadius: 'var(--radius-lg)' }}>
+                <img src={imagePreview} alt="preview" className="w-full max-h-56 object-contain"
+                  style={{ backgroundColor: 'var(--s-base)', borderRadius: 'var(--radius-lg)' }} />
                 <button onClick={() => { setImageFile(null); setImagePreview(null); setParseError('') }}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                  style={{ backgroundColor: 'var(--s-high)', color: 'var(--color-outline)' }}>
-                  <span className="material-symbols-outlined text-[16px]">close</span>
+                  className="absolute top-2 right-2 btn btn-icon btn-ghost"
+                  style={{ background: 'var(--s-high)' }}>
+                  <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
             </div>
@@ -292,15 +304,14 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
 
         {/* Analyze button */}
         {((inputMode === 'image' && imagePreview) || (inputMode === 'text' && textInput.trim())) && (
-          <button onClick={handleParse} className="btn-primary w-full flex items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+          <button onClick={handleParse} className="btn btn-tertiary w-full">
+            <span className="material-symbols-outlined">auto_awesome</span>
             {t('Analizar con IA', 'Analyze with AI')}
           </button>
         )}
 
         {parseError && (
-          <p className="text-xs px-3 py-2.5 rounded-xl"
-            style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
+          <p className="text-xs" style={{ color: 'var(--danger)' }}>
             {parseError}
           </p>
         )}
@@ -310,18 +321,20 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
 
   /* ─── STEP: parsing ───────────────────────────────────────────────────── */
   if (step === 'parsing') return (
-    <div className="rounded-2xl p-14 flex flex-col items-center gap-6"
-      style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)' }}>
-        <span className="material-symbols-outlined text-[32px] animate-spin"
+    <div className="card p-14 flex flex-col items-center gap-6">
+      <div className="w-16 h-16 flex items-center justify-center"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 14%, transparent)', borderRadius: 'var(--radius-xl)' }}>
+        <span className="material-symbols-outlined text-[30px] animate-spin"
           style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
           progress_activity
         </span>
       </div>
       <div className="text-center">
-        <p className="font-bold text-sm" style={{ color: 'var(--on-surface)' }}>
-          {t('Extrayendo evaluaciones…', 'Extracting evaluations…')}
+        <span className="kicker block" style={{ color: 'var(--color-tertiary)' }}>
+          {t('IA · análisis', 'AI · analysis')}
+        </span>
+        <p className="text-base font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+          <span className="serif">{t('extrayendo evaluaciones…', 'extracting evaluations…')}</span>
         </p>
         <p className="text-xs mt-1" style={{ color: 'var(--color-outline)' }}>
           {t('La IA está identificando fechas, porcentajes y tipos', 'AI is identifying dates, percentages and types')}
@@ -338,28 +351,34 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
     return (
       <div className="space-y-4">
         {/* Header */}
-        <div className="rounded-2xl px-5 py-4 space-y-3"
-          style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
+        <div className="card p-5 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 12%, transparent)' }}>
+            <div className="w-10 h-10 flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 14%, transparent)', borderRadius: 'var(--radius-lg)' }}>
               <span className="material-symbols-outlined text-[18px]"
                 style={{ color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}>
                 assignment
               </span>
             </div>
-            <div>
-              <p className="font-bold text-sm" style={{ color: 'var(--on-surface)' }}>
-                {evals.length} {t('evaluación(es) detectada(s)', 'evaluation(s) detected')}
+            <div className="min-w-0">
+              <span className="kicker block" style={{ color: 'var(--color-tertiary)' }}>
+                {t('Revisión', 'Review')}
+              </span>
+              <p className="text-base font-bold" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+                <span className="font-mono tabular">{evals.length}</span> <span className="serif">{t('evaluaciones detectadas', 'evaluations detected')}</span>
               </p>
-              <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-outline)' }}>
                 {t('Revisa y corrige. Los campos son editables.', 'Review and correct. All fields are editable.')}
               </p>
             </div>
           </div>
           {dupCount > 0 && (
-            <div className="flex items-start gap-2 text-xs px-3 py-2.5 rounded-xl"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--warning) 10%, transparent)', color: 'var(--warning)' }}>
+            <div className="flex items-start gap-2 text-xs px-3 py-2.5"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--warning) 10%, transparent)',
+                color: 'var(--warning)',
+                borderRadius: 'var(--radius)',
+              }}>
               <span className="material-symbols-outlined text-[14px] flex-shrink-0 mt-0.5">warning</span>
               <span>
                 {t(
@@ -527,19 +546,17 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
 
         {/* Action buttons */}
         <div className="flex gap-3">
-          <button onClick={reset} className="btn-secondary flex-1">
+          <button onClick={reset} className="btn btn-secondary flex-1">
             {t('Cancelar', 'Cancel')}
           </button>
           <button onClick={handleSave} disabled={includedCount === 0}
-            className="btn-primary flex-1"
-            style={{ opacity: includedCount === 0 ? 0.5 : 1 }}>
+            className="btn btn-primary flex-1">
             {t(`Guardar ${includedCount}`, `Save ${includedCount}`)}
           </button>
         </div>
 
         {parseError && (
-          <p className="text-xs px-3 py-2.5 rounded-xl"
-            style={{ backgroundColor: 'var(--priority-high-bg)', color: 'var(--danger)' }}>
+          <p className="text-xs" style={{ color: 'var(--danger)' }}>
             {parseError}
           </p>
         )}
@@ -549,25 +566,26 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
 
   /* ─── STEP: saving ────────────────────────────────────────────────────── */
   if (step === 'saving') return (
-    <div className="rounded-2xl p-14 flex flex-col items-center gap-6"
-      style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ backgroundColor: 'color-mix(in srgb, var(--success) 12%, transparent)' }}>
-        <span className="material-symbols-outlined text-[32px] animate-spin"
+    <div className="card p-14 flex flex-col items-center gap-6">
+      <div className="w-16 h-16 flex items-center justify-center"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--success) 14%, transparent)', borderRadius: 'var(--radius-xl)' }}>
+        <span className="material-symbols-outlined text-[30px] animate-spin"
           style={{ color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>
           progress_activity
         </span>
       </div>
       <div className="text-center">
-        <p className="font-bold text-sm" style={{ color: 'var(--on-surface)' }}>
-          {t('Guardando…', 'Saving…')} {saveProgress.current}/{saveProgress.total}
+        <span className="kicker block" style={{ color: 'var(--success)' }}>
+          {t('Guardando', 'Saving')} · <span className="font-mono tabular">{saveProgress.current}/{saveProgress.total}</span>
+        </span>
+        <p className="text-base font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+          <span className="serif">{t('escribiendo en supabase…', 'writing to supabase…')}</span>
         </p>
-        <div className="mt-3 w-48 h-1.5 rounded-full overflow-hidden mx-auto"
-          style={{ backgroundColor: 'var(--s-high)' }}>
-          <div className="h-full rounded-full transition-all duration-300"
+        <div className="progress-bar lg mt-4 mx-auto" style={{ width: '192px' }}>
+          <div className="progress-fill"
             style={{
               width: `${saveProgress.total > 0 ? (saveProgress.current / saveProgress.total) * 100 : 0}%`,
-              backgroundColor: 'var(--success)',
+              background: 'var(--success)',
             }} />
         </div>
       </div>
@@ -576,31 +594,33 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
 
   /* ─── STEP: done ──────────────────────────────────────────────────────── */
   return (
-    <div className="rounded-2xl p-12 flex flex-col items-center gap-5 text-center"
-      style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ backgroundColor: 'color-mix(in srgb, var(--success) 12%, transparent)' }}>
-        <span className="material-symbols-outlined text-[36px]"
+    <div className="card p-12 flex flex-col items-center gap-5 text-center">
+      <div className="w-16 h-16 flex items-center justify-center"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--success) 14%, transparent)', borderRadius: 'var(--radius-xl)' }}>
+        <span className="material-symbols-outlined text-[34px]"
           style={{ color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>
           check_circle
         </span>
       </div>
       <div>
-        <p className="font-bold text-base" style={{ color: 'var(--on-surface)' }}>
-          {t(`${savedCount} evaluación(es) registrada(s)`, `${savedCount} evaluation(s) saved`)}
+        <span className="kicker block" style={{ color: 'var(--success)' }}>
+          {t('Listo', 'Done')}
+        </span>
+        <p className="text-[22px] font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
+          <span className="font-mono tabular">{savedCount}</span> <span className="serif">{t('evaluaciones registradas', 'evaluations saved')}</span>
         </p>
-        <p className="text-sm mt-1" style={{ color: 'var(--color-outline)' }}>
+        <p className="text-xs mt-1" style={{ color: 'var(--color-outline)' }}>
           {t('Ya aparecen en tu Planner.', 'They now appear in your Planner.')}
         </p>
       </div>
       <div className="flex gap-3">
-        <a href="/planner" className="btn-primary flex items-center gap-2 text-sm">
-          <span className="material-symbols-outlined text-[16px]">checklist</span>
+        <a href="/planner" className="btn btn-primary text-sm">
+          <span className="material-symbols-outlined">checklist</span>
           {t('Ver Planner', 'View Planner')}
         </a>
       </div>
       <button onClick={() => { reset(); onDone() }}
-        className="text-xs transition-all hover:opacity-70" style={{ color: 'var(--color-outline)' }}>
+        className="kicker hover:opacity-70 transition-opacity">
         {t('Importar otro plan', 'Import another plan')}
       </button>
     </div>

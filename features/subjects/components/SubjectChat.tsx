@@ -167,14 +167,19 @@ export function SubjectChat({ subject }: { subject: Subject }) {
         <div className="px-6 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <button
             onClick={() => setSummaryOpen(o => !o)}
-            className="w-full flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl transition-all"
-            style={{ backgroundColor: 'var(--s-base)', color: 'var(--color-outline)', border: '1px solid var(--border-subtle)' }}
+            className="w-full flex items-center gap-2 px-3 py-2 transition-all"
+            style={{
+              backgroundColor: 'var(--s-low)',
+              color: 'var(--on-surface-variant)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius)',
+            }}
           >
             <span className="material-symbols-outlined text-[14px]"
               style={{ color: subject.color, fontVariationSettings: "'FILL' 1" }}>
               psychology
             </span>
-            <span className="flex-1 text-left">
+            <span className="kicker flex-1 text-left" style={{ color: 'var(--on-surface-variant)' }}>
               {language === 'es' ? 'Contexto acumulado' : 'Accumulated context'}
             </span>
             <span className="material-symbols-outlined text-[14px] transition-transform"
@@ -183,11 +188,12 @@ export function SubjectChat({ subject }: { subject: Subject }) {
             </span>
           </button>
           {summaryOpen && (
-            <div className="mt-2 px-3 py-3 rounded-xl text-xs leading-relaxed animate-slide-up"
+            <div className="mt-2 px-3 py-3 text-xs leading-relaxed animate-slide-up"
               style={{
-                backgroundColor: 'var(--s-base)',
-                color:           'var(--color-outline)',
+                backgroundColor: 'var(--s-low)',
+                color:           'var(--on-surface-variant)',
                 border:          '1px solid var(--border-subtle)',
+                borderRadius:    'var(--radius)',
               }}>
               {summary}
             </div>
@@ -199,19 +205,25 @@ export function SubjectChat({ subject }: { subject: Subject }) {
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {loadingHistory ? (
           <div className="space-y-2">
-            {[1, 2, 3].map(i => <div key={i} className="skeleton h-10 rounded-xl" />)}
+            {[1, 2, 3].map(i => <div key={i} className="skeleton h-10" style={{ borderRadius: 'var(--radius)' }} />)}
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center pt-8 pb-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
-              style={{ backgroundColor: `${subject.color}18` }}>
+            <div className="w-12 h-12 flex items-center justify-center mx-auto mb-3"
+              style={{
+                backgroundColor: `color-mix(in srgb, ${subject.color} 16%, transparent)`,
+                borderRadius: 'var(--radius-xl)',
+              }}>
               <span className="material-symbols-outlined text-2xl"
                 style={{ color: subject.color, fontVariationSettings: "'FILL' 1" }}>
                 auto_awesome
               </span>
             </div>
-            <p className="text-sm font-bold mb-1" style={{ color: 'var(--on-surface)' }}>
-              {language === 'es' ? `Asistente de ${subject.name}` : `${subject.name} Assistant`}
+            <span className="kicker block" style={{ color: subject.color }}>
+              {language === 'es' ? 'Asistente · materia' : 'Assistant · subject'}
+            </span>
+            <p className="text-base font-bold mt-1 mb-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
+              <span className="serif">{subject.name}</span>
             </p>
             <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
               {language === 'es'
@@ -220,42 +232,55 @@ export function SubjectChat({ subject }: { subject: Subject }) {
             </p>
           </div>
         ) : (
-          messages.map((msg, i) => (
-            <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              {msg.role === 'assistant' && (
-                <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-                  style={{ backgroundColor: `${subject.color}18` }}>
-                  <span className="material-symbols-outlined text-[12px]"
-                    style={{ color: subject.color, fontVariationSettings: "'FILL' 1" }}>
-                    auto_awesome
-                  </span>
+          messages.map((msg, i) => {
+            const isUser = msg.role === 'user'
+            return (
+              <div key={i} className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                {!isUser && (
+                  <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
+                    style={{ backgroundColor: `color-mix(in srgb, ${subject.color} 18%, transparent)` }}>
+                    <span className="material-symbols-outlined text-[13px]"
+                      style={{ color: subject.color, fontVariationSettings: "'FILL' 1" }}>
+                      auto_awesome
+                    </span>
+                  </div>
+                )}
+                <div className="max-w-[80%] px-3 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: isUser
+                      ? `color-mix(in srgb, ${subject.color} 14%, transparent)`
+                      : 'var(--s-low)',
+                    color: 'var(--on-surface)',
+                    border: `1px solid ${isUser
+                      ? `color-mix(in srgb, ${subject.color} 22%, transparent)`
+                      : 'var(--border-subtle)'}`,
+                    borderRadius: 'var(--radius-lg)',
+                    borderBottomRightRadius: isUser ? '4px' : undefined,
+                    borderBottomLeftRadius:  !isUser ? '4px' : undefined,
+                  }}>
+                  {msg.content}
                 </div>
-              )}
-              <div className="max-w-[80%] rounded-2xl px-3 py-2.5 text-sm leading-relaxed whitespace-pre-wrap"
-                style={{
-                  backgroundColor: msg.role === 'user' ? subject.color : 'var(--s-base)',
-                  color:           msg.role === 'user' ? 'white' : 'var(--on-surface)',
-                  borderBottomRightRadius: msg.role === 'user'      ? '4px' : undefined,
-                  borderBottomLeftRadius:  msg.role === 'assistant' ? '4px' : undefined,
-                  border: msg.role === 'assistant' ? '1px solid var(--border-subtle)' : undefined,
-                }}>
-                {msg.content}
               </div>
-            </div>
-          ))
+            )
+          })
         )}
 
         {loading && (
           <div className="flex gap-2.5 justify-start">
-            <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center"
-              style={{ backgroundColor: `${subject.color}18` }}>
-              <span className="material-symbols-outlined text-[12px]"
+            <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
+              style={{ backgroundColor: `color-mix(in srgb, ${subject.color} 18%, transparent)` }}>
+              <span className="material-symbols-outlined text-[13px]"
                 style={{ color: subject.color, fontVariationSettings: "'FILL' 1" }}>
                 auto_awesome
               </span>
             </div>
-            <div className="rounded-2xl rounded-bl-[4px] px-3 py-2.5"
-              style={{ backgroundColor: 'var(--s-base)', border: '1px solid var(--border-subtle)' }}>
+            <div className="px-3 py-2.5"
+              style={{
+                backgroundColor: 'var(--s-low)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-lg)',
+                borderBottomLeftRadius: '4px',
+              }}>
               <div className="flex gap-1 items-center h-4">
                 {[0, 1, 2].map(i => (
                   <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
@@ -282,9 +307,14 @@ export function SubjectChat({ subject }: { subject: Subject }) {
             disabled={loading}
             autoFocus
           />
-          <button type="submit" disabled={loading || !input.trim()} className="btn-primary px-3"
-            style={{ opacity: (!input.trim() || loading) ? 0.5 : 1 }}>
-            <span className="material-symbols-outlined text-[17px]">send</span>
+          <button type="submit" disabled={loading || !input.trim()} className="btn btn-primary"
+            style={{
+              background: subject.color,
+              color: 'white',
+              borderColor: subject.color,
+              opacity: (!input.trim() || loading) ? 0.5 : 1,
+            }}>
+            <span className="material-symbols-outlined">send</span>
           </button>
         </form>
       </div>
