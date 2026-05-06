@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useTranslation } from '@/hooks/useTranslation'
@@ -8,18 +9,18 @@ import { useTranslation } from '@/hooks/useTranslation'
 type CrumbMap = Record<string, { crumb_es: string; crumb_en: string; title_es: string; title_en: string }>
 
 const CRUMBS: CrumbMap = {
-  '/dashboard':       { crumb_es: 'Inicio',         crumb_en: 'Home',          title_es: 'tu día',        title_en: 'your day'       },
-  '/subjects':        { crumb_es: 'Materias',       crumb_en: 'Subjects',      title_es: 'mis clases',    title_en: 'my classes'     },
-  '/tasks':           { crumb_es: 'Tareas',         crumb_en: 'Tasks',         title_es: 'pendientes',    title_en: 'open work'      },
-  '/planner':         { crumb_es: 'Tareas',         crumb_en: 'Tasks',         title_es: 'plan',          title_en: 'plan'           },
-  '/calendar':        { crumb_es: 'Calendario',     crumb_en: 'Calendar',      title_es: 'esta semana',   title_en: 'this week'      },
-  '/exams':           { crumb_es: 'Evaluaciones',   crumb_en: 'Exams',         title_es: 'próximas',      title_en: 'upcoming'       },
-  '/notes':           { crumb_es: 'Apuntes',        crumb_en: 'Notes',         title_es: 'mis notas',     title_en: 'my notes'       },
-  '/ai':              { crumb_es: 'Skolar IA',      crumb_en: 'Skolar AI',     title_es: 'copiloto',      title_en: 'copilot'        },
-  '/grades':          { crumb_es: 'Calificaciones', crumb_en: 'Grades',        title_es: 'boletín',       title_en: 'transcript'     },
-  '/settings':        { crumb_es: 'Configuración',  crumb_en: 'Settings',      title_es: 'tu perfil',     title_en: 'your profile'   },
-  '/personalization': { crumb_es: 'Personalización',crumb_en: 'Personalization',title_es: 'tu look',      title_en: 'your look'      },
-  '/ai-settings':     { crumb_es: 'IA',             crumb_en: 'AI',            title_es: 'configuración', title_en: 'settings'       },
+  '/dashboard':       { crumb_es: 'Inicio',         crumb_en: 'Home',          title_es: 'Tu día',        title_en: 'Your day'       },
+  '/subjects':        { crumb_es: 'Materias',       crumb_en: 'Subjects',      title_es: 'Mis clases',    title_en: 'My classes'     },
+  '/tasks':           { crumb_es: 'Tareas',         crumb_en: 'Tasks',         title_es: 'Pendientes',    title_en: 'Open work'      },
+  '/planner':         { crumb_es: 'Tareas',         crumb_en: 'Tasks',         title_es: 'Plan',          title_en: 'Plan'           },
+  '/calendar':        { crumb_es: 'Calendario',     crumb_en: 'Calendar',      title_es: 'Esta semana',   title_en: 'This week'      },
+  '/exams':           { crumb_es: 'Evaluaciones',   crumb_en: 'Exams',         title_es: 'Próximas',      title_en: 'Upcoming'       },
+  '/notes':           { crumb_es: 'Apuntes',        crumb_en: 'Notes',         title_es: 'Mis notas',     title_en: 'My notes'       },
+  '/ai':              { crumb_es: 'Skolar IA',      crumb_en: 'Skolar AI',     title_es: 'Copiloto',      title_en: 'Copilot'        },
+  '/grades':          { crumb_es: 'Calificaciones', crumb_en: 'Grades',        title_es: 'Boletín',       title_en: 'Transcript'     },
+  '/settings':        { crumb_es: 'Configuración',  crumb_en: 'Settings',      title_es: 'Tu perfil',     title_en: 'Your profile'   },
+  '/personalization': { crumb_es: 'Personalización',crumb_en: 'Personalization',title_es: 'Tu look',      title_en: 'Your look'      },
+  '/ai-settings':     { crumb_es: 'IA',             crumb_en: 'AI',            title_es: 'Configuración', title_en: 'Settings'       },
 }
 
 function findCrumb(pathname: string) {
@@ -85,6 +86,10 @@ export function Topbar() {
             <span className="material-symbols-outlined">dark_mode</span>
           </button>
         </div>
+        <Link href="/planner?create=task" className="btn-new">
+          <span className="material-symbols-outlined">add</span>
+          {language === 'es' ? 'Nuevo' : 'New'}
+        </Link>
       </div>
     </header>
   )

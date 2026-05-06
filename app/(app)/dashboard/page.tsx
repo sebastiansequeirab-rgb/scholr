@@ -1,15 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { daysUntil } from '@/lib/utils'
 import type { Task, Exam, Subject, Schedule } from '@/types'
 import { getTranslator } from '@/lib/i18n/server'
 import { LiveClock } from '@/features/home/components/LiveClock'
-import { ClientTime } from '@/features/home/components/ClientTime'
-import { TaskFeed } from '@/features/home/components/TaskFeed'
-import { ExamFeed } from '@/features/home/components/ExamFeed'
+import { DashMetaBar } from '@/features/home/components/DashMetaBar'
+import { UrgentCountdown } from '@/features/home/components/UrgentCountdown'
+import { subjectTag } from '@/lib/utils'
 
 export default async function DashboardPage() {
-  const { t } = getTranslator()
+  const { t, lang } = getTranslator()
+  const language = lang as 'es' | 'en'
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -48,25 +48,46 @@ export default async function DashboardPage() {
     grade: e.assigned_by != null ? (teacherGradeMap[e.id as string] ?? null) : e.grade,
   }))
 
-  // Announcements for enrolled subjects
+  // Announcements for enrolled subjects (include teacher's name + content + subject color)
   const enrolledSubjectIds = (enrollmentData ?? []).map((e: { subject_id: string }) => e.subject_id)
-  const { data: announcementsData } = enrolledSubjectIds.length > 0
+  const { data: announcementsRaw } = enrolledSubjectIds.length > 0
     ? await supabase
         .from('announcements')
-        .select('id, title, priority, created_at, subjects(name)')
+        .select('id, title, content, priority, created_at, subject_id, teacher_id, subjects(name, color)')
         .in('subject_id', enrolledSubjectIds)
         .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(3)
     : { data: [] }
 
-  const announcements = (announcementsData ?? []) as unknown as {
+  const annRows = (announcementsRaw ?? []) as unknown as {
     id: string
     title: string
+    content: string | null
     priority: 'normal' | 'urgent'
     created_at: string
-    subjects: { name: string } | null
+    subject_id: string
+    teacher_id: string | null
+    subjects: { name: string; color: string } | null
   }[]
+
+  // Fetch teacher names in one round-trip
+  const teacherIds = Array.from(new Set(annRows.map(a => a.teacher_id).filter((id): id is string => !!id)))
+  const teacherNameMap: Record<string, string> = {}
+  if (teacherIds.length > 0) {
+    const { data: teacherProfiles } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', teacherIds)
+    for (const p of (teacherProfiles ?? []) as { id: string; full_name: string | null }[]) {
+      if (p.full_name) teacherNameMap[p.id] = p.full_name
+    }
+  }
+
+  const announcements = annRows.map(a => ({
+    ...a,
+    teacherName: a.teacher_id ? (teacherNameMap[a.teacher_id] ?? null) : null,
+  }))
 
   const allTasks    = (tasks     || []) as Task[]
   const allExams    = examsWithGrades as Exam[]
@@ -110,242 +131,305 @@ export default async function DashboardPage() {
 
   const nextExam = upcomingExams[0]
 
-  // Urgent banner: only show if there's a real urgency
+  // ── Urgent banner data: deadline ISO + title/meta ──
+  // Tasks default to 23:59 of due_date; exams to 23:59 of exam_date.
   const urgentBanner = (() => {
     if (urgentTasks.length > 0) {
       const top = urgentTasks[0]
       const sub = allSubjects.find(s => s.id === top.subject_id)
-      const days = top.due_date ? Math.round((new Date(top.due_date).getTime() - new Date(todayStr).getTime()) / 86400000) : 99
+      const deadlineISO = top.due_date ? `${top.due_date}T23:59:00` : null
       return {
         kind: 'task' as const,
         title: top.text,
-        meta:  sub ? sub.name : '',
-        daysLabel: days <= 0 ? t('feeds.today') : t('feeds.tmrwShort'),
+        meta: sub ? `${sub.name} · ${t('dashboard.todayCloses') || 'Cierra hoy 23:59'}` : '',
+        deadlineISO,
         href: '/planner',
       }
     }
-    if (nextExam && daysUntil(nextExam.exam_date) <= 2) {
-      const sub = allSubjects.find(s => s.id === nextExam.subject_id)
-      const days = daysUntil(nextExam.exam_date)
-      return {
-        kind: 'exam' as const,
-        title: nextExam.title,
-        meta:  sub ? sub.name : '',
-        daysLabel: days === 0 ? t('feeds.today') : days === 1 ? t('feeds.tmrwShort') : `${days}d`,
-        href: '/planner',
+    if (nextExam) {
+      const exDeadlineDays = Math.round((new Date(nextExam.exam_date).getTime() - new Date(todayStr).getTime()) / 86400000)
+      if (exDeadlineDays <= 2) {
+        const sub = allSubjects.find(s => s.id === nextExam.subject_id)
+        return {
+          kind: 'exam' as const,
+          title: nextExam.title,
+          meta: sub ? sub.name : '',
+          deadlineISO: `${nextExam.exam_date}T23:59:00`,
+          href: '/planner',
+        }
       }
     }
     return null
   })()
 
+  // ── Top alert (sub-header right side): "1 entrega cierra en HHh MMm" ──
+  const alertDueLabel = (() => {
+    if (!urgentBanner || !urgentBanner.deadlineISO) return null
+    const diffMin = Math.max(0, Math.floor((new Date(urgentBanner.deadlineISO).getTime() - Date.now()) / 60000))
+    if (diffMin > 24 * 60) return null  // only show if within 24h
+    const h = Math.floor(diffMin / 60)
+    const m = diffMin % 60
+    const time = `${h}h ${m.toString().padStart(2, '0')}m`
+    const tpl = t('dashboard.alertEntregaSingular') || '{n} entrega cierra en {time}'
+    return tpl.replace('{n}', '1').replace('{time}', time)
+  })()
+
+  // ── Weighted average across subjects (by credits, scale 0-20) ──
+  const weightedAvg = (() => {
+    let weightedSum = 0
+    let creditsSum = 0
+    for (const subject of allSubjects) {
+      const subjExams = allExams.filter(e => e.subject_id === subject.id && e.percentage != null)
+      let earned = 0
+      let coverage = 0
+      for (const e of subjExams) {
+        if (e.grade != null) {
+          earned += (e.grade * (e.percentage ?? 0)) / 100
+          coverage += e.percentage ?? 0
+        }
+      }
+      if (coverage > 0) {
+        const subjectAvg = earned / (coverage / 100)
+        const credits = subject.credits || 1
+        weightedSum += subjectAvg * credits
+        creditsSum += credits
+      }
+    }
+    return creditsSum > 0 ? weightedSum / creditsSum : null
+  })()
+
+  // ── ISO week for the Semana N / 52 chip ──
+  const isoWeek = (() => {
+    const d = new Date(Date.UTC(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()))
+    const dayNum = d.getUTCDay() || 7
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+  })()
+
+  // ── Stats for the hero pills ──
+  const todayClassesCount = todaySchedules.length
+
+  // Pending tasks for the "Tareas" col, sorted by due date
+  const pendingTasks = allTasks
+    .filter(t => !t.is_done)
+    .sort((a, b) => {
+      const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity
+      const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity
+      return ad - bd
+    })
+    .slice(0, 4)
+
+  // Get full schedule rooms info from subject
+  const subjectByCode = (s: Subject) => s.name.slice(0, 6).toUpperCase()
+
   return (
     <div className="max-w-[1240px] mx-auto reveal-stagger">
 
+      {/* ─────────── SUB-HEADER · meta chips + alert ─────────── */}
+      <DashMetaBar
+        weekIndex={isoWeek}
+        weekTotal={52}
+        avg={weightedAvg}
+        alertDueLabel={alertDueLabel}
+      />
+
       {/* ─────────── GREETING HERO ─────────── */}
-      <section
-        className="card mb-3"
-        style={{ background: 'var(--s-low)', padding: '20px' }}
-      >
-        <div className="grid lg:grid-cols-[1fr_auto] gap-5 items-start">
-          {/* LEFT: greeting + stats */}
-          <div className="min-w-0">
-            {/* Status row */}
-            <div className="flex items-center gap-2 mb-2.5">
-              <span className="live-dot" />
-              <span
-                className="font-mono"
-                style={{
-                  fontSize: 9.5,
-                  letterSpacing: '0.16em',
-                  textTransform: 'uppercase',
-                  color: 'var(--color-outline)',
-                  fontWeight: 600,
-                }}
-              >
-                {t('dashboard.brandTag')} · {greet().toLowerCase()}
+      <section className="dash-hero">
+        <div className="min-w-0">
+          <span className="dash-hero__eyebrow">
+            {t('dashboard.brandTag')} · {t('dashboard.assistantTag') || 'Asistente Académico'}
+          </span>
+          <h1 className="dash-hero__title">
+            {greet()}, <span className="serif">{firstName}</span>.
+          </h1>
+
+          <div className="dash-hero__stats">
+            {/* Hechas — Clases hoy */}
+            <div className="dash-hero__stat">
+              <span className="material-symbols-outlined">check_circle</span>
+              <span className="dash-hero__stat-num">{completedCount}</span>
+              <span className="dash-hero__stat-eyebrow">{t('dashboard.statCompleted')}</span>
+              <span className="dash-hero__stat-label">
+                {todayClassesCount} {language === 'es' ? 'clases hoy' : 'classes today'}
               </span>
             </div>
 
-            {/* Headline */}
-            <h1 className="headline">
-              {greet()}, <span className="serif">{firstName}</span>.
-            </h1>
+            {/* Urgentes — Pendiente */}
+            <div className={`dash-hero__stat ${urgentTasks.length > 0 ? 'dash-hero__stat--urgent' : ''}`}>
+              <span className="material-symbols-outlined">priority_high</span>
+              <span className="dash-hero__stat-num">{urgentTasks.length}</span>
+              <span className="dash-hero__stat-eyebrow">{language === 'es' ? 'URGENTE' : 'URGENT'}</span>
+              <span className="dash-hero__stat-label">
+                {urgentTasks.length === 1
+                  ? (language === 'es' ? 'Pendiente' : 'Pending')
+                  : (language === 'es' ? 'Pendientes' : 'Pending')}
+              </span>
+            </div>
 
-            {/* KPI ribbon */}
-            <div className="flex flex-wrap gap-2 mt-4">
-              <div className="stat">
-                <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>
-                  check_circle
-                </span>
-                <span className="stat__num">{completedCount}</span>
-                <div className="flex flex-col">
-                  <span className="stat__label">{t('dashboard.statCompleted')}</span>
-                </div>
-              </div>
+            {/* Esta sem — Tareas */}
+            <div className="dash-hero__stat">
+              <span className="material-symbols-outlined">task_alt</span>
+              <span className="dash-hero__stat-num">{weekTasks}</span>
+              <span className="dash-hero__stat-eyebrow">{language === 'es' ? 'ESTA SEM.' : 'THIS WEEK'}</span>
+              <span className="dash-hero__stat-label">{language === 'es' ? 'Tareas' : 'Tasks'}</span>
+            </div>
 
-              {urgentTasks.length > 0 ? (
-                <div className="stat urgent">
-                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--priority-high)' }}>
-                    bolt
-                  </span>
-                  <span className="stat__num">{urgentTasks.length}</span>
-                  <div className="flex flex-col">
-                    <span className="stat__label">{t('dashboard.statUrgent')}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="stat">
-                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-outline)' }}>
-                    bolt
-                  </span>
-                  <span className="stat__num" style={{ color: 'var(--color-outline)' }}>0</span>
-                  <div className="flex flex-col">
-                    <span className="stat__label">{t('dashboard.statUrgent')}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="stat">
-                <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-primary)' }}>
-                  date_range
-                </span>
-                <span className="stat__num">{weekTasks}</span>
-                <div className="flex flex-col">
-                  <span className="stat__label">{t('dashboard.statWeek')}</span>
-                </div>
-              </div>
-
-              <div className="stat">
-                <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-tertiary)' }}>
-                  event_upcoming
-                </span>
-                <span className="stat__num">{upcomingExams.length}</span>
-                <div className="flex flex-col">
-                  <span className="stat__label">{t('dashboard.statUpcoming')}</span>
-                </div>
-              </div>
+            {/* Próximas — Evaluaciones */}
+            <div className="dash-hero__stat">
+              <span className="material-symbols-outlined">edit_calendar</span>
+              <span className="dash-hero__stat-num">{upcomingExams.length}</span>
+              <span className="dash-hero__stat-eyebrow">{t('dashboard.statUpcoming')}</span>
+              <span className="dash-hero__stat-label">{language === 'es' ? 'Evaluaciones' : 'Evaluations'}</span>
             </div>
           </div>
-
-          {/* RIGHT: clock */}
-          <div className="hidden lg:block">
-            <LiveClock />
-          </div>
         </div>
+
+        <LiveClock />
       </section>
 
       {/* ─────────── URGENT BANNER ─────────── */}
-      {urgentBanner && (
-        <Link href={urgentBanner.href} className="urgent-banner mb-3 active:scale-[0.99]">
-          <span className="urgent-banner__pill">
-            <span className="material-symbols-outlined">flag</span>
-            {t('dashboard.urgentLabel')}
-          </span>
-          <span className="urgent-banner__time">{urgentBanner.daysLabel}</span>
-          <div className="urgent-banner__text">
-            <strong>{urgentBanner.title}</strong>
-            {urgentBanner.meta && <span className="meta"> · {urgentBanner.meta}</span>}
-          </div>
-          <span className="material-symbols-outlined hidden sm:inline-flex" style={{ fontSize: 18, color: 'var(--danger)' }}>
-            arrow_outward
-          </span>
-        </Link>
+      {urgentBanner && urgentBanner.deadlineISO && (
+        <UrgentCountdown
+          href={urgentBanner.href}
+          deadlineISO={urgentBanner.deadlineISO}
+          title={urgentBanner.title}
+          meta={urgentBanner.meta}
+        />
       )}
 
       {/* ─────────── ANNOUNCEMENTS ─────────── */}
       {announcements.length > 0 && (
-        <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-          {announcements.map((a) => {
-            const accent = a.priority === 'urgent' ? 'var(--danger)' : 'var(--color-primary)'
-            return (
-              <div
-                key={a.id}
-                className="card flex items-start gap-2.5"
-                style={{ padding: '11px 12px' }}
-              >
-                <span
-                  className="material-symbols-outlined flex-shrink-0 mt-0.5"
-                  style={{ fontSize: 16, color: accent, fontVariationSettings: "'FILL' 0" }}
-                >
-                  campaign
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="badge" style={{ background: 'transparent', padding: 0, color: 'var(--color-outline)' }}>
-                      {a.subjects?.name || t('common.general')}
-                    </span>
-                    {a.priority === 'urgent' && (
-                      <span className="badge badge--danger">{t('dashboard.urgentLabel')}</span>
-                    )}
+        <section className="ann-strip">
+          <div className="ann-strip__head">
+            <div className="ann-strip__title">
+              <span className="material-symbols-outlined">campaign</span>
+              {t('dashboard.announcementsHeader') || 'Anuncios'}
+              <span className="ann-strip__title-count">{announcements.length}</span>
+            </div>
+            <span className="ann-strip__unread">
+              {(t('dashboard.announcementsUnread') || '{n} sin leer').replace(
+                '{n}',
+                String(announcements.filter(a => a.priority === 'urgent').length || announcements.length),
+              )}
+            </span>
+          </div>
+
+          <div className="ann-strip__grid">
+            {announcements.map(a => {
+              const tag = subjectTag(a.subjects?.color)
+              const teacherName = a.teacherName || (language === 'es' ? 'Profesor' : 'Teacher')
+              const initials = teacherName
+                .split(' ')
+                .slice(0, 2)
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+              const subjectColor = a.subjects?.color || 'var(--color-primary)'
+              const subjCode = (a.subjects?.name || '').slice(0, 4).toUpperCase()
+              const created = new Date(a.created_at)
+              const diffMin = Math.floor((Date.now() - created.getTime()) / 60000)
+              const time =
+                diffMin < 1
+                  ? language === 'es' ? 'Ahora' : 'Now'
+                  : diffMin < 60
+                    ? `${language === 'es' ? 'Hace' : ''} ${diffMin} min`.trim()
+                    : diffMin < 1440
+                      ? `${language === 'es' ? 'Hace' : ''} ${Math.floor(diffMin / 60)} h`.trim()
+                      : `${language === 'es' ? 'Hace' : ''} ${Math.floor(diffMin / 1440)} d`.trim()
+              const preview = a.content || a.title
+
+              return (
+                <div key={a.id} className={`ann ${tag}`}>
+                  <div
+                    className="ann__avatar"
+                    style={{ background: `color-mix(in srgb, ${subjectColor} 35%, var(--color-primary))` }}
+                  >
+                    {initials || '·'}
                   </div>
-                  <p className="text-[12px] font-semibold leading-snug" style={{ color: 'var(--on-surface)' }}>
-                    {a.title}
-                  </p>
+                  <div className="ann__head">
+                    <span className="ann__name">{teacherName}</span>
+                    {subjCode && <span className="ann__chip">{subjCode}</span>}
+                  </div>
+                  <span className="ann__time">{time}</span>
+                  <p className="ann__text">{preview}</p>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        </section>
       )}
 
-      {/* ─────────── 3-column grid: Today / Tasks / Upcoming ─────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      {/* ─────────── 3-column grid: Agenda / Tareas / Próximas ─────────── */}
+      <div className="dash-cols">
 
-        {/* Today's classes */}
-        <section className="card">
-          <div className="section-head">
-            <div className="section-head__left">
-              <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>
-                today
-              </span>
-              <span className="section-head__title">{t('dashboard.todayHeader')}</span>
+        {/* ── Agenda del día ── */}
+        <section className="dash-col">
+          <div className="dash-col__head">
+            <div className="dash-col__head-left">
+              <span className="material-symbols-outlined dash-col__head-icon">today</span>
+              <span className="dash-col__title">{t('dashboard.agendaHeader') || "Agenda del día"}</span>
               {todaySchedules.length > 0 && (
-                <span className="section-head__count tabular">{todaySchedules.length}</span>
+                <span className="dash-col__count">{todaySchedules.length}</span>
               )}
             </div>
-            <Link href="/calendar" className="section-head__link">
+            <Link href="/calendar" className="dash-col__more">
               {t('dashboard.viewAll')}
-              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>chevron_right</span>
+              <span className="material-symbols-outlined">chevron_right</span>
             </Link>
           </div>
 
           {todaySchedules.length === 0 ? (
             <EmptyToday t={t} h={nowDate.getHours()} />
           ) : (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col">
               {todaySchedules.slice(0, 5).map(s => {
                 const subject = allSubjects.find(sub => sub.id === s.subject_id)
                 if (!subject) return null
+                const startHHMM = s.start_time.slice(0, 5)
+                const endHHMM   = s.end_time.slice(0, 5)
                 const isNow  = currentTimeStr >= s.start_time && currentTimeStr <= s.end_time
                 const isDone = currentTimeStr > s.end_time
+                const subjCode = subjectByCode(subject)
+                const room = s.room || subject.room || ''
+                const prof = subject.professor || ''
+                const meta = [subjCode, room, prof].filter(Boolean).join(' · ')
+
+                let endMins = 0
+                if (isNow) {
+                  const [eh, em] = endHHMM.split(':').map(Number)
+                  const [nh, nm] = currentTimeStr.split(':').map(Number)
+                  endMins = (eh * 60 + em) - (nh * 60 + nm)
+                }
+
                 return (
                   <div
                     key={s.id}
-                    className="row"
-                    style={{
-                      ['--accent-color' as never]: subject.color,
-                      opacity: isDone ? 0.45 : 1,
-                    }}
+                    className="agenda-item"
+                    style={{ ['--accent-color' as never]: subject.color }}
                   >
-                    <div className="row__time">
-                      <ClientTime time24={s.start_time.slice(0, 5)} />
+                    <div className="agenda-item__time">
+                      <strong>{startHHMM}</strong>
+                      {endHHMM}
                     </div>
-                    <div className="row__main">
-                      <div className="row__title flex items-center gap-1.5">
-                        {isNow && <span className="live-dot" style={{ ['--success' as never]: subject.color }} />}
-                        <span className="truncate">{subject.name}</span>
-                      </div>
-                      <div className="row__meta">
-                        {(s.room || subject.room) && (
-                          <>
-                            <span className="material-symbols-outlined">place</span>
-                            {s.room || subject.room}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="row__right">
-                      <ClientTime time24={s.end_time.slice(0, 5)} />
+                    <div className="agenda-item__bar" />
+                    <div className="agenda-item__body">
+                      <div className="agenda-item__title">{subject.name}</div>
+                      {meta && <div className="agenda-item__meta">{meta}</div>}
+                      {isDone && (
+                        <div className="agenda-item__status agenda-item__status--done">
+                          <span className="material-symbols-outlined">check_circle</span>
+                          {t('dashboard.completed') || 'Completada'}
+                        </div>
+                      )}
+                      {isNow && (
+                        <div className="agenda-item__status agenda-item__status--live">
+                          <span className="live-pulse" />
+                          {t('dashboard.liveNow') || 'EN VIVO'} ·
+                          {' '}
+                          {(t('dashboard.liveMinsLeft') || 'faltan {n} min').replace('{n}', String(Math.max(0, endMins)))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -354,29 +438,165 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        {/* Tasks */}
-        <TaskFeed tasks={allTasks} subjects={allSubjects} />
-
-        {/* Upcoming exams */}
-        <ExamFeed exams={allExams} subjects={allSubjects} />
-      </div>
-
-      {/* ─────────── Quick Access ─────────── */}
-      <section className="mt-4">
-        <div className="section-head">
-          <div className="section-head__left">
-            <span className="kicker">{t('dashboard.quickAccess')}</span>
+        {/* ── Tareas (sin tabs) ── */}
+        <section className="dash-col">
+          <div className="dash-col__head">
+            <div className="dash-col__head-left">
+              <span className="material-symbols-outlined dash-col__head-icon">task_alt</span>
+              <span className="dash-col__title">{t('dashboard.tasksHeader') || 'Tareas'}</span>
+              {pendingTasks.length > 0 && (
+                <span className="dash-col__count">{pendingTasks.length}</span>
+              )}
+            </div>
+            <Link href="/planner" className="dash-col__more">
+              {t('dashboard.viewAll')}
+              <span className="material-symbols-outlined">chevron_right</span>
+            </Link>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-          <QuickAction href="/planner?create=task" icon="add_task"          label={t('dashboard.qaNewTask')}        color="var(--color-primary)"  />
-          <QuickAction href="/planner?create=exam" icon="event"             label={t('dashboard.qaNewExam')}        color="var(--danger)"         />
-          <QuickAction href="/notes?new=1"         icon="edit_note"         label={t('dashboard.qaQuickNote')}      color="var(--warning)"        />
-          <QuickAction href="/ai?tab=import"       icon="document_scanner"  label={t('dashboard.qaImportSchedule')} color="var(--success)"        />
-          <QuickAction href="/ai"                  icon="auto_awesome"      label={t('dashboard.qaAskAI')}          color="var(--color-tertiary)" />
-        </div>
-      </section>
+          <div className="flex flex-col">
+            {pendingTasks.length === 0 ? (
+              <p className="text-[12px]" style={{ color: 'var(--color-outline)', padding: '8px 0' }}>
+                {t('feeds.noTasks') || 'Sin tareas pendientes'}
+              </p>
+            ) : (
+              pendingTasks.map(task => {
+                const sub = allSubjects.find(s => s.id === task.subject_id)
+                const accent = sub?.color || 'var(--color-primary)'
+                const subjCode = sub ? sub.name.slice(0, 4).toUpperCase() : '—'
+                const due = task.due_date ? new Date(task.due_date) : null
+                const days = due ? Math.round((due.getTime() - new Date(todayStr).getTime()) / 86400000) : null
+                const dueLabel = days == null
+                  ? ''
+                  : days === 0
+                    ? language === 'es' ? 'Hoy' : 'Today'
+                    : days === 1
+                      ? language === 'es' ? 'Mañana' : 'Tmrw'
+                      : days < 0
+                        ? language === 'es' ? `Hace ${Math.abs(days)}d` : `${Math.abs(days)}d ago`
+                        : `${days}d`
+                const dueTime = due
+                  ? `${due.getHours().toString().padStart(2, '0')}:${due.getMinutes().toString().padStart(2, '0')}`
+                  : ''
+                const prio = task.priority || 'low'
+                const prioLabel = prio === 'high'
+                  ? language === 'es' ? 'ALTA' : 'HIGH'
+                  : prio === 'mid'
+                    ? language === 'es' ? 'MEDIA' : 'MED'
+                    : language === 'es' ? 'BAJA' : 'LOW'
+
+                return (
+                  <div
+                    key={task.id}
+                    className="task-row"
+                    style={{
+                      ['--accent-color' as never]: accent,
+                      ['--accent-bg-strong' as never]: `color-mix(in srgb, ${accent} 22%, transparent)`,
+                    }}
+                  >
+                    <div className="task-row__bar" />
+                    <div className="task-row__body">
+                      <div className="task-row__head">
+                        {sub && (
+                          <span className="task-row__chip">{subjCode}</span>
+                        )}
+                        <span className="task-row__title truncate">{task.text}</span>
+                      </div>
+                      {(dueLabel || dueTime) && (
+                        <span className="task-row__when">
+                          <span className="material-symbols-outlined">schedule</span>
+                          {dueLabel}
+                          {dueLabel && dueTime ? ` · ${dueTime}` : dueTime}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`task-row__prio task-row__prio--${prio}`}>{prioLabel}</span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <Link href="/planner?create=task" className="dash-col__add">
+            <span className="material-symbols-outlined">add</span>
+            {t('dashboard.addTaskCta') || 'Agregar tarea'}
+          </Link>
+        </section>
+
+        {/* ── Próximas (Actividades, sin tabs) ── */}
+        <section className="dash-col">
+          <div className="dash-col__head">
+            <div className="dash-col__head-left">
+              <span className="material-symbols-outlined dash-col__head-icon">flag</span>
+              <span className="dash-col__title">{t('dashboard.upcomingHeader') || 'Próximas'}</span>
+              {upcomingExams.length > 0 && (
+                <span className="dash-col__count">{upcomingExams.length}</span>
+              )}
+            </div>
+            <Link href="/planner" className="dash-col__more">
+              {t('dashboard.viewAll')}
+              <span className="material-symbols-outlined">chevron_right</span>
+            </Link>
+          </div>
+
+          <div className="flex flex-col">
+            {upcomingExams.length === 0 ? (
+              <p className="text-[12px]" style={{ color: 'var(--color-outline)', padding: '8px 0' }}>
+                {t('feeds.noActivities') || 'Sin actividades próximas'}
+              </p>
+            ) : (
+              upcomingExams.slice(0, 4).map(exam => {
+                const sub = allSubjects.find(s => s.id === exam.subject_id)
+                const accent = sub?.color || 'var(--color-primary)'
+                const subjCode = sub ? sub.name.slice(0, 4).toUpperCase() : '—'
+                const date = new Date(exam.exam_date + 'T00:00:00')
+                const day = date.getDate()
+                const month = date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { month: 'short' })
+                  .replace('.', '')
+                  .toUpperCase()
+                const days = Math.round((date.getTime() - new Date(todayStr).getTime()) / 86400000)
+                const countLabel = days === 0
+                  ? language === 'es' ? 'HOY' : 'TODAY'
+                  : days === 1
+                    ? language === 'es' ? 'MAÑ' : 'TMW'
+                    : `${days}D`
+                const countTone = days < 7 ? 'urgent' : days < 14 ? 'soon' : 'later'
+                const typeLabel = exam.activity_type
+                  ? exam.activity_type.charAt(0).toUpperCase() + exam.activity_type.slice(1)
+                  : ''
+                const pctLabel = exam.percentage ? ` ${exam.percentage}%` : ''
+
+                return (
+                  <div
+                    key={exam.id}
+                    className="next-item"
+                    style={{
+                      ['--accent-color' as never]: accent,
+                      ['--accent-bg-strong' as never]: `color-mix(in srgb, ${accent} 22%, transparent)`,
+                    }}
+                  >
+                    <div className="next-item__date">
+                      <span className="next-item__date-d">{day}</span>
+                      <span className="next-item__date-m">{month}</span>
+                    </div>
+                    <div className="next-item__bar" />
+                    <div className="next-item__body">
+                      <div className="next-item__title truncate">{exam.title}</div>
+                      <div className="next-item__meta">
+                        <span className="next-item__chip-mat">{subjCode}</span>
+                        {typeLabel && <span>{typeLabel}{pctLabel}</span>}
+                      </div>
+                    </div>
+                    <span className={`next-item__count next-item__count--${countTone}`}>
+                      {countLabel}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   )
 }
@@ -418,30 +638,3 @@ function EmptyToday({ t, h }: { t: (k: string) => string; h: number }) {
   )
 }
 
-function QuickAction({ href, icon, label, color }: { href: string; icon: string; label: string; color: string }) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-center gap-2.5 py-3 px-3 rounded-[12px] transition-all hover:translate-y-[-1px]"
-      style={{
-        background: `color-mix(in srgb, ${color} 8%, var(--s-low))`,
-        border: `1px solid color-mix(in srgb, ${color} 18%, transparent)`,
-      }}
-    >
-      <div
-        className="w-8 h-8 rounded-[8px] flex items-center justify-center flex-shrink-0"
-        style={{ background: `color-mix(in srgb, ${color} 18%, transparent)` }}
-      >
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: 17, color, fontVariationSettings: "'FILL' 1" }}
-        >
-          {icon}
-        </span>
-      </div>
-      <span className="text-[11.5px] font-semibold leading-tight" style={{ color }}>
-        {label}
-      </span>
-    </Link>
-  )
-}
