@@ -1,492 +1,116 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
-import { uniqueById } from '@/lib/utils'
+import { uniqueById, subjectTag } from '@/lib/utils'
 import type { Subject, Schedule, Exam, Task } from '@/types'
 import { ACTIVITY_TYPES } from '@/types'
-import { useTimeFormat } from '@/hooks/useTimeFormat'
+import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 
-import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
-import type { EventInput, DateSelectArg, EventClickArg } from '@fullcalendar/core'
+type CalView = 'month' | 'week' | 'day'
 
-interface ClickedEvent {
-  type: 'exam' | 'schedule' | 'task'
+type CalEvent = {
+  id: string
+  type: 'schedule' | 'exam' | 'task'
   title: string
-  date?: string
-  location?: string
-  notes?: string
-  color?: string
-  professor?: string
-  priority?: string
-  subjectName?: string
-  taskStatus?: string
-  activityType?: string
+  start: Date
+  end: Date | null
+  allDay: boolean
+  subjectId: string | null
+  subjectColor: string
+  tagClass: 'tag-purple' | 'tag-cyan' | 'tag-green' | 'tag-amber' | 'tag-rose' | 'tag-blue'
+  code: string
+  location: string | null
+  professor: string | null
+  status: 'completed' | 'live' | 'upcoming' | 'urgent' | null
+  activityType?: keyof typeof ACTIVITY_TYPES
+  notes?: string | null
   percentage?: number | null
+  priority?: 'high' | 'mid' | 'low'
 }
 
-const SANCTUARY_CALENDAR_CSS = `
-  /* ─── Reset ─────────────────────────────────── */
-  .fc { font-family: 'Inter', system-ui, sans-serif !important; }
-  .fc *:focus { outline: none !important; box-shadow: none !important; }
+const stripAccents = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
-  /* ─── Scrollgrid borders (ghost) ─────────────── */
-  .fc .fc-scrollgrid { border: none !important; border-radius: 0 !important; }
-  .fc td, .fc th { border-color: var(--border-subtle) !important; }
-  .fc .fc-scrollgrid-section > td,
-  .fc .fc-scrollgrid-section > th { border: none !important; }
+function subjectCode(name: string): string {
+  const w = stripAccents(name).split(/\s+/).filter(Boolean)
+  if (!w.length) return '·'
+  if (w[0].length >= 4) return w[0].slice(0, 4).toUpperCase()
+  return w[0].toUpperCase()
+}
 
-  /* ─── Toolbar ────────────────────────────────── */
-  .fc .fc-toolbar {
-    padding: 14px 20px 12px !important;
-    margin-bottom: 0 !important;
-    gap: 12px !important;
-    flex-wrap: wrap !important;
-  }
-  .fc .fc-toolbar-title {
-    font-size: 18px !important;
-    font-weight: 800 !important;
-    letter-spacing: -0.03em !important;
-    color: var(--on-surface) !important;
-    text-transform: uppercase !important;
-  }
+function pad(n: number) { return String(n).padStart(2, '0') }
+function hhmm(d: Date) { return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
 
-  /* ─── Buttons ────────────────────────────────── */
-  .fc .fc-button,
-  .fc .fc-button-primary {
-    background: transparent !important;
-    border: 1px solid var(--border-strong) !important;
-    color: var(--color-outline) !important;
-    border-radius: 999px !important;
-    font-size: 10px !important;
-    font-weight: 600 !important;
-    padding: 4px 13px !important;
-    line-height: 1.4 !important;
-    transition: all 0.15s ease !important;
-    box-shadow: none !important;
-    text-transform: none !important;
-    text-shadow: none !important;
-  }
-  .fc .fc-button:hover,
-  .fc .fc-button-primary:hover {
-    background: color-mix(in srgb, var(--on-surface) 5%, transparent) !important;
-    color: var(--on-surface) !important;
-    border-color: var(--border-strong) !important;
-  }
-  .fc .fc-button:disabled { opacity: 0.3 !important; }
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
 
-  .fc .fc-button-primary:not(:disabled).fc-button-active,
-  .fc .fc-button-primary:not(:disabled):active {
-    background: color-mix(in srgb, var(--color-primary) 12%, transparent) !important;
-    color: var(--color-primary) !important;
-    border-color: color-mix(in srgb, var(--color-primary) 25%, transparent) !important;
-    box-shadow: none !important;
-  }
-  .fc .fc-today-button {
-    border-color: color-mix(in srgb, var(--color-primary) 25%, transparent) !important;
-    color: var(--color-primary) !important;
-  }
-  .fc .fc-today-button:not(:disabled):hover {
-    background: color-mix(in srgb, var(--color-primary) 8%, transparent) !important;
-    color: var(--color-primary) !important;
-  }
-  .fc .fc-prev-button,
-  .fc .fc-next-button { padding: 4px 8px !important; }
+function startOfWeekMon(d: Date): Date {
+  const c = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const dow = (c.getDay() + 6) % 7   // Mon=0 … Sun=6
+  c.setDate(c.getDate() - dow)
+  return c
+}
 
-  /* ─── Column headers ─────────────────────────── */
-  .fc .fc-col-header { background: transparent !important; }
-  .fc .fc-col-header-cell {
-    background: transparent !important;
-    border-color: var(--border-subtle) !important;
-    padding: 8px 0 !important;
-  }
-  .fc .fc-col-header-cell-cushion {
-    color: var(--color-outline) !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 10px !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.15em !important;
-    text-decoration: none !important;
-    padding: 0 !important;
-  }
+function addDays(d: Date, n: number): Date {
+  const c = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  c.setDate(c.getDate() + n)
+  return c
+}
 
-  /* ─── Day cells ──────────────────────────────── */
-  .fc .fc-daygrid-day {
-    background: transparent !important;
-    transition: background-color 0.15s ease !important;
-  }
-  .fc .fc-daygrid-day:hover { background: color-mix(in srgb, var(--on-surface) 2%, transparent) !important; }
-  .fc .fc-daygrid-day.fc-day-other { opacity: 0.35 !important; }
+function startOfMonthGrid(d: Date): Date {
+  const first = new Date(d.getFullYear(), d.getMonth(), 1)
+  return startOfWeekMon(first)
+}
 
-  /* Weekends slightly dimmer */
-  .fc .fc-day-sat,
-  .fc .fc-day-sun { background: color-mix(in srgb, var(--on-surface) 3%, transparent) !important; }
+function isoWeekOf(d: Date): number {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const dayNum = t.getUTCDay() || 7
+  t.setUTCDate(t.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
+  return Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
 
-  /* Today highlight — subtle column overlay; the date number wears the solid blue dot */
-  .fc .fc-day-today {
-    background: color-mix(in srgb, var(--color-primary) 5%, transparent) !important;
-    box-shadow: none !important;
-  }
-  .fc .fc-day-today .fc-daygrid-day-number {
-    background: var(--color-primary) !important;
-    color: #fff !important;
-    border-radius: 50% !important;
-    width: 22px !important;
-    height: 22px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-weight: 700 !important;
-    font-size: 11px !important;
-    padding: 0 !important;
-  }
+const SLOT_START = 6   // 06:00
+const SLOT_END   = 22  // 22:00
+const SLOT_HOURS = SLOT_END - SLOT_START
+const ROW_PX     = 56
 
-  /* Past days — attenuated so "what's coming" reads first */
-  .fc .fc-day-past { opacity: 0.42 !important; }
-  .fc .fc-day-past:hover { opacity: 0.68 !important; transition: opacity 0.15s ease !important; }
-
-  /* Future days — full clarity */
-  .fc .fc-day-future { opacity: 1 !important; }
-
-  /* Day numbers */
-  .fc .fc-daygrid-day-number {
-    color: var(--color-outline) !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 11px !important;
-    font-weight: 500 !important;
-    padding: 8px 10px !important;
-    text-decoration: none !important;
-  }
-
-  /* ─── Events ─────────────────────────────────── */
-  .fc .fc-event {
-    border: none !important;
-    border-left: 3px solid !important;
-    border-radius: 5px !important;
-    font-size: 10.5px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.01em !important;
-    padding: 2px 5px !important;
-    cursor: pointer !important;
-    transition: opacity 0.15s, transform 0.15s !important;
-    backdrop-filter: none !important;
-  }
-  .fc .fc-event:hover {
-    opacity: 0.85 !important;
-    transform: translateY(-1px) !important;
-  }
-  .fc .fc-event-main { color: inherit !important; }
-  .fc .fc-event-title { font-weight: 600 !important; }
-
-  /* Time grid events */
-  .fc .fc-timegrid-event {
-    border-radius: 6px !important;
-    padding: 3px 6px !important;
-  }
-
-  /* ─── Time grid ──────────────────────────────── */
-  .fc .fc-timegrid-slot-label-cushion {
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 10px !important;
-    font-weight: 500 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.06em !important;
-    color: var(--color-outline) !important;
-    padding-right: 12px !important;
-  }
-  /* Hour-axis column — wider for readability */
-  .fc .fc-timegrid-axis,
-  .fc .fc-timegrid-slot-label { width: 56px !important; }
-  .fc .fc-timegrid-axis-frame { justify-content: flex-end !important; }
-
-  /* Dashed horizontal slot dividers (editorial week feel) */
-  .fc .fc-timegrid-slot {
-    border-top: 1px dashed var(--border-subtle) !important;
-    border-bottom: 0 !important;
-  }
-  .fc .fc-timegrid-slot.fc-timegrid-slot-minor {
-    border-top: 1px dashed color-mix(in srgb, var(--border-subtle) 55%, transparent) !important;
-  }
-  .fc .fc-timegrid-slot:first-child { border-top: 0 !important; }
-
-  /* Day column header — today gets primary emphasis */
-  .fc .fc-timegrid-col.fc-day-today,
-  .fc .fc-daygrid-day.fc-day-today {
-    background: color-mix(in srgb, var(--color-primary) 7%, transparent) !important;
-  }
-  .fc-timeGridWeek-view .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion,
-  .fc-timeGridDay-view  .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
-    color: var(--color-primary) !important;
-  }
-
-  /* Week/Day events: enforce minimum 48px height */
-  .fc .fc-timegrid-event { min-height: 48px !important; }
-  /* Thin current-time indicator line per mock (1px, not full border) */
-  .fc .fc-timegrid-now-indicator-line {
-    border-color: var(--color-primary) !important;
-    border-width: 0 0 1px 0 !important;
-    opacity: 1 !important;
-  }
-  .fc .fc-timegrid-now-indicator-arrow {
-    border-top-color: var(--color-primary) !important;
-    border-bottom-color: var(--color-primary) !important;
-    opacity: 1 !important;
-    border-width: 4px !important;
-  }
-
-  /* ─── Popover (more events) ──────────────────── */
-  .fc .fc-more-popover {
-    background: var(--s-high) !important;
-    border: 1px solid var(--border-default) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 16px 48px var(--overlay-bg) !important;
-    overflow: hidden !important;
-  }
-  .fc .fc-more-popover .fc-popover-header {
-    background: var(--s-base) !important;
-    color: var(--on-surface) !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 10px !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.1em !important;
-    padding: 10px 14px !important;
-  }
-  .fc .fc-more-popover .fc-popover-close {
-    color: var(--color-outline) !important;
-    opacity: 1 !important;
-  }
-  .fc .fc-popover-body { padding: 8px !important; }
-  .fc .fc-daygrid-more-link {
-    color: var(--color-primary) !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 10px !important;
-    font-weight: 700 !important;
-    text-decoration: none !important;
-  }
-  .fc .fc-daygrid-more-link:hover { color: var(--on-surface) !important; }
-
-  /* ─── All-day row (timegrid) ─────────────────── */
-  .fc .fc-timegrid-axis { border-color: var(--border-subtle) !important; }
-  .fc .fc-timegrid-col { border-color: var(--border-subtle) !important; }
-  .fc .fc-highlight { background: color-mix(in srgb, var(--color-primary) 8%, transparent) !important; }
-
-  /* ─── List view ──────────────────────────────── */
-  .fc .fc-list-day-cushion {
-    background: var(--s-low) !important;
-    color: var(--color-outline) !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 10px !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.15em !important;
-  }
-  .fc .fc-list-event:hover td { background: color-mix(in srgb, var(--on-surface) 2%, transparent) !important; }
-  .fc .fc-list-empty { background: transparent !important; color: var(--color-outline) !important; }
-
-  /* ─── Slot height (timegrid) ────────────────── */
-  .fc .fc-timegrid-slot-lane { height: 30px !important; }
-  .fc .fc-timegrid-slot-label { height: 30px !important; }
-
-  /* ─── Event type differentiation ────────────── */
-
-  /* Schedule (class) — solid left accent at exact 3px per mock */
-  .fc-ev-schedule { border-left-width: 3px !important; }
-
-  /* Exam — same 3px left, weight emphasis lives in title */
-  .fc-ev-exam {
-    border-left-width: 3px !important;
-    font-weight: 700 !important;
-  }
-  .fc-ev-exam .fc-event-title {
-    font-weight: 700 !important;
-    letter-spacing: 0.01em !important;
-  }
-
-  /* Task — dashed left border signals "deadline", not "block" */
-  .fc-ev-task {
-    border-left-style: dashed !important;
-    border-left-width: 3px !important;
-  }
-
-  /* ─── Daygrid events (month view) — compact text pills ────────── */
-  .fc .fc-daygrid-event {
-    border-radius: 4px !important;
-    padding: 1px 4px !important;
-    margin: 1px 2px !important;
-    font-size: 10px !important;
-    font-weight: 600 !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-    text-overflow: ellipsis !important;
-  }
-  .fc .fc-daygrid-day-events {
-    padding: 2px 4px !important;
-    min-height: 14px !important;
-  }
-
-  /* ─── Room/location sub-label in timegrid ────── */
-  .fc-ev-location {
-    font-size: 9.5px !important;
-    font-weight: 500 !important;
-    opacity: 0.72 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    display: block !important;
-    margin-top: 1px !important;
-  }
-
-  /* ─── Month day cells — more breathing room ──── */
-  .fc .fc-daygrid-day-frame { min-height: 80px !important; }
-  .fc .fc-daygrid-day-top { padding: 4px 6px !important; }
-  .fc .fc-daygrid-day-number {
-    padding: 4px 8px !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-  }
-
-  /* ─── Week view: allow horizontal scroll to show all days (desktop) ── */
-  .fc-timeGridWeek-view .fc-scrollgrid { overflow-x: auto !important; }
-  .fc-timeGridWeek-view .fc-scrollgrid-sync-table { min-width: 560px !important; }
-  .fc-timeGridWeek-view .fc-col-header { min-width: 560px !important; }
-  .fc-timeGridWeek-view .fc-timegrid-body { min-width: 560px !important; }
-  /* Week view event titles — allow wrapping so full name shows */
-  .fc-timeGridWeek-view .fc-event-title {
-    white-space: normal !important;
-    word-break: break-word !important;
-    line-height: 1.2 !important;
-  }
-
-  /* ─── Scrollbar ──────────────────────────────── */
-  .fc ::-webkit-scrollbar { width: 4px; height: 4px; }
-  .fc ::-webkit-scrollbar-track { background: transparent; }
-  .fc ::-webkit-scrollbar-thumb { background: var(--s-highest); border-radius: 4px; }
-
-  /* ─── Mobile overrides ───────────────────────── */
-  @media (max-width: 768px) {
-
-    /* ── Toolbar: 2-row layout ── */
-    .fc .fc-toolbar {
-      display: grid !important;
-      grid-template-columns: auto 1fr auto !important;
-      grid-template-rows: auto auto !important;
-      padding: 8px 10px 6px !important;
-      gap: 5px 6px !important;
-      margin-bottom: 0 !important;
-      align-items: center !important;
-    }
-    /* Row 1: [nav arrows + today] [title] [— empty —] */
-    .fc .fc-toolbar-chunk:first-child {
-      grid-column: 1; grid-row: 1;
-      display: flex; align-items: center; gap: 3px;
-    }
-    .fc .fc-toolbar-chunk:nth-child(2) {
-      grid-column: 2; grid-row: 1;
-      display: flex; justify-content: center;
-    }
-    /* Row 2: view switcher centered across all columns */
-    .fc .fc-toolbar-chunk:last-child {
-      grid-column: 1 / -1; grid-row: 2;
-      display: flex; justify-content: center; gap: 4px;
-    }
-    .fc .fc-toolbar-title {
-      font-size: 12px !important;
-      letter-spacing: -0.01em !important;
-    }
-    .fc .fc-button,
-    .fc .fc-button-primary {
-      font-size: 9px !important;
-      padding: 3px 9px !important;
-    }
-    .fc .fc-prev-button,
-    .fc .fc-next-button { padding: 3px 6px !important; }
-
-    /* ── Month view: compact cells ── */
-    .fc .fc-daygrid-day-frame { min-height: 44px !important; }
-    .fc .fc-daygrid-day-top { padding: 2px 3px !important; }
-    .fc .fc-daygrid-day-number {
-      font-size: 9px !important;
-      padding: 2px 3px !important;
-      line-height: 1.3 !important;
-    }
-    .fc .fc-day-today .fc-daygrid-day-number {
-      width: 18px !important;
-      height: 18px !important;
-      font-size: 9px !important;
-    }
-    .fc .fc-col-header-cell-cushion {
-      font-size: 9px !important;
-      letter-spacing: 0.04em !important;
-      padding: 4px 2px !important;
-    }
-
-    /* Month events: single-line pill, title only */
-    .fc .fc-daygrid-event {
-      font-size: 7.5px !important;
-      padding: 1px 3px !important;
-      border-radius: 3px !important;
-      margin-bottom: 1px !important;
-      line-height: 1.4 !important;
-      white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
-      max-width: 100% !important;
-    }
-    .fc .fc-daygrid-event-dot { display: none !important; }
-    .fc .fc-daygrid-more-link {
-      font-size: 8px !important;
-      font-weight: 700 !important;
-      padding: 0 2px !important;
-    }
-    .fc .fc-daygrid-body-natural .fc-daygrid-day-events { padding-bottom: 2px !important; }
-
-    /* Mobile today: keep subtle column overlay only — the round number marker carries the cue */
-    .fc .fc-day-today { box-shadow: none !important; }
-
-    /* ── Week / Day views ── */
-    .fc-timeGridWeek-view .fc-scrollgrid { overflow-x: visible !important; }
-    .fc-timeGridWeek-view .fc-scrollgrid-sync-table { min-width: 0 !important; }
-    .fc-timeGridWeek-view .fc-col-header { min-width: 0 !important; }
-    .fc-timeGridWeek-view .fc-timegrid-body { min-width: 0 !important; }
-
-    .fc .fc-timegrid-slot-lane { height: 28px !important; }
-    .fc .fc-timegrid-slot-label { height: 28px !important; }
-    .fc .fc-timegrid-slot-label-cushion { font-size: 9px !important; padding-right: 3px !important; }
-    .fc .fc-timegrid-axis { width: 34px !important; }
-    .fc .fc-timegrid-event { min-height: 28px !important; font-size: 10px !important; padding: 2px 3px !important; border-radius: 4px !important; }
-    .fc-timeGridDay-view .fc-timegrid-event { min-height: 48px !important; font-size: 11px !important; }
-    .fc .fc-timegrid-event .fc-event-title { font-size: 10px !important; line-height: 1.2 !important; white-space: normal !important; word-break: break-word !important; }
-  }
-`
+function topPxFor(d: Date): number {
+  const m = d.getHours() * 60 + d.getMinutes() - SLOT_START * 60
+  return (m / 60) * ROW_PX
+}
+function heightPxFor(start: Date, end: Date): number {
+  const s = start.getHours() * 60 + start.getMinutes()
+  const e = end.getHours() * 60 + end.getMinutes()
+  return Math.max(28, ((e - s) / 60) * ROW_PX)
+}
 
 export default function CalendarPage() {
   const { t, language } = useTranslation()
-  const [subjects,      setSubjects]      = useState<Subject[]>([])
-  const [schedules,     setSchedules]     = useState<Schedule[]>([])
-  const [exams,         setExams]         = useState<Exam[]>([])
-  const [tasks,         setTasks]         = useState<Task[]>([])
-  const [loading,       setLoading]       = useState(true)
-  const [clickedEvent,  setClickedEvent]  = useState<ClickedEvent | null>(null)
-  const [initialView,   setInitialView]   = useState('dayGridMonth')
-  const [legendOpen,    setLegendOpen]    = useState(false)
-  const [isMobile,      setIsMobile]      = useState(false)
-  const { use12h } = useTimeFormat()
-  const [addExamDate,  setAddExamDate]  = useState<string | null>(null)
+  const locale = language === 'en' ? 'en-US' : 'es-ES'
 
-  const [newExamTitle,   setNewExamTitle]   = useState('')
-  const [newExamSubject, setNewExamSubject] = useState('')
-  const [newExamTime,    setNewExamTime]    = useState('')
-  const [addingExam,     setAddingExam]     = useState(false)
+  const [subjects,  setSubjects]  = useState<Subject[]>([])
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [exams,     setExams]     = useState<Exam[]>([])
+  const [tasks,     setTasks]     = useState<Task[]>([])
+  const [loading,   setLoading]   = useState(true)
 
+  const [view,    setView]    = useState<CalView>('month')
+  const [cursor,  setCursor]  = useState<Date>(() => new Date())
+  const [now,     setNow]     = useState<Date>(() => new Date())
+  const [picked,  setPicked]  = useState<CalEvent | null>(null)
+
+  // Mobile bumps default to day view
   useEffect(() => {
-    if (window.innerWidth < 768) {
-      setInitialView('timeGridDay')
-      setIsMobile(true)
-    }
+    if (window.innerWidth < 768) setView('day')
+  }, [])
+
+  // Tick "now" every minute for live indicators
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
   }, [])
 
   const fetchData = useCallback(async () => {
@@ -506,114 +130,251 @@ export default function CalendarPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Build events
-  const events: EventInput[] = []
+  // ────── Build events inside a [from, to) window ─────────
+  const buildEvents = useCallback((from: Date, to: Date): CalEvent[] => {
+    const out: CalEvent[] = []
+    const subById = new Map(subjects.map(s => [s.id, s]))
 
-  schedules.forEach((s) => {
-    const subject = subjects.find(sub => sub.id === s.subject_id)
-    if (!subject) return
-    const today = new Date()
-    const start = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-    const end   = new Date(today.getFullYear(), today.getMonth() + 3, 0)
-    const cursor = new Date(start)
-    while (cursor <= end) {
-      if (cursor.getDay() === s.day_of_week) {
-        const dateStr = cursor.toISOString().split('T')[0]
-        const room = s.room || subject.room
-        events.push({
-          id:              `schedule-${s.id}-${dateStr}`,
-          title:           subject.name,
-          start:           `${dateStr}T${s.start_time}`,
-          end:             `${dateStr}T${s.end_time}`,
-          backgroundColor: `color-mix(in srgb, ${subject.color} 14%, var(--s-low))`,
-          borderColor:     subject.color,
-          textColor:       subject.color,
-          classNames:      ['fc-ev-schedule'],
-          extendedProps:   { type: 'schedule', location: room, professor: subject.professor },
-        })
+    // Schedules → repeat across the window per day_of_week
+    schedules.forEach(s => {
+      const sub = subById.get(s.subject_id)
+      if (!sub) return
+      const cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+      while (cursor < to) {
+        if (cursor.getDay() === s.day_of_week) {
+          const [sh, sm] = s.start_time.split(':').map(Number)
+          const [eh, em] = s.end_time.split(':').map(Number)
+          const start = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), sh, sm)
+          const end   = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), eh, em)
+          let status: CalEvent['status'] = null
+          if (end < now) status = 'completed'
+          else if (start <= now && now <= end) status = 'live'
+          out.push({
+            id: `schedule-${s.id}-${start.toISOString()}`,
+            type: 'schedule',
+            title: sub.name,
+            start, end, allDay: false,
+            subjectId: sub.id,
+            subjectColor: sub.color,
+            tagClass: subjectTag(sub.color),
+            code: subjectCode(sub.name),
+            location: s.room || sub.room,
+            professor: sub.professor,
+            status,
+          })
+        }
+        cursor.setDate(cursor.getDate() + 1)
       }
-      cursor.setDate(cursor.getDate() + 1)
+    })
+
+    // Exams → single occurrence
+    exams.forEach(e => {
+      const sub = e.subject_id ? subById.get(e.subject_id) : null
+      const dateOnly = !e.exam_time
+      const [y, mo, d] = e.exam_date.split('-').map(Number)
+      let start: Date
+      let end: Date | null
+      if (dateOnly) {
+        start = new Date(y, mo - 1, d)
+        end = null
+      } else {
+        const [hh, mm] = e.exam_time!.split(':').map(Number)
+        start = new Date(y, mo - 1, d, hh, mm)
+        end = new Date(start.getTime() + 90 * 60_000)
+      }
+      if (start >= to) return
+      if ((end ?? start) < from) return
+      const subColor = sub?.color ?? '#3b82f6'
+      out.push({
+        id: `exam-${e.id}`,
+        type: 'exam',
+        title: e.title,
+        start, end,
+        allDay: dateOnly,
+        subjectId: sub?.id ?? null,
+        subjectColor: subColor,
+        tagClass: subjectTag(subColor),
+        code: sub ? subjectCode(sub.name) : 'EVAL',
+        location: e.location,
+        professor: sub?.professor ?? null,
+        status: null,
+        activityType: (e.activity_type || 'exam') as keyof typeof ACTIVITY_TYPES,
+        notes: e.notes,
+        percentage: e.percentage,
+      })
+    })
+
+    // Tasks (deadlines) → all-day on due_date
+    tasks.forEach(task => {
+      if (!task.due_date || task.is_done) return
+      const [y, mo, d] = task.due_date.split('-').map(Number)
+      const start = new Date(y, mo - 1, d)
+      if (start >= to) return
+      if (start < from) return
+      const sub = task.subject_id ? subById.get(task.subject_id) : null
+      const subColor = sub?.color ?? '#94a3b8'
+      const status: CalEvent['status'] = task.priority === 'high' ? 'urgent' : null
+      out.push({
+        id: `task-${task.id}`,
+        type: 'task',
+        title: task.text,
+        start, end: null,
+        allDay: true,
+        subjectId: sub?.id ?? null,
+        subjectColor: subColor,
+        tagClass: subjectTag(subColor),
+        code: sub ? subjectCode(sub.name) : 'TASK',
+        location: null,
+        professor: null,
+        status,
+        priority: task.priority,
+      })
+    })
+
+    return out
+  }, [subjects, schedules, exams, tasks, now])
+
+  // ────── Range for the active view ──────
+  const range = useMemo(() => {
+    if (view === 'month') {
+      const start = startOfMonthGrid(cursor)
+      const end = addDays(start, 42)
+      return { start, end }
     }
-  })
+    if (view === 'week') {
+      const start = startOfWeekMon(cursor)
+      const end = addDays(start, 7)
+      return { start, end }
+    }
+    const start = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
+    const end = addDays(start, 1)
+    return { start, end }
+  }, [view, cursor])
 
-  exams.forEach((e) => {
-    const subject   = subjects.find(s => s.id === e.subject_id)
-    const typeCfg   = ACTIVITY_TYPES[e.activity_type || 'exam']
-    const typeColor = typeCfg.color
-    events.push({
-      id:              `exam-${e.id}`,
-      title:           e.title,
-      start:           e.exam_time ? `${e.exam_date}T${e.exam_time}` : e.exam_date,
-      allDay:          !e.exam_time,
-      backgroundColor: `color-mix(in srgb, ${typeColor} 18%, var(--s-low))`,
-      borderColor:     typeColor,
-      textColor:       typeColor,
-      classNames:      ['fc-ev-exam'],
-      extendedProps:   {
-        type: 'exam', subjectName: subject?.name, location: e.location, notes: e.notes,
-        activityType: e.activity_type || 'exam', percentage: e.percentage,
-      },
-    })
-  })
+  const events = useMemo(() => buildEvents(range.start, range.end), [buildEvents, range])
 
-  tasks.forEach((task) => {
-    if (!task.due_date || task.is_done) return
-    const subject = subjects.find(s => s.id === task.subject_id)
-    // Use subject color if available, otherwise priority color
-    const color = subject?.color
-      || (task.priority === 'high' ? 'var(--danger)' : task.priority === 'mid' ? 'var(--warning)' : 'var(--priority-low)')
-    events.push({
-      id:              `task-${task.id}`,
-      title:           task.text,
-      start:           task.due_date,
-      allDay:          true,
-      backgroundColor: `color-mix(in srgb, ${color} 12%, var(--s-low))`,
-      borderColor:     color,
-      textColor:       color,
-      classNames:      ['fc-ev-task'],
-      extendedProps:   { type: 'task', priority: task.priority, subjectName: subject?.name, taskStatus: task.status },
-    })
-  })
+  // ────── Meta-bar inputs ──────
+  const weightedAvg = useMemo(() => {
+    let weightedSum = 0, creditsSum = 0
+    for (const subject of subjects) {
+      const subjExams = exams.filter(e => e.subject_id === subject.id && e.percentage != null)
+      let earned = 0, coverage = 0
+      for (const e of subjExams) {
+        if (e.grade != null) {
+          earned += (e.grade * (e.percentage ?? 0)) / 100
+          coverage += e.percentage ?? 0
+        }
+      }
+      if (coverage > 0) {
+        const subjectAvg = earned / (coverage / 100)
+        const credits = subject.credits || 1
+        weightedSum += subjectAvg * credits
+        creditsSum += credits
+      }
+    }
+    return creditsSum > 0 ? weightedSum / creditsSum : null
+  }, [subjects, exams])
 
-  const handleEventClick = (info: EventClickArg) => {
-    const p = info.event.extendedProps
-    setClickedEvent({
-      type:         p.type,
-      title:        info.event.title,
-      date:         info.event.startStr,
-      location:     p.location,
-      notes:        p.notes,
-      color:        info.event.borderColor,
-      professor:    p.professor,
-      priority:     p.priority,
-      subjectName:  p.subjectName,
-      taskStatus:   p.taskStatus,
-      activityType: p.activityType,
-      percentage:   p.percentage,
-    })
+  const alertDueLabel = useMemo(() => {
+    const todayStr = now.toISOString().split('T')[0]
+    const urgentTask = tasks
+      .filter(tk => !tk.is_done && tk.due_date && tk.priority === 'high')
+      .filter(tk => tk.due_date! >= todayStr)
+      .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1))[0]
+    const candidate = urgentTask?.due_date ? new Date(`${urgentTask.due_date}T23:59:00`) : null
+    if (!candidate) return null
+    const diffMin = Math.max(0, Math.floor((candidate.getTime() - now.getTime()) / 60_000))
+    if (diffMin > 24 * 60) return null
+    const h = Math.floor(diffMin / 60)
+    const m = diffMin % 60
+    const time = `${h}h ${pad(m)}m`
+    const tpl = t('dashboard.alertEntregaSingular') || (language === 'es' ? '{n} entrega cierra en {time}' : '{n} delivery closes in {time}')
+    return tpl.replace('{n}', '1').replace('{time}', time)
+  }, [tasks, now, t, language])
+
+  // ────── Header strings (view-aware) ──────
+  const headerText = useMemo(() => {
+    const monthName = cursor.toLocaleDateString(locale, { month: 'long' })
+    const upper = (s: string) => s.toUpperCase()
+    if (view === 'month') {
+      const eyebrow = `${upper(monthName)} ${cursor.getFullYear()}`
+      const titleHead = monthName.charAt(0).toUpperCase() + monthName.slice(1)
+      const titleEm = `${cursor.getFullYear()}`
+      const monthEvents = events
+      const classes  = monthEvents.filter(e => e.type === 'schedule').length
+      const evals    = monthEvents.filter(e => e.type === 'exam').length
+      const tasksN   = monthEvents.filter(e => e.type === 'task').length
+      const sub = language === 'es'
+        ? `${titleHead} ${cursor.getFullYear()} · ${classes} clases · ${evals} evaluaciones · ${tasksN} tareas`
+        : `${titleHead} ${cursor.getFullYear()} · ${classes} classes · ${evals} assessments · ${tasksN} tasks`
+      return { eyebrow, titleHead: titleHead, titleEm, sub }
+    }
+    if (view === 'week') {
+      const ws = startOfWeekMon(cursor)
+      const we = addDays(ws, 6)
+      const sameMonth = ws.getMonth() === we.getMonth()
+      const monthShort = ws.toLocaleDateString(locale, { month: 'short' }).replace('.', '')
+      const monthShortE = we.toLocaleDateString(locale, { month: 'short' }).replace('.', '')
+      const eyebrow = sameMonth
+        ? `${ws.getDate()} ${language === 'es' ? 'AL' : 'TO'} ${we.getDate()} ${upper(monthShort)}`
+        : `${ws.getDate()} ${upper(monthShort)} ${language === 'es' ? 'AL' : 'TO'} ${we.getDate()} ${upper(monthShortE)}`
+      const wkN = isoWeekOf(ws)
+      const titleHead = language === 'es' ? 'Semana' : 'Week'
+      const titleEm = `${wkN}/52`
+      const wkEvents = events
+      const classes = wkEvents.filter(e => e.type === 'schedule').length
+      const evals   = wkEvents.filter(e => e.type === 'exam').length
+      const tasksN  = wkEvents.filter(e => e.type === 'task').length
+      const fmt = (d: Date) => `${d.getDate()}`
+      const sub = language === 'es'
+        ? `${fmt(ws)} al ${fmt(we)} de ${monthShort} · ${classes} clases · ${evals} evaluaciones · ${tasksN} tareas`
+        : `${fmt(ws)} to ${fmt(we)} ${monthShortE} · ${classes} classes · ${evals} assessments · ${tasksN} tasks`
+      return { eyebrow: `CALENDARIO · ${eyebrow}`, titleHead, titleEm, sub }
+    }
+    // day
+    const dayName = cursor.toLocaleDateString(locale, { weekday: 'long' })
+    const monthShort = cursor.toLocaleDateString(locale, { month: 'short' }).replace('.', '')
+    const eyebrow = `${upper(dayName)} ${cursor.getDate()} ${upper(monthShort)}`
+    const isToday = isSameDay(cursor, now)
+    const titleHead = isToday ? (language === 'es' ? 'Hoy' : 'Today') : dayName.charAt(0).toUpperCase() + dayName.slice(1)
+    const titleEm = isToday ? `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${cursor.getDate()}` : `${cursor.getDate()}`
+    const dayEvents = events
+    const total = dayEvents.length
+    const evals = dayEvents.filter(e => e.type === 'exam').length
+    const urgentN = dayEvents.filter(e => e.status === 'urgent').length
+    const sub = language === 'es'
+      ? `${total} ${total === 1 ? 'evento' : 'eventos'} hoy · ${evals} ${evals === 1 ? 'evaluación' : 'evaluaciones'} · ${urgentN} ${urgentN === 1 ? 'tarea urgente' : 'tareas urgentes'}`
+      : `${total} ${total === 1 ? 'event' : 'events'} today · ${evals} ${evals === 1 ? 'assessment' : 'assessments'} · ${urgentN} urgent ${urgentN === 1 ? 'task' : 'tasks'}`
+    return { eyebrow: `CALENDARIO · ${eyebrow}`, titleHead, titleEm, sub }
+  }, [view, cursor, events, locale, language, now])
+
+  // ────── Frame title (centered) ──────
+  const frameTitle = useMemo(() => {
+    if (view === 'month') {
+      const m = cursor.toLocaleDateString(locale, { month: 'long' })
+      return `${language === 'es' ? `${m.charAt(0).toUpperCase() + m.slice(1)} de` : m.toUpperCase()} ${cursor.getFullYear()}`.toUpperCase()
+    }
+    if (view === 'week') {
+      const ws = startOfWeekMon(cursor)
+      const we = addDays(ws, 6)
+      const monthShort = ws.toLocaleDateString(locale, { month: 'short' }).replace('.', '')
+      return `${ws.getDate()} – ${we.getDate()} ${monthShort} ${ws.getFullYear()}`.toUpperCase()
+    }
+    return cursor.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()
+  }, [view, cursor, locale, language])
+
+  // ────── Navigation ──────
+  const navPrev = () => {
+    if (view === 'month') setCursor(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
+    else if (view === 'week') setCursor(d => addDays(d, -7))
+    else setCursor(d => addDays(d, -1))
   }
-
-  const handleDateSelect = (info: DateSelectArg) => {
-    setAddExamDate(info.startStr.split('T')[0])
+  const navNext = () => {
+    if (view === 'month') setCursor(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))
+    else if (view === 'week') setCursor(d => addDays(d, 7))
+    else setCursor(d => addDays(d, 1))
   }
-
-  const handleAddExam = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newExamTitle.trim() || !addExamDate) return
-    setAddingExam(true)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('exams').insert({
-      user_id:    user.id,
-      title:      newExamTitle.trim(),
-      exam_date:  addExamDate,
-      exam_time:  newExamTime || null,
-      subject_id: newExamSubject || null,
-    })
-    setAddExamDate(null); setNewExamTitle(''); setNewExamSubject(''); setNewExamTime('')
-    setAddingExam(false); fetchData()
-  }
+  const navToday = () => setCursor(new Date())
 
   if (loading) {
     return (
@@ -625,349 +386,433 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto reveal-stagger">
+    <div className="max-w-[1240px] mx-auto reveal-stagger">
+
+      {/* Contextual top-bar (live clock + week + avg + urgent) */}
+      <DashMetaBar
+        weekIndex={isoWeekOf(now)}
+        weekTotal={52}
+        avg={weightedAvg}
+        alertDueLabel={alertDueLabel}
+      />
 
       {/* Page header */}
-      <header className="screen-head">
-        <div className="screen-head__left">
-          <span className="kicker">{t('nav.calendar')} · {language === 'es' ? 'Esta semana' : 'This week'}</span>
-          <h1 className="screen-head__title">
-            <span className="serif">{language === 'es' ? 'tu agenda' : 'your schedule'}</span>
+      <header className="cal-head">
+        <div className="cal-head__left">
+          <span className="kicker">{headerText.eyebrow}</span>
+          <h1 className="cal-head__title">
+            {headerText.titleHead}{' '}<span className="serif">{headerText.titleEm}</span>
           </h1>
+          <p className="cal-head__sub">{headerText.sub}</p>
         </div>
-        {/* Legend toggle — mobile only */}
-        <button
-          onClick={() => setLegendOpen(!legendOpen)}
-          className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-          style={{
-            backgroundColor: legendOpen ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : 'var(--s-low)',
-            color: legendOpen ? 'var(--color-primary)' : 'var(--color-outline)',
-            border: '1px solid var(--border-subtle)',
-          }}
-        >
-          <span className="material-symbols-outlined text-[14px]">legend_toggle</span>
-          {legendOpen ? t('common.close') : 'Leyenda'}
-        </button>
+        <div className="cal-head__actions">
+          <div className="cal-seg" role="tablist" aria-label="Calendar view">
+            {(['day', 'week', 'month'] as CalView[]).map(v => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={view === v}
+                className={`cal-seg__btn ${view === v ? 'is-active' : ''}`}
+                onClick={() => setView(v)}
+              >
+                {v === 'day' ? t('calendar.day') : v === 'week' ? t('calendar.week') : t('calendar.month')}
+              </button>
+            ))}
+          </div>
+          <button className="cal-head__today" onClick={navToday}>
+            <span className="material-symbols-outlined">calendar_today</span>
+            {t('calendar.today')}
+          </button>
+          <button className="cal-head__new" onClick={() => alert(t('calendar.addExam'))}>
+            <span className="material-symbols-outlined">add</span>
+            {language === 'es' ? 'Nuevo' : 'New'}
+          </button>
+        </div>
       </header>
 
-      {/* Legend — always visible on desktop, collapsible on mobile */}
-      <div className={`mb-4 rounded-xl p-3 ${legendOpen ? 'flex' : 'hidden lg:flex'} flex-wrap gap-x-4 gap-y-2`}
-        style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-        {subjects.map(s => (
-          <div key={s.id} className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color }} />
-            <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>{s.name}</span>
-          </div>
-        ))}
-        {exams.length > 0 && (
-          (Object.keys(ACTIVITY_TYPES) as Array<keyof typeof ACTIVITY_TYPES>).filter(k =>
-            exams.some(e => (e.activity_type || 'exam') === k)
-          ).map(k => (
-            <div key={k} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: ACTIVITY_TYPES[k].color }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>
-                {language === 'en' ? ACTIVITY_TYPES[k].label_en : ACTIVITY_TYPES[k].label_es}
-              </span>
-            </div>
-          ))
+      {/* Frame */}
+      <div className="cal-frame">
+        <div className="cal-frame__toolbar">
+          <button className="cal-iconbtn" onClick={navPrev} aria-label="Previous">
+            <span className="material-symbols-outlined">chevron_left</span>
+          </button>
+          <button className="cal-iconbtn" onClick={navNext} aria-label="Next">
+            <span className="material-symbols-outlined">chevron_right</span>
+          </button>
+          <button className="cal-frame__today" onClick={navToday}>{t('calendar.today')}</button>
+          <span className="cal-frame__title">{frameTitle}</span>
+        </div>
+
+        {view === 'month' && (
+          <MonthView cursor={cursor} events={events} now={now} locale={locale} onPick={setPicked} />
         )}
-        {tasks.some(tk => !tk.is_done && tk.due_date) && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0 border border-dashed" style={{ borderColor: 'var(--warning)' }} />
-            <span className="text-xs font-medium" style={{ color: 'var(--on-surface-variant)' }}>{t('nav.tasks')}</span>
-          </div>
+        {view === 'week' && (
+          <WeekView cursor={cursor} events={events} now={now} locale={locale} onPick={setPicked} />
         )}
-      </div>
-
-      {/* Calendar card */}
-      <div className="rounded-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--s-low)', border: '1px solid var(--border-subtle)' }}>
-        <style>{SANCTUARY_CALENDAR_CSS}</style>
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView={initialView}
-          headerToolbar={{
-            left:   'prev,next today',
-            center: 'title',
-            right:  'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
-          buttonText={{
-            today: t('calendar.today'),
-            month: t('calendar.month'),
-            week:  t('calendar.week'),
-            day:   t('calendar.day'),
-          }}
-          events={events}
-          eventClick={handleEventClick}
-          selectable={true}
-          select={handleDateSelect}
-          height="auto"
-          slotMinTime="06:00:00"
-          slotMaxTime="22:00:00"
-          scrollTime={(() => {
-            const todayDow = new Date().getDay()
-            const earliest = schedules
-              .filter(s => s.day_of_week === todayDow)
-              .map(s => s.start_time)
-              .sort()[0]
-            if (!earliest) return '07:00:00'
-            const [h, m] = earliest.split(':').map(Number)
-            const mins = Math.max(6 * 60, h * 60 + m - 30)
-            return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}:00`
-          })()}
-          slotLabelInterval="01:00:00"
-          locale={language === 'en' ? 'en' : 'es'}
-          eventTimeFormat={use12h
-            ? { hour: 'numeric', minute: '2-digit', hour12: true }
-            : { hour: '2-digit', minute: '2-digit', hour12: false }
-          }
-          slotLabelFormat={use12h
-            ? { hour: 'numeric', minute: '2-digit', hour12: true }
-            : { hour: '2-digit', minute: '2-digit', hour12: false }
-          }
-          views={{
-            timeGridWeek: {
-              dayHeaderFormat: isMobile
-                ? { weekday: 'narrow' }
-                : { weekday: 'short', day: 'numeric' },
-              slotDuration: isMobile ? '00:30:00' : '00:30:00',
-            },
-            timeGridDay: {
-              dayHeaderFormat: { weekday: 'long', day: 'numeric', month: 'short' },
-              slotDuration: '00:30:00',
-            },
-          }}
-          dayMaxEvents={isMobile ? 2 : 4}
-          eventDisplay="block"
-          nowIndicator={true}
-          eventContent={(arg) => {
-            const type = arg.event.extendedProps.type as string
-            const isMonthView = arg.view.type === 'dayGridMonth'
-
-            // Month view: compact text pill (title only, truncated for mobile)
-            if (isMonthView) {
-              const title = arg.event.title
-              const displayTitle = isMobile && title.length > 12 ? title.slice(0, 11) + '…' : title
-              return (
-                <div style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  padding: '0 2px',
-                  lineHeight: 1.4,
-                }}>
-                  {displayTitle}
-                </div>
-              )
-            }
-
-            // Custom render for schedule events: show room below title
-            if (type === 'schedule') {
-              const loc = arg.event.extendedProps.location as string | undefined
-              const isWeekView = arg.view.type === 'timeGridWeek'
-              const isDayView  = arg.view.type === 'timeGridDay'
-              // Only truncate in mobile week view (7 narrow columns); day view gets full space
-              const titleText = (isMobile && isWeekView && arg.event.title.length > 14)
-                ? arg.event.title.slice(0, 13) + '…'
-                : arg.event.title
-              const titleSize = isDayView ? '12px' : '10.5px'
-              return (
-                <div style={{ padding: isDayView ? '4px 6px' : '2px 4px', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  {arg.timeText && (!isMobile || isDayView) && (
-                    <span style={{ fontSize: '8.5px', fontWeight: 500, opacity: 0.7, lineHeight: 1.2, display: 'block', whiteSpace: 'nowrap' }}>
-                      {arg.timeText}
-                    </span>
-                  )}
-                  <span style={{ fontSize: titleSize, fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>
-                    {titleText}
-                  </span>
-                  {loc && (!isMobile || isDayView) && (
-                    <span className="fc-ev-location" style={{ fontSize: isDayView ? '10px' : undefined }}>
-                      {loc}
-                    </span>
-                  )}
-                </div>
-              )
-            }
-            // Activity/Exam: type label + title
-            if (type === 'exam') {
-              const actType = (arg.event.extendedProps.activityType || 'exam') as keyof typeof ACTIVITY_TYPES
-              const cfg = ACTIVITY_TYPES[actType]
-              return (
-                <div style={{ padding: '2px 4px', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '8px', fontWeight: 800, opacity: 0.75, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: '2px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '9px', fontVariationSettings: "'FILL' 1" }}>{cfg.icon}</span>
-                    {cfg.label_es}
-                  </span>
-                  <span style={{ fontSize: '10.5px', fontWeight: 700, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>
-                    {arg.event.title}
-                  </span>
-                </div>
-              )
-            }
-            // Task: dashed border visually, prefix with check icon
-            if (type === 'task') {
-              const status = arg.event.extendedProps.taskStatus as string | undefined
-              const statusIcon = status === 'done' ? '✓' : status === 'in_progress' ? '◑' : '○'
-              return (
-                <div style={{
-                  padding: '1px 5px',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  borderLeft: `2px dashed ${arg.event.borderColor}`,
-                  borderRadius: '4px',
-                  height: '100%',
-                }}>
-                  <span style={{ fontSize: '9px', flexShrink: 0, opacity: 0.8 }}>{statusIcon}</span>
-                  <span style={{ fontSize: '10.5px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {arg.event.title}
-                  </span>
-                </div>
-              )
-            }
-            return undefined
-          }}
-        />
+        {view === 'day' && (
+          <DayView cursor={cursor} events={events} now={now} locale={locale} language={language} onPick={setPicked} />
+        )}
       </div>
 
       {/* Event detail modal */}
-      {clickedEvent && (
-        <div className="modal-overlay" onClick={() => setClickedEvent(null)}>
+      {picked && (
+        <div className="modal-overlay" onClick={() => setPicked(null)}>
           <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()} role="dialog">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-3 h-8 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: clickedEvent.color || 'var(--color-primary)' }} />
+                <div className="w-3 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: picked.subjectColor }} />
                 <div>
-                  <span className="mono text-[9px] uppercase tracking-widest block"
-                    style={{ color: 'var(--color-outline)' }}>
-                    {clickedEvent.type === 'exam'
-                      ? (clickedEvent.activityType
-                          ? (language === 'en'
-                              ? ACTIVITY_TYPES[clickedEvent.activityType as keyof typeof ACTIVITY_TYPES]?.label_en
-                              : ACTIVITY_TYPES[clickedEvent.activityType as keyof typeof ACTIVITY_TYPES]?.label_es)
+                  <span className="mono text-[9px] uppercase tracking-widest block" style={{ color: 'var(--color-outline)' }}>
+                    {picked.type === 'exam'
+                      ? (picked.activityType
+                          ? (language === 'en' ? ACTIVITY_TYPES[picked.activityType].label_en : ACTIVITY_TYPES[picked.activityType].label_es)
                           : t('nav.exams'))
-                      : clickedEvent.type === 'task' ? t('nav.tasks') : t('subjects.schedules')}
+                      : picked.type === 'task' ? t('nav.tasks') : t('subjects.schedules')}
                   </span>
-                  <h2 className="font-bold text-base" style={{ color: 'var(--on-surface)' }}>
-                    {clickedEvent.title}
-                  </h2>
+                  <h2 className="font-bold text-base" style={{ color: 'var(--on-surface)' }}>{picked.title}</h2>
                 </div>
               </div>
-              <button onClick={() => setClickedEvent(null)}
+              <button onClick={() => setPicked(null)}
                 className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 style={{ color: 'var(--color-outline)' }} aria-label={t('common.close')}>
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
             <div className="space-y-3 text-sm">
-              {clickedEvent.subjectName && (
-                <div className="flex items-center gap-2.5" style={{ color: 'var(--on-surface-variant)' }}>
-                  <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>menu_book</span>
-                  {clickedEvent.subjectName}
-                </div>
-              )}
-              {clickedEvent.date && (
+              {picked.start && (
                 <div className="flex items-center gap-2.5" style={{ color: 'var(--on-surface-variant)' }}>
                   <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>calendar_today</span>
-                  {new Date(clickedEvent.date).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}
+                  {picked.start.toLocaleString(locale, { dateStyle: 'medium', ...(picked.allDay ? {} : { timeStyle: 'short', hour12: false }) })}
+                  {picked.end && !picked.allDay && ` — ${hhmm(picked.end)}`}
                 </div>
               )}
-              {clickedEvent.professor && (
+              {picked.professor && (
                 <div className="flex items-center gap-2.5" style={{ color: 'var(--on-surface-variant)' }}>
                   <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>person</span>
-                  {clickedEvent.professor}
+                  {picked.professor}
                 </div>
               )}
-              {clickedEvent.percentage != null && (
-                <div className="flex items-center gap-2.5">
-                  <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>percent</span>
-                  <span className="mono text-sm font-bold" style={{ color: clickedEvent.color || 'var(--on-surface)' }}>
-                    {clickedEvent.percentage}%
-                  </span>
-                </div>
-              )}
-              {clickedEvent.priority && (
-                <div className="flex items-center gap-2.5">
-                  <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>flag</span>
-                  <span className="mono text-[11px] px-2 py-0.5 rounded-full font-bold uppercase"
-                    style={{
-                      backgroundColor: clickedEvent.priority === 'high' ? 'var(--priority-high-bg)' : clickedEvent.priority === 'mid' ? 'var(--priority-mid-bg)' : 'var(--priority-low-bg)',
-                      color: clickedEvent.priority === 'high' ? 'var(--priority-high)' : clickedEvent.priority === 'mid' ? 'var(--priority-mid)' : 'var(--priority-low)',
-                    }}>
-                    {clickedEvent.priority === 'high' ? t('tasks.high') : clickedEvent.priority === 'mid' ? t('tasks.mid') : t('tasks.low')}
-                  </span>
-                </div>
-              )}
-              {clickedEvent.location && (
+              {picked.location && (
                 <div className="flex items-center gap-2.5" style={{ color: 'var(--on-surface-variant)' }}>
                   <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>location_on</span>
-                  {clickedEvent.location}
+                  {picked.location}
                 </div>
               )}
-              {clickedEvent.notes && (
+              {picked.percentage != null && (
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[16px]" style={{ color: 'var(--color-outline)' }}>percent</span>
+                  <span className="mono text-sm font-bold" style={{ color: picked.subjectColor }}>{picked.percentage}%</span>
+                </div>
+              )}
+              {picked.notes && (
                 <div className="flex items-start gap-2.5" style={{ color: 'var(--on-surface-variant)' }}>
                   <span className="material-symbols-outlined text-[16px] mt-0.5" style={{ color: 'var(--color-outline)' }}>sticky_note_2</span>
-                  {clickedEvent.notes}
+                  {picked.notes}
                 </div>
               )}
             </div>
-            <button onClick={() => setClickedEvent(null)} className="btn-secondary w-full mt-5">{t('common.close')}</button>
+            <button onClick={() => setPicked(null)} className="btn-secondary w-full mt-5">{t('common.close')}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─────────────────────────────  MONTH VIEW  ───────────────────────────── */
+function MonthView({
+  cursor, events, now, locale, onPick,
+}: {
+  cursor: Date
+  events: CalEvent[]
+  now: Date
+  locale: string
+  onPick: (e: CalEvent) => void
+}) {
+  const start = startOfMonthGrid(cursor)
+  const days: Date[] = Array.from({ length: 42 }, (_, i) => addDays(start, i))
+  const dowHeaders = Array.from({ length: 7 }, (_, i) =>
+    addDays(start, i).toLocaleDateString(locale, { weekday: 'short' }).replace('.', '').slice(0, 3).toUpperCase()
+  )
+
+  const eventsForDay = (d: Date) =>
+    events
+      .filter(e => isSameDay(e.start, d))
+      .sort((a, b) => {
+        if (a.allDay && !b.allDay) return -1
+        if (!a.allDay && b.allDay) return 1
+        return a.start.getTime() - b.start.getTime()
+      })
+
+  return (
+    <div className="cal-month">
+      <div className="cal-month__head">
+        {dowHeaders.map((h, i) => <div key={i} className="cal-month__dow">{h}</div>)}
+      </div>
+      <div className="cal-month__grid">
+        {days.map((d, i) => {
+          const inMonth = d.getMonth() === cursor.getMonth()
+          const isTd = isSameDay(d, now)
+          const dayEvents = eventsForDay(d)
+          const visible = dayEvents.slice(0, 3)
+          const overflow = dayEvents.length - visible.length
+          return (
+            <div key={i} className={`cal-month__cell ${inMonth ? '' : 'is-other'} ${isTd ? 'is-today' : ''}`}>
+              <div className="cal-month__num-row">
+                <span className="cal-month__num">{d.getDate()}</span>
+              </div>
+              <div className="cal-month__events">
+                {visible.map(ev => {
+                  const icon = ev.type === 'exam'
+                    ? (ACTIVITY_TYPES[ev.activityType ?? 'exam'].icon)
+                    : ev.type === 'task' ? 'task_alt' : null
+                  return (
+                    <button
+                      key={ev.id}
+                      className={`cal-evchip ${ev.tagClass} ${ev.type === 'task' ? 'cal-evchip--task' : ''} ${ev.status === 'urgent' ? 'cal-evchip--urgent' : ''}`}
+                      onClick={() => onPick(ev)}
+                      title={ev.title}
+                    >
+                      <span className="cal-evchip__tag">{ev.code}</span>
+                      {icon && <span className="material-symbols-outlined cal-evchip__icon">{icon}</span>}
+                      <span className="cal-evchip__title">
+                        {ev.type === 'schedule' && !ev.allDay ? `${ev.title}` : ev.title}
+                      </span>
+                    </button>
+                  )
+                })}
+                {overflow > 0 && (
+                  <span className="cal-month__more">+{overflow} {locale.startsWith('es') ? 'más' : 'more'}</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────  WEEK VIEW  ───────────────────────────── */
+function WeekView({
+  cursor, events, now, locale, onPick,
+}: {
+  cursor: Date
+  events: CalEvent[]
+  now: Date
+  locale: string
+  onPick: (e: CalEvent) => void
+}) {
+  const ws = startOfWeekMon(cursor)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i))
+  const hours = Array.from({ length: SLOT_HOURS + 1 }, (_, i) => SLOT_START + i)
+
+  const eventsForDay = (d: Date) => events.filter(e => isSameDay(e.start, d))
+
+  return (
+    <div className="cal-wk">
+      {/* Day headers */}
+      <div className="cal-wk__row-head">
+        <div />
+        {days.map((d, i) => {
+          const isTd = isSameDay(d, now)
+          const dayName = d.toLocaleDateString(locale, { weekday: 'short' }).replace('.', '').toUpperCase()
+          return (
+            <div key={i} className={`cal-wk__day-head ${isTd ? 'is-today' : ''}`}>
+              <span className="cal-wk__dow">{dayName}</span>
+              <span className="cal-wk__dnum">{d.getDate()}</span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* All-day strip */}
+      <div className="cal-wk__row-allday">
+        <div className="cal-wk__allday-label">all-day</div>
+        {days.map((d, i) => {
+          const isTd = isSameDay(d, now)
+          const dayEvents = eventsForDay(d).filter(e => e.allDay)
+          return (
+            <div key={i} className={`cal-wk__allday-cell ${isTd ? 'is-today' : ''}`}>
+              {dayEvents.map(ev => (
+                <button
+                  key={ev.id}
+                  className={`cal-evchip cal-evchip--allday ${ev.tagClass} ${ev.type === 'task' ? 'cal-evchip--task' : ''} ${ev.status === 'urgent' ? 'cal-evchip--urgent' : ''}`}
+                  onClick={() => onPick(ev)}
+                >
+                  <span className="cal-evchip__tag">{ev.code}</span>
+                  {ev.status === 'urgent' && <span className="material-symbols-outlined cal-evchip__icon">flag</span>}
+                  {ev.type === 'task' && ev.status !== 'urgent' && <span className="material-symbols-outlined cal-evchip__icon">task_alt</span>}
+                  <span className="cal-evchip__title">{ev.title}</span>
+                </button>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Timegrid */}
+      <div className="cal-wk__grid">
+        <div className="cal-wk__times">
+          {hours.map(h => (
+            <div key={h} className="cal-wk__hour-label">{pad(h)}:00</div>
+          ))}
+        </div>
+        {days.map((d, i) => {
+          const isTd = isSameDay(d, now)
+          const dayEvents = eventsForDay(d).filter(e => !e.allDay && e.end)
+          return (
+            <div key={i} className={`cal-wk__col ${isTd ? 'is-today' : ''}`} style={{ height: ROW_PX * SLOT_HOURS }}>
+              {hours.slice(0, -1).map(h => (
+                <div key={h} className="cal-wk__row" style={{ top: (h - SLOT_START) * ROW_PX, height: ROW_PX }} />
+              ))}
+              {isTd && now.getHours() >= SLOT_START && now.getHours() < SLOT_END && (
+                <div className="cal-wk__now" style={{ top: topPxFor(now) }}>
+                  <span className="cal-wk__now-dot" />
+                </div>
+              )}
+              {dayEvents.map(ev => {
+                const top = topPxFor(ev.start)
+                const h = heightPxFor(ev.start, ev.end!)
+                const evIcon = ev.type === 'exam' ? ACTIVITY_TYPES[ev.activityType ?? 'exam'].icon : null
+                return (
+                  <button
+                    key={ev.id}
+                    className={`cal-evcard ${ev.tagClass} ${ev.type === 'exam' ? 'cal-evcard--exam' : ''} ${ev.status === 'live' ? 'cal-evcard--live' : ''} ${ev.status === 'completed' ? 'cal-evcard--done' : ''}`}
+                    style={{ top, height: h }}
+                    onClick={() => onPick(ev)}
+                  >
+                    <div className="cal-evcard__head">
+                      <span className="cal-evcard__chip">{ev.code}</span>
+                      {evIcon && <span className="material-symbols-outlined cal-evcard__icon">{evIcon}</span>}
+                      {ev.status === 'live' && <span className="cal-evcard__dot" aria-label="live" />}
+                      {ev.status === 'completed' && <span className="material-symbols-outlined cal-evcard__check">check_circle</span>}
+                    </div>
+                    <span className="cal-evcard__title">{ev.title}</span>
+                    {(ev.location || ev.end) && (
+                      <span className="cal-evcard__foot">
+                        {ev.end && `${hhmm(ev.start)}–${hhmm(ev.end)}`}
+                        {ev.location && ev.end && ' · '}
+                        {ev.location && ev.location}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────  DAY VIEW  ───────────────────────────── */
+function DayView({
+  cursor, events, now, locale, language, onPick,
+}: {
+  cursor: Date
+  events: CalEvent[]
+  now: Date
+  locale: string
+  language: 'es' | 'en'
+  onPick: (e: CalEvent) => void
+}) {
+  const dayEvents = events.filter(e => isSameDay(e.start, cursor))
+  const allDay = dayEvents.filter(e => e.allDay)
+  const timed = dayEvents.filter(e => !e.allDay && e.end).sort((a, b) => a.start.getTime() - b.start.getTime())
+  const isTd = isSameDay(cursor, now)
+  const hours = Array.from({ length: SLOT_HOURS + 1 }, (_, i) => SLOT_START + i)
+  const dayLabel = cursor.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase()
+
+  return (
+    <div className="cal-day">
+      <div className="cal-day__head">
+        <span className="cal-day__head-label">{dayLabel}</span>
+      </div>
+
+      {/* Urgent banner (all-day + status urgent) */}
+      {allDay.filter(e => e.status === 'urgent').map(ev => (
+        <button key={ev.id} className="cal-day__urgent" onClick={() => onPick(ev)}>
+          <span className="material-symbols-outlined">flag</span>
+          <span className="cal-day__urgent-tag">{ev.code}</span>
+          <strong>{ev.title}</strong>
+          <span className="cal-day__urgent-meta">
+            {language === 'es' ? 'cierra hoy 23:59' : 'closes today 23:59'}
+          </span>
+        </button>
+      ))}
+
+      {/* Other all-day pills */}
+      {allDay.filter(e => e.status !== 'urgent').length > 0 && (
+        <div className="cal-day__allday">
+          <div className="cal-day__allday-label">all-day</div>
+          <div className="cal-day__allday-list">
+            {allDay.filter(e => e.status !== 'urgent').map(ev => (
+              <button
+                key={ev.id}
+                className={`cal-evchip cal-evchip--allday ${ev.tagClass} ${ev.type === 'task' ? 'cal-evchip--task' : ''}`}
+                onClick={() => onPick(ev)}
+              >
+                <span className="cal-evchip__tag">{ev.code}</span>
+                <span className="cal-evchip__title">{ev.title}</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Add exam from date select */}
-      {addExamDate && (
-        <div className="modal-overlay" onClick={() => setAddExamDate(null)}>
-          <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()} role="dialog">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: 'var(--accent-soft)' }}>
-                <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)' }}>event_upcoming</span>
-              </div>
-              <div>
-                <span className="mono text-[9px] uppercase tracking-widest block" style={{ color: 'var(--color-outline)' }}>
-                  {addExamDate}
-                </span>
-                <h2 className="font-bold" style={{ color: 'var(--on-surface)' }}>{t('calendar.addExam')}</h2>
-              </div>
-            </div>
-            <form onSubmit={handleAddExam} className="space-y-3">
-              <div>
-                <label htmlFor="newExamTitle" className="label">{t('exams.examTitle')} *</label>
-                <input id="newExamTitle" className="input" value={newExamTitle}
-                  onChange={e => setNewExamTitle(e.target.value)} aria-required="true" />
-              </div>
-              <div>
-                <label htmlFor="newExamSubject" className="label">{t('tasks.subject')}</label>
-                <select id="newExamSubject" className="input" value={newExamSubject}
-                  onChange={e => setNewExamSubject(e.target.value)}>
-                  <option value="">{t('tasks.noSubject')}</option>
-                  {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="newExamTime" className="label">{t('exams.time')}</label>
-                <input id="newExamTime" type="time" className="input" value={newExamTime}
-                  onChange={e => setNewExamTime(e.target.value)} />
-              </div>
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setAddExamDate(null)} className="btn-secondary flex-1">
-                  {t('common.cancel')}
-                </button>
-                <button type="submit" disabled={addingExam} className="btn-primary flex-1">
-                  {addingExam ? t('common.loading') : t('common.save')}
-                </button>
-              </div>
-            </form>
-          </div>
+      {/* Timegrid (single column) */}
+      <div className="cal-day__grid">
+        <div className="cal-day__times">
+          {hours.map(h => (
+            <div key={h} className="cal-day__hour-label">{pad(h)}:00</div>
+          ))}
         </div>
-      )}
+        <div className="cal-day__col" style={{ height: ROW_PX * SLOT_HOURS }}>
+          {hours.slice(0, -1).map(h => (
+            <div key={h} className="cal-day__row" style={{ top: (h - SLOT_START) * ROW_PX, height: ROW_PX }} />
+          ))}
+          {isTd && now.getHours() >= SLOT_START && now.getHours() < SLOT_END && (
+            <div className="cal-day__now" style={{ top: topPxFor(now) }}><span className="cal-day__now-dot" /></div>
+          )}
+          {timed.map(ev => {
+            const top = topPxFor(ev.start)
+            const h = heightPxFor(ev.start, ev.end!)
+            const status = ev.status
+            return (
+              <button
+                key={ev.id}
+                className={`cal-day-card ${ev.tagClass} ${ev.type === 'exam' ? 'cal-day-card--exam' : ''} ${status === 'live' ? 'cal-day-card--live' : ''} ${status === 'completed' ? 'cal-day-card--done' : ''}`}
+                style={{ top, height: h }}
+                onClick={() => onPick(ev)}
+              >
+                <div className="cal-day-card__head">
+                  <span className="cal-day-card__chip">{ev.code}</span>
+                  {status === 'completed' && (
+                    <span className="cal-day-card__badge cal-day-card__badge--done">
+                      <span className="material-symbols-outlined">check_circle</span>
+                      {language === 'es' ? 'Completada' : 'Completed'}
+                    </span>
+                  )}
+                  {status === 'live' && (
+                    <span className="cal-day-card__badge cal-day-card__badge--live">
+                      <span className="cal-day-card__pulse" />
+                      {language === 'es' ? 'EN VIVO' : 'LIVE'}
+                    </span>
+                  )}
+                </div>
+                <h3 className="cal-day-card__title">{ev.title}</h3>
+                <div className="cal-day-card__foot">
+                  {hhmm(ev.start)} — {hhmm(ev.end!)}
+                  {ev.location && ` · ${ev.location}`}
+                  {ev.professor && ` · ${ev.professor}`}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
