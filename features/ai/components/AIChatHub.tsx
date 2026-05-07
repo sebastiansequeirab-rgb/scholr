@@ -13,67 +13,60 @@ interface LocalMessage {
   time?: string
 }
 
-type DotColor = 'purple' | 'green' | 'blue' | 'rose' | 'amber' | 'cyan'
-
-interface SidebarItem {
+interface AISession {
   id: string
-  dot: DotColor
-  title: string
-  time: string
-  pinned?: boolean
+  subject_id: string | null
+  title: string | null
+  created_at: string
+  last_message_at: string
+  pinned: boolean
 }
 
-const DOT_COLOR: Record<DotColor, string> = {
-  purple: 'var(--color-tertiary)',
-  green:  'var(--success)',
-  blue:   'var(--color-primary)',
-  rose:   'var(--danger)',
-  amber:  'var(--warning)',
-  cyan:   'var(--color-secondary)',
+interface SubjectLite {
+  id: string
+  name: string
+  color: string
 }
 
-const MOCK_PINNED: SidebarItem[] = [
-  { id: 'pin-1', dot: 'purple', title: 'Plan de estudio · Quiz MATE', time: 'Hoy · 18:41', pinned: true },
-  { id: 'pin-2', dot: 'purple', title: 'Cómo entregar el Taller',     time: 'Hoy · 17:20', pinned: true },
+const MESSAGE_LIMIT_PER_MONTH = 1000
+
+const SUGGESTIONS_ES = [
+  { icon: 'calendar_today', label: '¿Qué tengo esta semana?' },
+  { icon: 'school',         label: 'Próximos exámenes'        },
+  { icon: 'priority_high',  label: '¿Qué es lo más urgente?'  },
+  { icon: 'auto_fix_high',  label: 'Organizar mi semana'      },
+  { icon: 'trending_up',    label: '¿Cómo subo mi promedio?'  },
 ]
 
-const MOCK_RECENT: SidebarItem[] = [
-  { id: 'rec-1', dot: 'green',  title: 'Resumen Cap. 3 Mate',         time: 'Ayer'   },
-  { id: 'rec-2', dot: 'blue',   title: 'Plan de la semana',           time: 'Lun'    },
-  { id: 'rec-3', dot: 'rose',   title: 'Dudas sobre TRAD',            time: '21 abr' },
-  { id: 'rec-4', dot: 'amber',  title: 'Proyección de notas',         time: '20 abr' },
-  { id: 'rec-5', dot: 'cyan',   title: 'Qué hacer en 30 min libres',  time: '18 abr' },
-  { id: 'rec-6', dot: 'purple', title: 'Tip para Cálculo',            time: '15 abr' },
+const SUGGESTIONS_EN = [
+  { icon: 'calendar_today', label: 'What do I have this week?' },
+  { icon: 'school',         label: 'Upcoming exams'            },
+  { icon: 'priority_high',  label: "What's most urgent?"       },
+  { icon: 'auto_fix_high',  label: 'Organize my week'          },
+  { icon: 'trending_up',    label: 'How do I raise my GPA?'    },
 ]
 
-const INITIAL_MESSAGES: LocalMessage[] = [
-  {
-    role: 'assistant',
-    time: '18:40',
-    content:
-      'Hola Sebastián. Veo que tenés el taller de Instalaciones cerrando hoy a las 23:59. ¿Querés que arme un plan rápido para terminarlo?',
-  },
-  {
-    role: 'user',
-    time: '18:41',
-    content:
-      'Sí, pero antes resumime el cap. 4 de Mate Financieras para el quiz de mañana.',
-  },
-  {
-    role: 'assistant',
-    time: '18:41',
-    content:
-      'Cap. 4 cubre anualidades vencidas y anticipadas. Tres ideas clave:\n\n1. Anualidad vencida — pagos al fin del período. VP = R · [1 – (1+i)^–n] / i.\n2. Anualidad anticipada — multiplicar la fórmula por (1+i).\n3. Diferenciar tasa nominal vs efectiva al armar las equivalencias.\n\n¿Querés que te genere 5 ejercicios tipo quiz para practicar?',
-  },
-]
+const DAY_SHORT_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+const DAY_SHORT_EN = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+const MONTH_SHORT_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const MONTH_SHORT_EN = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 
-const SUGGESTIONS = [
-  { icon: 'menu_book',   label: 'Resumime el cap. 4 de MATE'        },
-  { icon: 'task_alt',    label: 'Plan para terminar el taller hoy'  },
-  { icon: 'quiz',        label: '5 ejercicios tipo quiz'            },
-  { icon: 'event',       label: '¿Qué tengo mañana?'                },
-  { icon: 'trending_up', label: '¿Cómo subo mi promedio en CALC?'   },
-]
+function formatRelativeTime(iso: string, lang: 'es' | 'en'): string {
+  const date = new Date(iso)
+  const now  = new Date()
+  const sd   = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const diffDays = Math.floor((sd(now).getTime() - sd(date).getTime()) / 86_400_000)
+
+  if (diffDays <= 0) {
+    const hh = String(date.getHours()).padStart(2, '0')
+    const mm = String(date.getMinutes()).padStart(2, '0')
+    return lang === 'es' ? `Hoy · ${hh}:${mm}` : `Today · ${hh}:${mm}`
+  }
+  if (diffDays === 1) return lang === 'es' ? 'Ayer' : 'Yesterday'
+  if (diffDays < 7)   return (lang === 'es' ? DAY_SHORT_ES : DAY_SHORT_EN)[date.getDay()]
+  const month = (lang === 'es' ? MONTH_SHORT_ES : MONTH_SHORT_EN)[date.getMonth()]
+  return `${date.getDate()} ${month}`
+}
 
 // ─── AIChatHub ────────────────────────────────────────────────────────────────
 
@@ -86,17 +79,24 @@ export function AIChatHub({
 }) {
   const { t } = useTranslation()
 
-  const [messages,   setMessages]   = useState<LocalMessage[]>(INITIAL_MESSAGES)
-  const [input,      setInput]      = useState('')
-  const [loading,    setLoading]    = useState(false)
-  const [activeSidebarId, setActiveSidebarId] = useState<string | null>('pin-1')
+  const [subjects,        setSubjects]        = useState<Record<string, SubjectLite>>({})
+  const [sessions,        setSessions]        = useState<AISession[]>([])
+  const [loadingSessions, setLoadingSessions] = useState(true)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [messages,        setMessages]        = useState<LocalMessage[]>([])
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [input,           setInput]           = useState('')
+  const [loading,         setLoading]         = useState(false)
   const [mobileShowList,  setMobileShowList]  = useState(false)
   const [pdfText,         setPdfText]         = useState<string | null>(null)
   const [pdfName,         setPdfName]         = useState<string | null>(null)
   const [pdfLoading,      setPdfLoading]      = useState(false)
   const [imageFile,       setImageFile]       = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
-  const [userInitials,    setUserInitials]    = useState<string>('SS')
+  const [userInitials,    setUserInitials]    = useState<string>('')
+  const [userFirstName,   setUserFirstName]   = useState<string>('')
+  const [usageCount,      setUsageCount]      = useState<number>(0)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const currentSessionIdRef = useRef<string | null>(null)
   const bottomRef           = useRef<HTMLDivElement>(null)
@@ -144,39 +144,129 @@ export function AIChatHub({
     setIsAIRecording(true)
   }
 
-  // ── Load user initials for avatar ─────────────────────────────────────────
+  // ── Load sessions, subjects, profile, usage count ─────────────────────────
+  const refreshUsage = useCallback(async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const start = new Date()
+    start.setDate(1)
+    start.setHours(0, 0, 0, 0)
+    const { count } = await supabase
+      .from('ai_session_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', start.toISOString())
+    setUsageCount(count ?? 0)
+  }, [])
+
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle()
-      const fullName = prof?.full_name ?? user.email ?? ''
-      const parts = fullName.trim().split(/\s+/).filter(Boolean)
-      const initials = parts.length >= 2
-        ? (parts[0][0] + parts[1][0]).toUpperCase()
-        : (parts[0]?.slice(0, 2) ?? 'SS').toUpperCase()
-      if (initials) setUserInitials(initials)
-    })
-  }, [])
+    setLoadingSessions(true)
+    Promise.all([
+      supabase.from('ai_sessions')
+        .select('id, subject_id, title, created_at, last_message_at, pinned')
+        .order('pinned',          { ascending: false })
+        .order('last_message_at', { ascending: false }),
+      supabase.from('subjects')
+        .select('id, name, color'),
+      supabase.auth.getUser(),
+    ]).then(async ([sessRes, subjRes, userRes]) => {
+      setSessions((sessRes.data ?? []) as AISession[])
+
+      const subjMap: Record<string, SubjectLite> = {}
+      for (const s of (subjRes.data ?? [])) subjMap[s.id] = s as SubjectLite
+      setSubjects(subjMap)
+
+      const user = userRes.data.user
+      if (user) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle()
+        const fullName = prof?.full_name ?? user.email ?? ''
+        const parts = fullName.trim().split(/\s+/).filter(Boolean)
+        const initials = parts.length >= 2
+          ? (parts[0][0] + parts[1][0]).toUpperCase()
+          : (parts[0]?.slice(0, 2) ?? '').toUpperCase()
+        if (initials) setUserInitials(initials)
+        setUserFirstName(parts[0] ?? '')
+      }
+      setLoadingSessions(false)
+    }).catch(() => setLoadingSessions(false))
+
+    refreshUsage()
+  }, [refreshUsage])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  // ── Load messages of a session ────────────────────────────────────────────
+  const loadSession = useCallback(async (session: AISession) => {
+    if (currentSessionIdRef.current === session.id) {
+      setMobileShowList(false)
+      return
+    }
+    currentSessionIdRef.current = session.id
+    setActiveSessionId(session.id)
+    setMobileShowList(false)
+    setLoadingMessages(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('ai_session_messages')
+      .select('role, content, created_at')
+      .eq('session_id', session.id)
+      .order('created_at', { ascending: true })
+      .limit(60)
+    const formatted: LocalMessage[] = (data ?? []).map(m => ({
+      role:    m.role as 'user' | 'assistant',
+      content: m.content,
+      time:    new Date(m.created_at).toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
+    }))
+    setMessages(formatted)
+    setLoadingMessages(false)
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }, [language])
+
   // ── New chat: clear conversation, reset session ───────────────────────────
   const startNewChat = useCallback(() => {
     currentSessionIdRef.current = null
+    setActiveSessionId(null)
     setMessages([])
-    setActiveSidebarId(null)
     setMobileShowList(false)
     setTimeout(() => inputRef.current?.focus(), 80)
   }, [])
 
-  // ── Send message ───────────────────────────────────────────────────────────
+  // ── Pin / unpin ───────────────────────────────────────────────────────────
+  const togglePin = useCallback(async (sessionId: string, current: boolean) => {
+    const supabase = createClient()
+    const next = !current
+    setSessions(prev => {
+      const updated = prev.map(s => s.id === sessionId ? { ...s, pinned: next } : s)
+      return [...updated].sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+      })
+    })
+    await supabase.from('ai_sessions').update({ pinned: next }).eq('id', sessionId)
+  }, [])
+
+  // ── Delete session ────────────────────────────────────────────────────────
+  const confirmDelete = useCallback(async (sessionId: string) => {
+    const supabase = createClient()
+    await supabase.from('ai_sessions').delete().eq('id', sessionId)
+    setSessions(prev => prev.filter(s => s.id !== sessionId))
+    setDeleteConfirmId(null)
+    if (currentSessionIdRef.current === sessionId) {
+      currentSessionIdRef.current = null
+      setActiveSessionId(null)
+      setMessages([])
+    }
+  }, [])
+
+  // ── Send message ──────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return
 
@@ -195,7 +285,6 @@ export function AIChatHub({
       }
       if (!authSession) return
 
-      // Create session on first message (always General — no subject_id)
       let sessionId = currentSessionIdRef.current
       if (!sessionId) {
         const { data: { user } } = await supabase.auth.getUser()
@@ -207,11 +296,13 @@ export function AIChatHub({
               subject_id: null,
               title:      text.length > 50 ? text.slice(0, 49) + '…' : text,
             })
-            .select()
+            .select('id, subject_id, title, created_at, last_message_at, pinned')
             .single()
           if (newSess) {
             sessionId                   = newSess.id
             currentSessionIdRef.current = sessionId
+            setActiveSessionId(sessionId)
+            setSessions(prev => [newSess as AISession, ...prev])
           }
         }
       }
@@ -288,9 +379,18 @@ export function AIChatHub({
             { session_id: sessionId, user_id: user.id, role: 'user',      content: text             },
             { session_id: sessionId, user_id: user.id, role: 'assistant', content: assistantContent },
           ])
+          const nowIso = new Date().toISOString()
           await supabase.from('ai_sessions')
-            .update({ last_message_at: new Date().toISOString() })
+            .update({ last_message_at: nowIso })
             .eq('id', sessionId)
+          setSessions(prev => {
+            const updated = prev.map(s => s.id === sessionId ? { ...s, last_message_at: nowIso } : s)
+            return [...updated].sort((a, b) => {
+              if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+              return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+            })
+          })
+          setUsageCount(c => c + 2)
         }
       }
     } catch {
@@ -303,16 +403,22 @@ export function AIChatHub({
     }
   }, [loading, messages, language, ctxExtra, imageFile, pdfText])
 
-  const usageText = useMemo(
-    () => t('ai.messages_used').replace('{used}', '340').replace('{total}', '1,000'),
-    [t]
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const pinnedSessions   = useMemo(() => sessions.filter(s => s.pinned),  [sessions])
+  const recentSessions   = useMemo(() => sessions.filter(s => !s.pinned), [sessions])
+  const suggestions      = language === 'es' ? SUGGESTIONS_ES : SUGGESTIONS_EN
+  const usageText        = useMemo(
+    () => t('ai.messages_used')
+      .replace('{used}',  usageCount.toLocaleString(language === 'es' ? 'es-ES' : 'en-US'))
+      .replace('{total}', MESSAGE_LIMIT_PER_MONTH.toLocaleString(language === 'es' ? 'es-ES' : 'en-US')),
+    [t, usageCount, language]
   )
+  const usagePct = Math.min(100, Math.round((usageCount / MESSAGE_LIMIT_PER_MONTH) * 100))
 
-  // ── Sidebar ───────────────────────────────────────────────────────────────
+  // ── Sidebar body ──────────────────────────────────────────────────────────
 
   const SidebarBody = (
     <>
-      {/* Botón Nuevo chat */}
       <button
         onClick={startNewChat}
         className="w-full flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
@@ -324,29 +430,70 @@ export function AIChatHub({
           fontSize:      14,
           fontWeight:    600,
           marginBottom:  20,
+          border:        'none',
         }}
       >
         <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
         {t('ai.new_chat')}
       </button>
 
-      {/* FIJADOS */}
-      <SidebarSection
-        icon="push_pin"
-        label={t('ai.pinned')}
-        items={MOCK_PINNED}
-        activeId={activeSidebarId}
-        onSelect={(id) => { setActiveSidebarId(id); setMobileShowList(false) }}
-      />
+      {loadingSessions && (
+        <div className="space-y-2">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="skeleton" style={{ height: 44, borderRadius: 10 }} />
+          ))}
+        </div>
+      )}
 
-      {/* RECIENTES */}
-      <SidebarSection
-        icon="schedule"
-        label={t('ai.recent')}
-        items={MOCK_RECENT}
-        activeId={activeSidebarId}
-        onSelect={(id) => { setActiveSidebarId(id); setMobileShowList(false) }}
-      />
+      {!loadingSessions && sessions.length === 0 && (
+        <div
+          style={{
+            fontSize:    13,
+            color:       'var(--color-outline)',
+            padding:     '12px',
+            lineHeight:  1.5,
+            textAlign:   'center',
+          }}
+        >
+          {language === 'es'
+            ? 'Todavía no hay chats. Empezá uno arriba.'
+            : 'No chats yet. Start one above.'}
+        </div>
+      )}
+
+      {pinnedSessions.length > 0 && (
+        <SidebarSection
+          icon="push_pin"
+          label={t('ai.pinned')}
+          items={pinnedSessions}
+          subjects={subjects}
+          activeId={activeSessionId}
+          deleteConfirmId={deleteConfirmId}
+          language={language}
+          onSelect={loadSession}
+          onTogglePin={togglePin}
+          onAskDelete={(id) => setDeleteConfirmId(id)}
+          onConfirmDelete={confirmDelete}
+          onCancelDelete={() => setDeleteConfirmId(null)}
+        />
+      )}
+
+      {recentSessions.length > 0 && (
+        <SidebarSection
+          icon="schedule"
+          label={t('ai.recent')}
+          items={recentSessions}
+          subjects={subjects}
+          activeId={activeSessionId}
+          deleteConfirmId={deleteConfirmId}
+          language={language}
+          onSelect={loadSession}
+          onTogglePin={togglePin}
+          onAskDelete={(id) => setDeleteConfirmId(id)}
+          onConfirmDelete={confirmDelete}
+          onCancelDelete={() => setDeleteConfirmId(null)}
+        />
+      )}
     </>
   )
 
@@ -378,17 +525,15 @@ export function AIChatHub({
       >
         <div
           style={{
-            width:        '34%',
+            width:        `${usagePct}%`,
             height:       '100%',
-            background:   'var(--color-tertiary)',
+            background:   usagePct >= 90 ? 'var(--danger)' : 'var(--color-tertiary)',
             borderRadius: 999,
+            transition:   'width 200ms ease',
           }}
         />
       </div>
-      <div
-        className="mono"
-        style={{ fontSize: 11, color: 'var(--color-outline)' }}
-      >
+      <div className="mono" style={{ fontSize: 11, color: 'var(--color-outline)' }}>
         {usageText}
       </div>
     </div>
@@ -398,105 +543,80 @@ export function AIChatHub({
 
   const ChatArea = (
     <div className="flex flex-col h-full min-h-0">
-      {/* Mobile header (only the hamburger to open list) */}
       <div className="md:hidden flex items-center pb-2 flex-shrink-0">
         <button
           onClick={() => setMobileShowList(true)}
           className="p-1 rounded-lg"
-          style={{ color: 'var(--color-outline)' }}
+          style={{ color: 'var(--color-outline)', background: 'transparent', border: 'none' }}
         >
           <span className="material-symbols-outlined text-[20px]">menu</span>
         </button>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '24px 24px 0 24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-          {messages.map((msg, i) => (
-            <MessageRow
-              key={i}
-              msg={msg}
-              userInitials={userInitials}
-              language={language}
-            />
-          ))}
+        {loadingMessages ? (
+          <div className="space-y-4">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="skeleton" style={{ height: 60, borderRadius: 10 }} />
+            ))}
+          </div>
+        ) : messages.length === 0 ? (
+          <EmptyChatState firstName={userFirstName} language={language} />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+            {messages.map((msg, i) => (
+              <MessageRow
+                key={i}
+                msg={msg}
+                userInitials={userInitials || (language === 'es' ? 'TÚ' : 'YOU')}
+                language={language}
+              />
+            ))}
 
-          {loading && (
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: 'color-mix(in srgb, var(--color-tertiary) 18%, transparent)' }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 16, color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}
-                >
-                  auto_awesome
-                </span>
+            {loading && (
+              <div className="flex items-center gap-3">
+                <AIAvatar />
+                <div className="flex gap-1 items-center">
+                  {[0, 1, 2].map(d => (
+                    <div
+                      key={d}
+                      className="rounded-full animate-bounce"
+                      style={{
+                        width:           6,
+                        height:          6,
+                        backgroundColor: 'var(--color-tertiary)',
+                        animationDelay:  `${d * 0.15}s`,
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-1 items-center">
-                {[0, 1, 2].map(d => (
-                  <div
-                    key={d}
-                    className="rounded-full animate-bounce"
-                    style={{
-                      width:           6,
-                      height:          6,
-                      backgroundColor: 'var(--color-tertiary)',
-                      animationDelay:  `${d * 0.15}s`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+            )}
 
-          <div ref={bottomRef} />
-        </div>
+            <div ref={bottomRef} />
+          </div>
+        )}
       </div>
 
-      {/* Suggestion chips + Input */}
       <div className="flex-shrink-0" style={{ padding: '16px 24px 20px 24px' }}>
-        {/* Suggestion chips */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {SUGGESTIONS.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => sendMessage(s.label)}
-              disabled={loading}
-              className="inline-flex items-center gap-2 transition-colors hover:bg-[var(--s-high)]"
-              style={{
-                background:    'var(--s-low)',
-                border:        '1px solid var(--border-subtle)',
-                padding:       '8px 14px',
-                borderRadius:  999,
-                fontSize:      13,
-                color:         'var(--on-surface)',
-              }}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: 14, color: 'var(--color-outline)' }}
-              >
-                {s.icon}
-              </span>
-              {s.label}
-            </button>
-          ))}
-        </div>
+        {messages.length > 0 && messages[messages.length - 1].role === 'assistant' && !loading && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {suggestions.map((s, i) => (
+              <SuggestionChip key={i} icon={s.icon} label={s.label} onClick={() => sendMessage(s.label)} disabled={loading} />
+            ))}
+          </div>
+        )}
 
-        {/* PDF badge */}
         {pdfName && (
           <div className="flex items-center gap-2 mb-2">
             <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'var(--warning)' }}>picture_as_pdf</span>
             <span className="text-[12px] flex-1 truncate" style={{ color: 'var(--on-surface)' }}>{pdfName}</span>
-            <button onClick={() => { setPdfText(null); setPdfName(null) }} style={{ color: 'var(--color-outline)' }}>
+            <button onClick={() => { setPdfText(null); setPdfName(null) }} style={{ color: 'var(--color-outline)', background: 'transparent', border: 'none' }}>
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
             </button>
           </div>
         )}
 
-        {/* Image preview badge */}
         {imagePreviewUrl && (
           <div className="flex items-center gap-2 mb-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -509,13 +629,12 @@ export function AIChatHub({
             <span className="text-[12px] flex-1 truncate" style={{ color: 'var(--color-secondary)' }}>
               {imageFile?.name}
             </span>
-            <button type="button" onClick={() => { setImageFile(null); setImagePreviewUrl(null) }} style={{ color: 'var(--color-outline)' }}>
+            <button type="button" onClick={() => { setImageFile(null); setImagePreviewUrl(null) }} style={{ color: 'var(--color-outline)', background: 'transparent', border: 'none' }}>
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
             </button>
           </div>
         )}
 
-        {/* Input bar */}
         <form
           onSubmit={e => { e.preventDefault(); sendMessage(input) }}
           className="flex items-center gap-3"
@@ -526,18 +645,17 @@ export function AIChatHub({
             padding:       '10px 12px',
           }}
         >
-          {/* Single attach button (PDF or image) */}
           <button
             type="button"
             onClick={() => attachInputRef.current?.click()}
             disabled={loading || pdfLoading}
             className="flex items-center justify-center transition-opacity hover:opacity-70"
             style={{
-              width:  36,
-              height: 36,
-              color:  pdfText || imageFile ? 'var(--color-tertiary)' : 'var(--color-outline)',
+              width:      36,
+              height:     36,
+              color:      pdfText || imageFile ? 'var(--color-tertiary)' : 'var(--color-outline)',
               background: 'transparent',
-              border: 'none',
+              border:     'none',
             }}
             title={language === 'es' ? 'Adjuntar' : 'Attach'}
           >
@@ -577,7 +695,6 @@ export function AIChatHub({
             }}
           />
 
-          {/* Text input */}
           <input
             ref={inputRef}
             value={input}
@@ -594,7 +711,6 @@ export function AIChatHub({
             }}
           />
 
-          {/* Voice button (pelado) */}
           {hasSpeechRecognition && (
             <button
               type="button"
@@ -622,7 +738,6 @@ export function AIChatHub({
             </button>
           )}
 
-          {/* Send button (circular violeta) */}
           <button
             type="submit"
             disabled={loading || !input.trim()}
@@ -650,7 +765,7 @@ export function AIChatHub({
 
   return (
     <>
-      {/* Desktop: sidebar 280 + chat fluid */}
+      {/* Desktop */}
       <div
         className="hidden md:flex rounded-2xl overflow-hidden"
         style={{
@@ -659,7 +774,6 @@ export function AIChatHub({
           minHeight:  680,
         }}
       >
-        {/* Sidebar */}
         <aside
           className="flex flex-col flex-shrink-0"
           style={{
@@ -674,13 +788,12 @@ export function AIChatHub({
           {SidebarFooter}
         </aside>
 
-        {/* Chat */}
         <div className="flex-1 min-w-0 flex flex-col" style={{ background: 'var(--s-base)' }}>
           {ChatArea}
         </div>
       </div>
 
-      {/* Mobile: chat + slide-over list */}
+      {/* Mobile */}
       <div className="md:hidden">
         {mobileShowList && (
           <div className="animate-fade-in">
@@ -688,7 +801,7 @@ export function AIChatHub({
               <button
                 onClick={() => setMobileShowList(false)}
                 className="p-1.5 rounded-lg"
-                style={{ color: 'var(--color-outline)' }}
+                style={{ color: 'var(--color-outline)', background: 'transparent', border: 'none' }}
               >
                 <span className="material-symbols-outlined text-[20px]">arrow_back</span>
               </button>
@@ -736,14 +849,28 @@ function SidebarSection({
   icon,
   label,
   items,
+  subjects,
   activeId,
+  deleteConfirmId,
+  language,
   onSelect,
+  onTogglePin,
+  onAskDelete,
+  onConfirmDelete,
+  onCancelDelete,
 }: {
   icon: string
   label: string
-  items: SidebarItem[]
+  items: AISession[]
+  subjects: Record<string, SubjectLite>
   activeId: string | null
-  onSelect: (id: string) => void
+  deleteConfirmId: string | null
+  language: 'es' | 'en'
+  onSelect: (s: AISession) => void
+  onTogglePin: (id: string, current: boolean) => void
+  onAskDelete: (id: string) => void
+  onConfirmDelete: (id: string) => void
+  onCancelDelete: () => void
 }) {
   return (
     <div style={{ marginBottom: 18 }}>
@@ -766,8 +893,15 @@ function SidebarSection({
           <SidebarRow
             key={item.id}
             item={item}
+            subjects={subjects}
             active={activeId === item.id}
-            onClick={() => onSelect(item.id)}
+            isAskingDelete={deleteConfirmId === item.id}
+            language={language}
+            onClick={() => onSelect(item)}
+            onTogglePin={() => onTogglePin(item.id, item.pinned)}
+            onAskDelete={() => onAskDelete(item.id)}
+            onConfirmDelete={() => onConfirmDelete(item.id)}
+            onCancelDelete={onCancelDelete}
           />
         ))}
       </div>
@@ -777,29 +911,94 @@ function SidebarSection({
 
 function SidebarRow({
   item,
+  subjects,
   active,
+  isAskingDelete,
+  language,
   onClick,
+  onTogglePin,
+  onAskDelete,
+  onConfirmDelete,
+  onCancelDelete,
 }: {
-  item: SidebarItem
+  item: AISession
+  subjects: Record<string, SubjectLite>
   active: boolean
+  isAskingDelete: boolean
+  language: 'es' | 'en'
   onClick: () => void
+  onTogglePin: () => void
+  onAskDelete: () => void
+  onConfirmDelete: () => void
+  onCancelDelete: () => void
 }) {
+  const subject = item.subject_id ? subjects[item.subject_id] : null
+  const dotColor = subject?.color || 'var(--color-tertiary)'
+  const time = formatRelativeTime(item.last_message_at, language)
+  const title = item.title?.trim() || (language === 'es' ? 'Sin título' : 'Untitled')
+
+  if (isAskingDelete) {
+    return (
+      <div
+        className="flex items-center gap-2"
+        style={{
+          padding:      '10px 12px',
+          borderRadius: 10,
+          background:   'color-mix(in srgb, var(--danger) 12%, transparent)',
+        }}
+      >
+        <span style={{ fontSize: 12, color: 'var(--on-surface)', flex: 1 }}>
+          {language === 'es' ? '¿Eliminar?' : 'Delete?'}
+        </span>
+        <button
+          onClick={onConfirmDelete}
+          style={{
+            fontSize:     11,
+            fontWeight:   700,
+            padding:      '4px 8px',
+            borderRadius: 6,
+            background:   'var(--danger)',
+            color:        '#fff',
+            border:       'none',
+          }}
+        >
+          {language === 'es' ? 'Sí' : 'Yes'}
+        </button>
+        <button
+          onClick={onCancelDelete}
+          style={{
+            fontSize:     11,
+            padding:      '4px 8px',
+            borderRadius: 6,
+            background:   'var(--s-base)',
+            color:        'var(--color-outline)',
+            border:       'none',
+          }}
+        >
+          No
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-start gap-2.5 transition-colors text-left"
+    <div
+      className="group relative w-full flex items-start gap-2.5 transition-colors text-left"
       style={{
         padding:      '10px 12px',
         borderRadius: 10,
         background:   active ? 'color-mix(in srgb, var(--color-tertiary) 14%, transparent)' : 'transparent',
+        cursor:       'pointer',
       }}
+      onClick={onClick}
+      role="button"
     >
       <span
         style={{
           width:        6,
           height:       6,
           borderRadius: '50%',
-          background:   DOT_COLOR[item.dot],
+          background:   dotColor,
           flexShrink:   0,
           marginTop:    7,
         }}
@@ -809,28 +1008,121 @@ function SidebarRow({
           className="truncate"
           style={{ fontSize: 14, color: 'var(--on-surface)', lineHeight: 1.3 }}
         >
-          {item.title}
+          {title}
         </div>
         <div
           className="mono"
           style={{ fontSize: 11, color: 'var(--color-outline)', marginTop: 2 }}
         >
-          {item.time}
+          {time}
         </div>
       </div>
-      {item.pinned && (
-        <span
-          className="material-symbols-outlined flex-shrink-0"
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); onTogglePin() }}
+          className={item.pinned ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'}
           style={{
-            fontSize:              14,
-            color:                 'var(--color-outline)',
-            marginTop:             4,
-            fontVariationSettings: "'FILL' 1",
+            color:                 item.pinned ? 'var(--color-tertiary)' : 'var(--color-outline)',
+            background:            'transparent',
+            border:                'none',
+            padding:               2,
+            cursor:                'pointer',
           }}
+          title={item.pinned ? (language === 'es' ? 'Desfijar' : 'Unpin') : (language === 'es' ? 'Fijar' : 'Pin')}
         >
-          push_pin
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: 14, fontVariationSettings: item.pinned ? "'FILL' 1" : "'FILL' 0" }}
+          >
+            push_pin
+          </span>
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onAskDelete() }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ color: 'var(--danger)', background: 'transparent', border: 'none', padding: 2, cursor: 'pointer' }}
+          title={language === 'es' ? 'Eliminar' : 'Delete'}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────────
+
+function EmptyChatState({ firstName, language }: { firstName: string; language: 'es' | 'en' }) {
+  const greeting = firstName
+    ? (language === 'es' ? `Hola, ${firstName}.` : `Hi, ${firstName}.`)
+    : (language === 'es' ? 'Hola.' : 'Hi.')
+  return (
+    <div className="flex flex-col items-center justify-center text-center" style={{ minHeight: 320, gap: 16 }}>
+      <div
+        className="rounded-full flex items-center justify-center"
+        style={{
+          width:      56,
+          height:     56,
+          background: 'color-mix(in srgb, var(--color-tertiary) 18%, transparent)',
+          border:     '1px solid color-mix(in srgb, var(--color-tertiary) 35%, transparent)',
+        }}
+      >
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: 26, color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}
+        >
+          auto_awesome
         </span>
-      )}
+      </div>
+      <div>
+        <div style={{ fontSize: 22, color: 'var(--on-surface)', marginBottom: 4 }}>
+          <em className="serif">{greeting}</em>
+        </div>
+        <div style={{ fontSize: 14, color: 'var(--on-surface-variant)', maxWidth: 460 }}>
+          {language === 'es'
+            ? 'Soy tu copiloto académico. Puedo ayudarte con tu agenda, exámenes, apuntes y tareas.'
+            : 'I’m your academic copilot. I can help with your schedule, exams, notes and tasks.'}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Suggestion chip ─────────────────────────────────────────────────────────
+
+function SuggestionChip({
+  icon,
+  label,
+  onClick,
+  disabled,
+}: {
+  icon: string
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex items-center gap-2 transition-colors"
+      style={{
+        background:    'var(--s-low)',
+        border:        '1px solid var(--border-subtle)',
+        padding:       '8px 14px',
+        borderRadius:  999,
+        fontSize:      13,
+        color:         'var(--on-surface)',
+        cursor:        disabled ? 'not-allowed' : 'pointer',
+        opacity:       disabled ? 0.6 : 1,
+      }}
+      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = 'var(--s-high)' }}
+      onMouseLeave={(e) => { if (!disabled) e.currentTarget.style.background = 'var(--s-low)' }}
+    >
+      <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'var(--color-outline)' }}>
+        {icon}
+      </span>
+      {label}
     </button>
   )
 }
@@ -848,23 +1140,13 @@ function MessageRow({
 }) {
   const isUser = msg.role === 'user'
   const time = msg.time ?? new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-  const name = isUser ? (language === 'es' ? 'Sebastián' : 'You') : 'Skolar IA'
+  const name = isUser ? (language === 'es' ? 'Tú' : 'You') : 'Skolar IA'
 
   if (isUser) {
     return (
-      <div
-        style={{
-          marginLeft: 'auto',
-          maxWidth:   720,
-          width:      '100%',
-        }}
-      >
+      <div style={{ marginLeft: 'auto', maxWidth: 720, width: '100%' }}>
         <div className="flex items-center justify-end gap-3" style={{ marginBottom: 6 }}>
-          <span
-            style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}
-          >
-            {name}
-          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{name}</span>
           <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)' }}>{time}</span>
           <UserAvatar initials={userInitials} />
         </div>
@@ -874,7 +1156,6 @@ function MessageRow({
             lineHeight:  1.6,
             color:       'var(--on-surface)',
             whiteSpace:  'pre-wrap',
-            paddingLeft: 0,
             textAlign:   'left',
           }}
         >
@@ -889,9 +1170,7 @@ function MessageRow({
       <div className="flex items-center gap-3" style={{ marginBottom: 6 }}>
         <AIAvatar />
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{name}</span>
-        <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)', marginLeft: 'auto' }}>
-          {time}
-        </span>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)', marginLeft: 'auto' }}>{time}</span>
       </div>
       <div
         style={{
@@ -913,19 +1192,15 @@ function AIAvatar() {
     <div
       className="rounded-full flex items-center justify-center flex-shrink-0"
       style={{
-        width:           32,
-        height:          32,
-        background:      'color-mix(in srgb, var(--color-tertiary) 22%, transparent)',
-        border:          '1px solid color-mix(in srgb, var(--color-tertiary) 35%, transparent)',
+        width:      32,
+        height:     32,
+        background: 'color-mix(in srgb, var(--color-tertiary) 22%, transparent)',
+        border:     '1px solid color-mix(in srgb, var(--color-tertiary) 35%, transparent)',
       }}
     >
       <span
         className="material-symbols-outlined"
-        style={{
-          fontSize:              16,
-          color:                 'var(--color-tertiary)',
-          fontVariationSettings: "'FILL' 1",
-        }}
+        style={{ fontSize: 16, color: 'var(--color-tertiary)', fontVariationSettings: "'FILL' 1" }}
       >
         auto_awesome
       </span>
