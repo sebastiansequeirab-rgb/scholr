@@ -145,3 +145,35 @@ export function subjectTag(color: string | null | undefined): 'tag-purple' | 'ta
   }
   return best.tag
 }
+
+// ─── Note relative date: "Hoy · 18:42" / "Ayer" / "Mié · 19:30" / "Sem. pasada" / "8 abr"
+export function relativeNoteDate(input: string | Date, lang: 'es' | 'en' = 'es'): string {
+  const d = typeof input === 'string' ? new Date(input) : input
+  if (isNaN(d.getTime())) return ''
+  const now = new Date()
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate())
+  const dayMs = 86400000
+  const diffDays = Math.floor((startOfDay(now).getTime() - startOfDay(d).getTime()) / dayMs)
+
+  const locale = lang === 'es' ? 'es-ES' : 'en-US'
+  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false })
+
+  if (diffDays <= 0) {
+    return lang === 'es' ? `Hoy · ${time}` : `Today · ${time}`
+  }
+  if (diffDays === 1) {
+    return lang === 'es' ? 'Ayer' : 'Yesterday'
+  }
+  if (diffDays < 7) {
+    const dow = d.toLocaleDateString(locale, { weekday: 'short' }).replace('.', '')
+    const dowCap = dow.charAt(0).toUpperCase() + dow.slice(1)
+    return `${dowCap} · ${time}`
+  }
+  if (diffDays < 14) {
+    return lang === 'es' ? 'Sem. pasada' : 'Last week'
+  }
+  return d
+    .toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+    .replace('.', '')
+}
+

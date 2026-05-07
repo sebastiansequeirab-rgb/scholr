@@ -369,7 +369,54 @@
     "sortRecent": "Recientes",
     "sortAlpha": "A-Z",
     "allSubjects": "Todas las materias",
-    "noSubjectNotes": "Sin materia"
+    "noSubjectNotes": "Sin materia",
+    "folders": "Carpetas",
+    "newFolder": "Nueva carpeta",
+    "countLabel": "{n} apuntes",
+    "countLabelOne": "{n} apunte",
+    "newShort": "Nueva",
+    "editor": {
+      "lastEdited": "Última edición {when}",
+      "savingShort": "Guardando…",
+      "share": "Compartir",
+      "more": "Más opciones",
+      "delete": "Eliminar nota"
+    },
+    "toolbar": {
+      "normal": "Texto normal",
+      "h1": "Título grande",
+      "h2": "Título mediano",
+      "h3": "Título chico",
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "underline": "Subrayado",
+      "strike": "Tachado",
+      "highlight": "Resaltar",
+      "bullet": "Lista",
+      "numbered": "Lista numerada",
+      "indent": "Sangría",
+      "checklist": "Lista de tareas",
+      "formula": "Fórmula",
+      "code": "Código",
+      "quote": "Cita",
+      "table": "Tabla",
+      "attach": "Adjuntar",
+      "image": "Imagen",
+      "voice": "Dictar",
+      "ai": "Asistente IA"
+    },
+    "empty": {
+      "title": "Elige una nota",
+      "sub": "Selecciónala en la lista o crea una nueva.",
+      "cta": "Nueva nota"
+    },
+    "ai": {
+      "placeholder": "Pídele algo a la IA…",
+      "suggest_summary": "Resumir nota",
+      "suggest_improve": "Mejorar redacción",
+      "loading": "Pensando…",
+      "error": "No pude conectar con la IA. Probá de nuevo."
+    }
   },
   "exams": {
     "title": "Actividades",

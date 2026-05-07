@@ -369,7 +369,54 @@
     "sortRecent": "Recent",
     "sortAlpha": "A-Z",
     "allSubjects": "All subjects",
-    "noSubjectNotes": "No subject"
+    "noSubjectNotes": "No subject",
+    "folders": "Folders",
+    "newFolder": "New folder",
+    "countLabel": "{n} notes",
+    "countLabelOne": "{n} note",
+    "newShort": "New",
+    "editor": {
+      "lastEdited": "Last edited {when}",
+      "savingShort": "Saving…",
+      "share": "Share",
+      "more": "More options",
+      "delete": "Delete note"
+    },
+    "toolbar": {
+      "normal": "Normal text",
+      "h1": "Large heading",
+      "h2": "Medium heading",
+      "h3": "Small heading",
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strike": "Strikethrough",
+      "highlight": "Highlight",
+      "bullet": "Bullet list",
+      "numbered": "Numbered list",
+      "indent": "Indent",
+      "checklist": "Task list",
+      "formula": "Formula",
+      "code": "Code",
+      "quote": "Quote",
+      "table": "Table",
+      "attach": "Attach",
+      "image": "Image",
+      "voice": "Dictate",
+      "ai": "AI assistant"
+    },
+    "empty": {
+      "title": "Pick a note",
+      "sub": "Select one from the list or create a new one.",
+      "cta": "New note"
+    },
+    "ai": {
+      "placeholder": "Ask the AI something…",
+      "suggest_summary": "Summarize note",
+      "suggest_improve": "Improve writing",
+      "loading": "Thinking…",
+      "error": "Couldn't reach the AI. Try again."
+    }
   },
   "exams": {
     "title": "Activities",
