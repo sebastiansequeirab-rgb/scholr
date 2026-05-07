@@ -407,7 +407,7 @@ export default function CalendarPage() {
         </div>
         <div className="cal-head__actions">
           <div className="cal-seg" role="tablist" aria-label="Calendar view">
-            {(['day', 'week', 'month'] as CalView[]).map(v => (
+            {(['month', 'week', 'day'] as CalView[]).map(v => (
               <button
                 key={v}
                 role="tab"
@@ -573,11 +573,8 @@ function MonthView({
                       onClick={() => onPick(ev)}
                       title={ev.title}
                     >
-                      <span className="cal-evchip__tag">{ev.code}</span>
                       {icon && <span className="material-symbols-outlined cal-evchip__icon">{icon}</span>}
-                      <span className="cal-evchip__title">
-                        {ev.type === 'schedule' && !ev.allDay ? `${ev.title}` : ev.title}
-                      </span>
+                      <span className="cal-evchip__title">{ev.title}</span>
                     </button>
                   )
                 })}
@@ -640,7 +637,6 @@ function WeekView({
                   className={`cal-evchip cal-evchip--allday ${ev.tagClass} ${ev.type === 'task' ? 'cal-evchip--task' : ''} ${ev.status === 'urgent' ? 'cal-evchip--urgent' : ''}`}
                   onClick={() => onPick(ev)}
                 >
-                  <span className="cal-evchip__tag">{ev.code}</span>
                   {ev.status === 'urgent' && <span className="material-symbols-outlined cal-evchip__icon">flag</span>}
                   {ev.type === 'task' && ev.status !== 'urgent' && <span className="material-symbols-outlined cal-evchip__icon">task_alt</span>}
                   <span className="cal-evchip__title">{ev.title}</span>
@@ -682,12 +678,13 @@ function WeekView({
                     style={{ top, height: h }}
                     onClick={() => onPick(ev)}
                   >
-                    <div className="cal-evcard__head">
-                      <span className="cal-evcard__chip">{ev.code}</span>
-                      {evIcon && <span className="material-symbols-outlined cal-evcard__icon">{evIcon}</span>}
-                      {ev.status === 'live' && <span className="cal-evcard__dot" aria-label="live" />}
-                      {ev.status === 'completed' && <span className="material-symbols-outlined cal-evcard__check">check_circle</span>}
-                    </div>
+                    {(evIcon || ev.status === 'live' || ev.status === 'completed') && (
+                      <div className="cal-evcard__head">
+                        {evIcon && <span className="material-symbols-outlined cal-evcard__icon">{evIcon}</span>}
+                        {ev.status === 'live' && <span className="cal-evcard__dot" aria-label="live" />}
+                        {ev.status === 'completed' && <span className="material-symbols-outlined cal-evcard__check">check_circle</span>}
+                      </div>
+                    )}
                     <span className="cal-evcard__title">{ev.title}</span>
                     {(ev.location || ev.end) && (
                       <span className="cal-evcard__foot">
@@ -735,7 +732,6 @@ function DayView({
       {allDay.filter(e => e.status === 'urgent').map(ev => (
         <button key={ev.id} className="cal-day__urgent" onClick={() => onPick(ev)}>
           <span className="material-symbols-outlined">flag</span>
-          <span className="cal-day__urgent-tag">{ev.code}</span>
           <strong>{ev.title}</strong>
           <span className="cal-day__urgent-meta">
             {language === 'es' ? 'cierra hoy 23:59' : 'closes today 23:59'}
@@ -754,7 +750,6 @@ function DayView({
                 className={`cal-evchip cal-evchip--allday ${ev.tagClass} ${ev.type === 'task' ? 'cal-evchip--task' : ''}`}
                 onClick={() => onPick(ev)}
               >
-                <span className="cal-evchip__tag">{ev.code}</span>
                 <span className="cal-evchip__title">{ev.title}</span>
               </button>
             ))}
@@ -787,21 +782,22 @@ function DayView({
                 style={{ top, height: h }}
                 onClick={() => onPick(ev)}
               >
-                <div className="cal-day-card__head">
-                  <span className="cal-day-card__chip">{ev.code}</span>
-                  {status === 'completed' && (
-                    <span className="cal-day-card__badge cal-day-card__badge--done">
-                      <span className="material-symbols-outlined">check_circle</span>
-                      {language === 'es' ? 'Completada' : 'Completed'}
-                    </span>
-                  )}
-                  {status === 'live' && (
-                    <span className="cal-day-card__badge cal-day-card__badge--live">
-                      <span className="cal-day-card__pulse" />
-                      {language === 'es' ? 'EN VIVO' : 'LIVE'}
-                    </span>
-                  )}
-                </div>
+                {(status === 'completed' || status === 'live') && (
+                  <div className="cal-day-card__head">
+                    {status === 'completed' && (
+                      <span className="cal-day-card__badge cal-day-card__badge--done">
+                        <span className="material-symbols-outlined">check_circle</span>
+                        {language === 'es' ? 'Completada' : 'Completed'}
+                      </span>
+                    )}
+                    {status === 'live' && (
+                      <span className="cal-day-card__badge cal-day-card__badge--live">
+                        <span className="cal-day-card__pulse" />
+                        {language === 'es' ? 'EN VIVO' : 'LIVE'}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <h3 className="cal-day-card__title">{ev.title}</h3>
                 <div className="cal-day-card__foot">
                   {hhmm(ev.start)} — {hhmm(ev.end!)}
