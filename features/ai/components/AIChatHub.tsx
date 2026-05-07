@@ -553,49 +553,51 @@ export function AIChatHub({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '24px 24px 0 24px' }}>
-        {loadingMessages ? (
-          <div className="space-y-4">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="skeleton" style={{ height: 60, borderRadius: 10 }} />
-            ))}
-          </div>
-        ) : messages.length === 0 ? (
-          <EmptyChatState firstName={userFirstName} language={language} />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            {messages.map((msg, i) => (
-              <MessageRow
-                key={i}
-                msg={msg}
-                userInitials={userInitials || (language === 'es' ? 'TÚ' : 'YOU')}
-                language={language}
-              />
-            ))}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div style={{ maxWidth: 820, margin: '0 auto', width: '100%', padding: '24px 24px 0' }}>
+          {loadingMessages ? (
+            <div className="space-y-4">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="skeleton" style={{ height: 60, borderRadius: 10 }} />
+              ))}
+            </div>
+          ) : messages.length === 0 ? (
+            <EmptyChatState firstName={userFirstName} language={language} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              {messages.map((msg, i) => (
+                <MessageRow
+                  key={i}
+                  msg={msg}
+                  userInitials={userInitials || (language === 'es' ? 'TÚ' : 'YOU')}
+                  language={language}
+                />
+              ))}
 
-            {loading && (
-              <div className="flex items-center gap-3">
-                <AIAvatar />
-                <div className="flex gap-1 items-center">
-                  {[0, 1, 2].map(d => (
-                    <div
-                      key={d}
-                      className="rounded-full animate-bounce"
-                      style={{
-                        width:           6,
-                        height:          6,
-                        backgroundColor: 'var(--color-tertiary)',
-                        animationDelay:  `${d * 0.15}s`,
-                      }}
-                    />
-                  ))}
+              {loading && (
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <AIAvatar />
+                  <div className="flex gap-1 items-center" style={{ paddingTop: 12 }}>
+                    {[0, 1, 2].map(d => (
+                      <div
+                        key={d}
+                        className="rounded-full animate-bounce"
+                        style={{
+                          width:           6,
+                          height:          6,
+                          backgroundColor: 'var(--color-tertiary)',
+                          animationDelay:  `${d * 0.15}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div ref={bottomRef} />
-          </div>
-        )}
+              <div ref={bottomRef} />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-shrink-0" style={{ padding: '16px 24px 20px 24px' }}>
@@ -1144,44 +1146,57 @@ function MessageRow({
 
   if (isUser) {
     return (
-      <div style={{ marginLeft: 'auto', maxWidth: 720, width: '100%' }}>
-        <div className="flex items-center justify-end gap-3" style={{ marginBottom: 6 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{name}</span>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)' }}>{time}</span>
-          <UserAvatar initials={userInitials} />
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, alignItems: 'flex-start' }}>
         <div
           style={{
-            fontSize:    15,
-            lineHeight:  1.6,
-            color:       'var(--on-surface)',
-            whiteSpace:  'pre-wrap',
-            textAlign:   'left',
+            display:        'flex',
+            flexDirection:  'column',
+            alignItems:     'flex-end',
+            maxWidth:       640,
+            minWidth:       0,
           }}
         >
-          {msg.content}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-surface)' }}>{name}</span>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)' }}>{time}</span>
+          </div>
+          <div
+            style={{
+              fontSize:     15,
+              lineHeight:   1.6,
+              color:        'var(--on-surface)',
+              whiteSpace:   'pre-wrap',
+              textAlign:    'left',
+              wordBreak:    'break-word',
+            }}
+          >
+            {msg.content}
+          </div>
         </div>
+        <UserAvatar initials={userInitials} />
       </div>
     )
   }
 
   return (
-    <div style={{ width: '100%' }}>
-      <div className="flex items-center gap-3" style={{ marginBottom: 6 }}>
-        <AIAvatar />
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{name}</span>
-        <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)', marginLeft: 'auto' }}>{time}</span>
-      </div>
-      <div
-        style={{
-          fontSize:    15,
-          lineHeight:  1.6,
-          color:       'var(--on-surface)',
-          whiteSpace:  'pre-wrap',
-          paddingLeft: 44,
-        }}
-      >
-        {msg.content}
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: 800 }}>
+      <AIAvatar />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-surface)' }}>{name}</span>
+          <span className="mono" style={{ fontSize: 11, color: 'var(--color-outline)' }}>{time}</span>
+        </div>
+        <div
+          style={{
+            fontSize:     15,
+            lineHeight:   1.6,
+            color:        'var(--on-surface)',
+            whiteSpace:   'pre-wrap',
+            wordBreak:    'break-word',
+          }}
+        >
+          {msg.content}
+        </div>
       </div>
     </div>
   )
