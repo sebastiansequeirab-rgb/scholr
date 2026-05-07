@@ -9,6 +9,8 @@
     "calendar": "Calendario",
     "subjects": "Materias",
     "planner": "Planner",
+    "tareas": "Tareas",
+    "evaluaciones": "Evaluaciones",
     "tasks": "Pendientes",
     "notes": "Notas",
     "exams": "Actividades",
@@ -235,6 +237,62 @@
     "emptyTodo": "Sin pendientes",
     "emptyDoing": "Nada en curso",
     "emptyDone": "Aún nada hecho"
+  },
+  "tareas": {
+    "eyebrow": "Tareas · Esta semana",
+    "titleA": "Tu",
+    "titleSerif": "plan",
+    "titleB": "de trabajo",
+    "subTpl": "{n} tareas · {urgent} urgente · {doing} en curso",
+    "viewKanban": "Kanban",
+    "viewList": "Lista",
+    "filter": "Filtrar",
+    "newTask": "Nueva tarea",
+    "addTask": "Agregar tarea",
+    "cols": {
+      "pending": "Pendientes",
+      "doing": "En curso",
+      "done": "Hechas"
+    },
+    "priority": {
+      "high": "Alta",
+      "mid": "Media",
+      "low": "Baja"
+    },
+    "due": {
+      "today": "Hoy",
+      "tomorrow": "Mañana",
+      "free": "libre",
+      "agoDays": "Hace {n} días"
+    }
+  },
+  "evaluaciones": {
+    "eyebrow": "Evaluaciones · Próximas",
+    "titleA": "Línea de",
+    "titleSerif": "evaluaciones",
+    "subTpl": "{n} próximas · {urgent} urgente · {week} esta semana",
+    "filter": "Filtrar",
+    "add": "Agregar",
+    "weightLabel": "{n}% nota",
+    "preparation": "Preparación",
+    "openGuide": "Abrir guía de estudio",
+    "day": {
+      "today": "Hoy",
+      "tomorrow": "Mañana",
+      "daysCount": "{n} días"
+    },
+    "type": {
+      "ENTREGA": "Entrega",
+      "QUIZ": "Quiz",
+      "EXAMEN": "Examen",
+      "PARCIAL": "Parcial",
+      "FINAL": "Final"
+    }
+  },
+  "drawer": {
+    "close": "Cerrar",
+    "detail": "Detalle",
+    "placeholder": "Vista detalle próximamente. ID: {id}"
   },
   "tasks": {
     "title": "Pendientes",

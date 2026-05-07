@@ -12,6 +12,8 @@ const CRUMBS: CrumbMap = {
   '/dashboard':       { crumb_es: 'Inicio',         crumb_en: 'Home',          title_es: 'Tu día',        title_en: 'Your day'       },
   '/subjects':        { crumb_es: 'Materias',       crumb_en: 'Subjects',      title_es: 'Mis clases',    title_en: 'My classes'     },
   '/tasks':           { crumb_es: 'Tareas',         crumb_en: 'Tasks',         title_es: 'Pendientes',    title_en: 'Open work'      },
+  '/tareas':          { crumb_es: 'Tareas',         crumb_en: 'Tasks',         title_es: 'Esta semana',   title_en: 'This week'      },
+  '/evaluaciones':    { crumb_es: 'Evaluaciones',   crumb_en: 'Exams',         title_es: 'Próximas',      title_en: 'Upcoming'       },
   '/planner':         { crumb_es: 'Tareas',         crumb_en: 'Tasks',         title_es: 'Plan',          title_en: 'Plan'           },
   '/calendar':        { crumb_es: 'Calendario',     crumb_en: 'Calendar',      title_es: 'Esta semana',   title_en: 'This week'      },
   '/exams':           { crumb_es: 'Evaluaciones',   crumb_en: 'Exams',         title_es: 'Próximas',      title_en: 'Upcoming'       },

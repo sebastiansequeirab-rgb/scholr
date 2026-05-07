@@ -9,6 +9,8 @@
     "calendar": "Calendar",
     "subjects": "Subjects",
     "planner": "Planner",
+    "tareas": "Tasks",
+    "evaluaciones": "Exams",
     "tasks": "Tasks",
     "notes": "Notes",
     "exams": "Activities",
@@ -235,6 +237,62 @@
     "emptyTodo": "Nothing to do",
     "emptyDoing": "Nothing in progress",
     "emptyDone": "Nothing done yet"
+  },
+  "tareas": {
+    "eyebrow": "Tasks · This week",
+    "titleA": "Your work",
+    "titleSerif": "plan",
+    "titleB": "",
+    "subTpl": "{n} tasks · {urgent} urgent · {doing} in progress",
+    "viewKanban": "Kanban",
+    "viewList": "List",
+    "filter": "Filter",
+    "newTask": "New task",
+    "addTask": "Add task",
+    "cols": {
+      "pending": "To do",
+      "doing": "In progress",
+      "done": "Done"
+    },
+    "priority": {
+      "high": "High",
+      "mid": "Med",
+      "low": "Low"
+    },
+    "due": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "free": "free",
+      "agoDays": "{n}d ago"
+    }
+  },
+  "evaluaciones": {
+    "eyebrow": "Exams · Upcoming",
+    "titleA": "Exam",
+    "titleSerif": "timeline",
+    "subTpl": "{n} upcoming · {urgent} urgent · {week} this week",
+    "filter": "Filter",
+    "add": "Add",
+    "weightLabel": "{n}% grade",
+    "preparation": "Preparation",
+    "openGuide": "Open study guide",
+    "day": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "daysCount": "{n} days"
+    },
+    "type": {
+      "ENTREGA": "Submission",
+      "QUIZ": "Quiz",
+      "EXAMEN": "Exam",
+      "PARCIAL": "Midterm",
+      "FINAL": "Final"
+    }
+  },
+  "drawer": {
+    "close": "Close",
+    "detail": "Details",
+    "placeholder": "Detail view coming soon. ID: {id}"
   },
   "tasks": {
     "title": "Tasks",
