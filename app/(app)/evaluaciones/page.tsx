@@ -7,6 +7,85 @@ import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 import { SideDrawer } from '@/components/ui/SideDrawer'
 import { MOCK_EVALS, type MockEval } from '@/features/evaluaciones/data/mocks'
 
+function EvalDrawerBody({ ev }: { ev: MockEval }) {
+  const { t } = useTranslation()
+  const tagClass = subjectTag(ev.subjectColor)
+  const weightLabel = t('evaluaciones.weightLabel').replace('{n}', String(ev.weight))
+  const countdownClass =
+    ev.countdownTone === 'danger'  ? 'drawer-meta__value is-mono' :
+    ev.countdownTone === 'warning' ? 'drawer-meta__value is-mono' :
+                                     'drawer-meta__value is-mono'
+  const countdownColor =
+    ev.countdownTone === 'danger'  ? 'var(--danger)' :
+    ev.countdownTone === 'warning' ? 'var(--warning)' :
+                                     'var(--on-surface)'
+
+  return (
+    <div className={tagClass}>
+      <div className="drawer-chips">
+        <span className="subj-chip">{ev.subjectCode}</span>
+        <span className="tipo-chip">{ev.type}</span>
+        <span className="pct-chip">{weightLabel}</span>
+      </div>
+
+      <div className="drawer-section">
+        <div className="drawer-section__label">{t('drawer.detail')}</div>
+        <div className="drawer-meta">
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.subject')}</span>
+            <span className="drawer-meta__value is-mono">{ev.subjectCode}</span>
+          </div>
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.type')}</span>
+            <span className="drawer-meta__value is-mono">{ev.type}</span>
+          </div>
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.weight')}</span>
+            <span className="drawer-meta__value is-mono">{ev.weight}%</span>
+          </div>
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.date')}</span>
+            <span className="drawer-meta__value is-mono">{ev.day} {ev.month}</span>
+          </div>
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.time')}</span>
+            <span className="drawer-meta__value is-mono">{ev.time}</span>
+          </div>
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.location')}</span>
+            <span className="drawer-meta__value">{ev.location}</span>
+          </div>
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.countdown')}</span>
+            <span className={countdownClass} style={{ color: countdownColor }}>{ev.countdown}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="drawer-section">
+        <div className="drawer-progress-row" style={{ marginBottom: 6 }}>
+          <span className="drawer-section__label" style={{ marginBottom: 0 }}>{t('drawer.preparation')}</span>
+          <span style={{ color: 'var(--on-surface)' }}>{ev.prep}%</span>
+        </div>
+        <div className="drawer-progress" aria-hidden>
+          <div className="drawer-progress__fill" style={{ width: `${ev.prep}%` }} />
+        </div>
+      </div>
+
+      <div className="drawer-actions">
+        <button type="button" className="btn btn-primary">
+          <span className="material-symbols-outlined">menu_book</span>
+          {t('drawer.openGuide')}
+        </button>
+        <button type="button" className="btn btn-secondary">
+          <span className="material-symbols-outlined">edit</span>
+          {t('drawer.edit')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function DayBlock({ ev }: { ev: MockEval }) {
   const { t } = useTranslation()
   const subText =
@@ -164,15 +243,14 @@ export default function EvaluacionesPage() {
         open={!!drawerId}
         onClose={() => setDrawerId(null)}
         kicker={t('drawer.detail')}
-        title={drawerEval?.title || ''}
+        title={drawerEval ? drawerEval.title : (drawerId ?? '')}
       >
-        <p className="side-drawer__placeholder">
-          {t('drawer.placeholder').replace('{id}', drawerId || '')}
-        </p>
-        {drawerEval && (
-          <span className="side-drawer__id">
-            {drawerEval.subjectCode} · {drawerEval.day} {drawerEval.month} · {drawerEval.time}
-          </span>
+        {drawerEval ? (
+          <EvalDrawerBody ev={drawerEval} />
+        ) : (
+          <p className="side-drawer__placeholder">
+            {t('drawer.placeholder').replace('{id}', drawerId || '')}
+          </p>
         )}
       </SideDrawer>
     </div>

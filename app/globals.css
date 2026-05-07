@@ -4821,6 +4821,99 @@ button.card:hover {
   color: var(--on-surface);
 }
 
+/* ─── Drawer detail content ─── */
+.drawer-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.drawer-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--on-surface);
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+  margin-bottom: 18px;
+}
+.drawer-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.drawer-section__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  margin-bottom: 8px;
+}
+.drawer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.drawer-meta__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--s-low);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+.drawer-meta__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+}
+.drawer-meta__value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.drawer-meta__value.is-mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+.drawer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.drawer-actions .btn { flex: 1 1 auto; min-width: 120px; }
+.drawer-progress {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--s-high);
+  overflow: hidden;
+}
+.drawer-progress__fill {
+  height: 100%;
+  background: var(--accent-color, var(--color-primary));
+  transition: width .25s ease;
+}
+.drawer-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+
 /* ─── Mobile responsive ─── */
 @media (max-width: 900px) {
   .kan-grid {

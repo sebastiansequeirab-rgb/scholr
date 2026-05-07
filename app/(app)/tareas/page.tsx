@@ -27,6 +27,72 @@ function PrioBadge({ p }: { p: MockTask['priority'] }) {
   return <span className={`badge ${cls}`}>{label}</span>
 }
 
+function TaskDrawerBody({ task }: { task: MockTask }) {
+  const { t } = useTranslation()
+  const tagClass = subjectTag(task.subjectColor)
+  const statusLabel =
+    task.col === 'pending' ? t('tareas.cols.pending') :
+    task.col === 'doing'   ? t('tareas.cols.doing') :
+                              t('tareas.cols.done')
+  return (
+    <div className={tagClass}>
+      <div className="drawer-chips">
+        <span className="subj-chip">{task.subjectCode}</span>
+        {task.priority && <PrioBadge p={task.priority} />}
+        {task.grade && <span className="grade-chip">{task.grade}</span>}
+      </div>
+
+      {task.description && (
+        <p className="side-drawer__placeholder" style={{ marginBottom: 4 }}>
+          {task.description}
+        </p>
+      )}
+
+      <div className="drawer-section">
+        <div className="drawer-section__label">{t('drawer.detail')}</div>
+        <div className="drawer-meta">
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.status')}</span>
+            <span className="drawer-meta__value">{statusLabel}</span>
+          </div>
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.subject')}</span>
+            <span className="drawer-meta__value is-mono">{task.subjectCode}</span>
+          </div>
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.due')}</span>
+            <span className="drawer-meta__value is-mono">{task.due}</span>
+          </div>
+          {task.col === 'doing' && task.progress != null && (
+            <div className="drawer-meta__row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <div className="drawer-progress-row">
+                <span className="drawer-meta__label">{t('drawer.progress')}</span>
+                <span>{task.progress}%</span>
+              </div>
+              <div className="drawer-progress" aria-hidden>
+                <div className="drawer-progress__fill" style={{ width: `${task.progress}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="drawer-actions">
+        {task.col !== 'done' && (
+          <button type="button" className="btn btn-primary">
+            <span className="material-symbols-outlined">check</span>
+            {t('drawer.markDone')}
+          </button>
+        )}
+        <button type="button" className="btn btn-secondary">
+          <span className="material-symbols-outlined">edit</span>
+          {t('drawer.edit')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function TaskCard({ task, onOpen }: { task: MockTask; onOpen: (id: string) => void }) {
   const tagClass = subjectTag(task.subjectColor)
   const isDone = task.col === 'done'
@@ -181,13 +247,14 @@ export default function TareasPage() {
         open={!!drawerId}
         onClose={() => setDrawerId(null)}
         kicker={t('drawer.detail')}
-        title={drawerTask?.title || ''}
+        title={drawerTask ? drawerTask.title : (drawerId ?? '')}
       >
-        <p className="side-drawer__placeholder">
-          {t('drawer.placeholder').replace('{id}', drawerId || '')}
-        </p>
-        {drawerTask && (
-          <span className="side-drawer__id">{drawerTask.subjectCode} · {drawerTask.due}</span>
+        {drawerTask ? (
+          <TaskDrawerBody task={drawerTask} />
+        ) : (
+          <p className="side-drawer__placeholder">
+            {t('drawer.placeholder').replace('{id}', drawerId || '')}
+          </p>
         )}
       </SideDrawer>
     </div>

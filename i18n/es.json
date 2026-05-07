@@ -292,7 +292,24 @@
   "drawer": {
     "close": "Cerrar",
     "detail": "Detalle",
-    "placeholder": "Vista detalle próximamente. ID: {id}"
+    "placeholder": "Vista detalle próximamente. ID: {id}",
+    "subject": "Materia",
+    "priority": "Prioridad",
+    "status": "Estado",
+    "due": "Vence",
+    "progress": "Progreso",
+    "grade": "Nota",
+    "type": "Tipo",
+    "weight": "Peso",
+    "date": "Fecha",
+    "time": "Hora",
+    "location": "Ubicación",
+    "preparation": "Preparación",
+    "countdown": "Faltan",
+    "edit": "Editar",
+    "markDone": "Marcar hecha",
+    "delete": "Eliminar",
+    "openGuide": "Abrir guía"
   },
   "tasks": {
     "title": "Pendientes",

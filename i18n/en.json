@@ -292,7 +292,24 @@
   "drawer": {
     "close": "Close",
     "detail": "Details",
-    "placeholder": "Detail view coming soon. ID: {id}"
+    "placeholder": "Detail view coming soon. ID: {id}",
+    "subject": "Subject",
+    "priority": "Priority",
+    "status": "Status",
+    "due": "Due",
+    "progress": "Progress",
+    "grade": "Grade",
+    "type": "Type",
+    "weight": "Weight",
+    "date": "Date",
+    "time": "Time",
+    "location": "Location",
+    "preparation": "Preparation",
+    "countdown": "Time left",
+    "edit": "Edit",
+    "markDone": "Mark done",
+    "delete": "Delete",
+    "openGuide": "Open guide"
   },
   "tasks": {
     "title": "Tasks",
