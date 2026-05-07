@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from '@/hooks/useTranslation'
 
 interface SideDrawerProps {
@@ -13,6 +14,9 @@ interface SideDrawerProps {
 
 export function SideDrawer({ open, onClose, kicker, title, children }: SideDrawerProps) {
   const { t } = useTranslation()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (!open) return
@@ -26,25 +30,27 @@ export function SideDrawer({ open, onClose, kicker, title, children }: SideDrawe
     }
   }, [open, onClose])
 
-  return (
+  if (!mounted || !open) return null
+
+  const node = (
     <>
       <div
-        className={`side-drawer-overlay${open ? ' is-open' : ''}`}
+        className="side-drawer-overlay is-open"
         onClick={onClose}
-        aria-hidden={!open}
+        aria-hidden={false}
       />
       <aside
-        className={`side-drawer${open ? ' is-open' : ''}`}
+        className="side-drawer is-open"
         role="dialog"
         aria-modal="true"
-        aria-hidden={!open}
       >
         <div className="side-drawer__head">
           <div>
             {kicker && <div className="side-drawer__kicker">{kicker}</div>}
-            <div className="side-drawer__title">{title}</div>
+            {title && <div className="side-drawer__title">{title}</div>}
           </div>
           <button
+            type="button"
             className="side-drawer__close"
             onClick={onClose}
             aria-label={t('drawer.close')}
@@ -56,4 +62,6 @@ export function SideDrawer({ open, onClose, kicker, title, children }: SideDrawe
       </aside>
     </>
   )
+
+  return createPortal(node, document.body)
 }
