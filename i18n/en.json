@@ -279,18 +279,27 @@
     "weightLabel": "{n}% grade",
     "preparation": "Preparation",
     "openGuide": "Open study guide",
+    "empty": "No upcoming exams yet",
+    "past": "Past",
     "day": {
       "today": "Today",
       "tomorrow": "Tomorrow",
-      "daysCount": "{n} days"
+      "daysCount": "{n} days",
+      "past": "Past"
     },
-    "type": {
-      "ENTREGA": "Submission",
-      "QUIZ": "Quiz",
-      "EXAMEN": "Exam",
-      "PARCIAL": "Midterm",
-      "FINAL": "Final"
-    }
+    "activity": {
+      "exam": "Exam",
+      "workshop": "Workshop",
+      "activity": "Activity",
+      "task": "Task",
+      "study_session": "Study"
+    },
+    "addStep": "Add step",
+    "stepPlaceholder": "New plan step…",
+    "editPlaceholder": "Edit step text…",
+    "deleteStep": "Delete step",
+    "hoursPlaceholder": "—",
+    "hoursUnit": "h"
   },
   "drawer": {
     "close": "Close",

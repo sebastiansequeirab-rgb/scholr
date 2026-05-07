@@ -279,18 +279,27 @@
     "weightLabel": "{n}% nota",
     "preparation": "Preparación",
     "openGuide": "Abrir guía de estudio",
+    "empty": "Aún no hay evaluaciones próximas",
+    "past": "Pasado",
     "day": {
       "today": "Hoy",
       "tomorrow": "Mañana",
-      "daysCount": "{n} días"
+      "daysCount": "{n} días",
+      "past": "Pasado"
     },
-    "type": {
-      "ENTREGA": "Entrega",
-      "QUIZ": "Quiz",
-      "EXAMEN": "Examen",
-      "PARCIAL": "Parcial",
-      "FINAL": "Final"
-    }
+    "activity": {
+      "exam": "Examen",
+      "workshop": "Taller",
+      "activity": "Actividad",
+      "task": "Tarea",
+      "study_session": "Estudio"
+    },
+    "addStep": "Agregar paso",
+    "stepPlaceholder": "Nuevo paso del plan…",
+    "editPlaceholder": "Editar texto del paso…",
+    "deleteStep": "Eliminar paso",
+    "hoursPlaceholder": "—",
+    "hoursUnit": "h"
   },
   "drawer": {
     "close": "Cerrar",

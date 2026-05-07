@@ -66,6 +66,11 @@ export type Subtask = {
 export type ActivityType = 'exam' | 'workshop' | 'activity' | 'task' | 'study_session'
 export type SubmissionStatus = 'pending' | 'submitted' | 'graded'
 
+export type StudyStep = {
+  text: string
+  done?: boolean
+}
+
 export type Exam = {
   id: string
   user_id: string
@@ -85,6 +90,8 @@ export type Exam = {
   max_grade: number | null
   reminder_triggered: boolean | null
   assigned_by: string | null
+  study_plan: StudyStep[]
+  estimated_hours: number | null
 }
 
 export type Enrollment = {

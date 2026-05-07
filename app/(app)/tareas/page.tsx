@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
   closestCorners,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -20,29 +21,60 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 
 import { useTranslation } from '@/hooks/useTranslation'
 import { subjectTag } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { computeAlertDueLabel, computeIsoWeek, computeWeightedAvg, subjectInfo } from '@/lib/meta'
 import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 import { SideDrawer } from '@/components/ui/SideDrawer'
-import { MOCK_TASKS, type MockTask, type TaskCol, type TaskPriority } from '@/features/tareas/data/mocks'
+import type { Exam, Subject, Task } from '@/types'
+
+type TaskCol = 'pending' | 'doing' | 'done'
 
 const COLS: TaskCol[] = ['pending', 'doing', 'done']
 
-const SUBJECT_PALETTE = [
-  { code: 'INST', color: '#a78bfa' },
-  { code: 'MATE', color: '#34d399' },
-  { code: 'CALC', color: '#fbbf24' },
-  { code: 'TEC',  color: '#22d3ee' },
-  { code: 'PROG', color: '#60a5fa' },
-  { code: 'TRAD', color: '#fb7185' },
-] as const
+// ─── Status ↔ Col mapping ────────────────────────────────────────────────
+function statusToCol(s: Task['status']): TaskCol {
+  if (s === 'in_progress') return 'doing'
+  if (s === 'done') return 'done'
+  return 'pending'
+}
+function colToStatus(c: TaskCol): Task['status'] {
+  if (c === 'doing') return 'in_progress'
+  if (c === 'done') return 'done'
+  return 'not_started'
+}
 
-function PrioBadge({ p }: { p: TaskPriority | null }) {
+// ─── Display helpers ─────────────────────────────────────────────────────
+function formatDue(task: Task, lang: 'es' | 'en'): string {
+  if (task.is_done && task.done_at) {
+    const days = Math.floor((Date.now() - new Date(task.done_at).getTime()) / 86400000)
+    if (days <= 0) return lang === 'es' ? 'Hoy' : 'Today'
+    if (days === 1) return lang === 'es' ? 'Hace 1 día' : '1d ago'
+    return lang === 'es' ? `Hace ${days} días` : `${days}d ago`
+  }
+  if (!task.due_date) return lang === 'es' ? 'Sin fecha' : 'No date'
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const due = new Date(task.due_date + 'T00:00:00')
+  const diff = Math.round((due.getTime() - today.getTime()) / 86400000)
+  if (diff < 0) {
+    const past = -diff
+    return lang === 'es' ? `Hace ${past} d` : `${past}d ago`
+  }
+  if (diff === 0) return lang === 'es' ? 'Hoy' : 'Today'
+  if (diff === 1) return lang === 'es' ? 'Mañana' : 'Tomorrow'
+  if (diff < 7) {
+    return due.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { weekday: 'short' })
+      .replace('.', '')
+  }
+  return due.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short' })
+}
+
+function PrioBadge({ p }: { p: Task['priority'] }) {
   const { t } = useTranslation()
-  if (!p) return null
   const cls =
     p === 'high' ? 'badge--prio-high' :
     p === 'mid'  ? 'badge--prio-mid' :
@@ -54,28 +86,24 @@ function PrioBadge({ p }: { p: TaskPriority | null }) {
   return <span className={`badge ${cls}`}>{label}</span>
 }
 
-function TaskCardInner({ task }: { task: MockTask }) {
-  const isDone = task.col === 'done'
+// ─── Card visual ─────────────────────────────────────────────────────────
+function TaskCardInner({ task, subjects }: { task: Task; subjects: Subject[] }) {
+  const { language } = useTranslation()
+  const info = subjectInfo(task.subject_id, subjects)
+  const col = statusToCol(task.status)
+  const isDone = col === 'done'
   return (
     <>
       <div className="kan-card__head">
-        <span className="subj-chip">{task.subjectCode}</span>
-        {task.grade && <span className="grade-chip">{task.grade}</span>}
+        <span className="subj-chip">{info.code}</span>
         <PrioBadge p={task.priority} />
       </div>
 
-      <div className="kan-card__title">{task.title}</div>
-      {task.description && <div className="kan-card__desc">{task.description}</div>}
-
-      {task.col === 'doing' && task.progress != null && (
-        <div className="kan-card__progress" aria-hidden>
-          <div className="kan-card__progress-fill" style={{ width: `${task.progress}%` }} />
-        </div>
-      )}
+      <div className="kan-card__title">{task.text}</div>
 
       <div className="kan-card__foot">
         <span className="material-symbols-outlined">schedule</span>
-        <span>{task.due}</span>
+        <span>{formatDue(task, language)}</span>
       </div>
 
       {isDone && (
@@ -89,21 +117,24 @@ function TaskCardInner({ task }: { task: MockTask }) {
 
 function SortableTaskCard({
   task,
+  subjects,
   onOpen,
   onDelete,
 }: {
-  task: MockTask
+  task: Task
+  subjects: Subject[]
   onOpen: (id: string) => void
   onDelete: (id: string) => void
 }) {
   const { t } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
-    data: { col: task.col },
+    data: { col: statusToCol(task.status) },
   })
-
-  const tagClass = subjectTag(task.subjectColor)
-  const isDone = task.col === 'done'
+  const info = subjectInfo(task.subject_id, subjects)
+  const tagClass = subjectTag(info.color)
+  const col = statusToCol(task.status)
+  const isDone = col === 'done'
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -117,7 +148,7 @@ function SortableTaskCard({
       {...listeners}
       role="button"
       tabIndex={0}
-      onClick={() => onOpen(task.id)}
+      onClick={() => { if (!isDragging) onOpen(task.id) }}
       onKeyDown={(e) => {
         if ((e.key === 'Enter' || e.key === ' ') && !isDragging) {
           e.preventDefault()
@@ -135,23 +166,26 @@ function SortableTaskCard({
       >
         <span className="material-symbols-outlined">close</span>
       </button>
-      <TaskCardInner task={task} />
+      <TaskCardInner task={task} subjects={subjects} />
     </div>
   )
 }
 
+// ─── Column ──────────────────────────────────────────────────────────────
 function KanColumn({
   col,
   items,
+  subjects,
   onOpen,
   onDelete,
   onAdd,
 }: {
   col: TaskCol
-  items: MockTask[]
+  items: Task[]
+  subjects: Subject[]
   onOpen: (id: string) => void
   onDelete: (id: string) => void
-  onAdd: (col: TaskCol, title: string, subjectIdx: number) => void
+  onAdd: (col: TaskCol, title: string, subjectId: string | null) => Promise<void>
 }) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: `col-${col}`, data: { col } })
@@ -160,18 +194,22 @@ function KanColumn({
   const [title, setTitle] = useState('')
   const [subjectIdx, setSubjectIdx] = useState(0)
 
-  const submit = () => {
+  const subjectOptions = useMemo<(Subject | null)[]>(
+    () => [null, ...subjects],
+    [subjects],
+  )
+  const selected = subjectOptions[subjectIdx % subjectOptions.length] ?? null
+  const selectedInfo = selected ? subjectInfo(selected.id, subjects) : { code: '—', color: '#6b7280' }
+
+  const submit = async () => {
     if (!title.trim()) { setAdding(false); return }
-    onAdd(col, title.trim(), subjectIdx)
+    await onAdd(col, title.trim(), selected?.id ?? null)
     setTitle('')
     setSubjectIdx(0)
   }
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`kan-col${isOver ? ' is-over' : ''}`}
-    >
+    <div ref={setNodeRef} className={`kan-col${isOver ? ' is-over' : ''}`}>
       <div className="kan-col__head">
         <div className="kan-col__title-wrap">
           <span className="kan-col__title">{t(`tareas.cols.${col}`)}</span>
@@ -187,7 +225,13 @@ function KanColumn({
           <div className="kan-col__empty">{t('tareas.dropHere')}</div>
         )}
         {items.map(tk => (
-          <SortableTaskCard key={tk.id} task={tk} onOpen={onOpen} onDelete={onDelete} />
+          <SortableTaskCard
+            key={tk.id}
+            task={tk}
+            subjects={subjects}
+            onOpen={onOpen}
+            onDelete={onDelete}
+          />
         ))}
       </SortableContext>
 
@@ -200,19 +244,21 @@ function KanColumn({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); submit() }
+                if (e.key === 'Enter') { e.preventDefault(); void submit() }
                 else if (e.key === 'Escape') { setAdding(false); setTitle('') }
               }}
+              onBlur={() => { if (!title.trim()) setAdding(false) }}
               placeholder={t('tareas.quickPlaceholder')}
             />
             <div className="quick-add__row">
               <button
                 type="button"
                 className="quick-add__select"
-                onClick={() => setSubjectIdx((i) => (i + 1) % SUBJECT_PALETTE.length)}
+                onClick={() => setSubjectIdx((i) => (i + 1) % subjectOptions.length)}
                 title="Cambiar materia"
+                style={{ color: selectedInfo.color }}
               >
-                {SUBJECT_PALETTE[subjectIdx].code}
+                {selectedInfo.code}
               </button>
               <span className="quick-add__hint">{t('tareas.quickHint')}</span>
             </div>
@@ -228,26 +274,35 @@ function KanColumn({
   )
 }
 
-function TaskDrawerBody({ task }: { task: MockTask }) {
-  const { t } = useTranslation()
-  const tagClass = subjectTag(task.subjectColor)
+// ─── Drawer body ─────────────────────────────────────────────────────────
+function TaskDrawerBody({
+  task,
+  subjects,
+  onUpdate,
+  onDelete,
+}: {
+  task: Task
+  subjects: Subject[]
+  onUpdate: (patch: Partial<Task>) => Promise<void>
+  onDelete: () => Promise<void>
+}) {
+  const { t, language } = useTranslation()
+  const info = subjectInfo(task.subject_id, subjects)
+  const tagClass = subjectTag(info.color)
+  const col = statusToCol(task.status)
   const statusLabel =
-    task.col === 'pending' ? t('tareas.cols.pending') :
-    task.col === 'doing'   ? t('tareas.cols.doing') :
-                              t('tareas.cols.done')
+    col === 'pending' ? t('tareas.cols.pending') :
+    col === 'doing'   ? t('tareas.cols.doing') :
+                        t('tareas.cols.done')
+
+  const isDone = col === 'done'
+
   return (
     <div className={tagClass}>
       <div className="drawer-chips">
-        <span className="subj-chip">{task.subjectCode}</span>
-        {task.priority && <PrioBadge p={task.priority} />}
-        {task.grade && <span className="grade-chip">{task.grade}</span>}
+        <span className="subj-chip">{info.code}</span>
+        <PrioBadge p={task.priority} />
       </div>
-
-      {task.description && (
-        <p className="side-drawer__placeholder" style={{ marginBottom: 4 }}>
-          {task.description}
-        </p>
-      )}
 
       <div className="drawer-section">
         <div className="drawer-section__label">{t('drawer.detail')}</div>
@@ -258,45 +313,69 @@ function TaskDrawerBody({ task }: { task: MockTask }) {
           </div>
           <div className="drawer-meta__row">
             <span className="drawer-meta__label">{t('drawer.subject')}</span>
-            <span className="drawer-meta__value is-mono">{task.subjectCode}</span>
+            <span className="drawer-meta__value">{info.name || info.code}</span>
           </div>
           <div className="drawer-meta__row">
             <span className="drawer-meta__label">{t('drawer.due')}</span>
-            <span className="drawer-meta__value is-mono">{task.due}</span>
+            <span className="drawer-meta__value is-mono">{formatDue(task, language)}</span>
           </div>
-          {task.col === 'doing' && task.progress != null && (
-            <div className="drawer-meta__row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-              <div className="drawer-progress-row">
-                <span className="drawer-meta__label">{t('drawer.progress')}</span>
-                <span>{task.progress}%</span>
-              </div>
-              <div className="drawer-progress" aria-hidden>
-                <div className="drawer-progress__fill" style={{ width: `${task.progress}%` }} />
-              </div>
-            </div>
-          )}
+          <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.priority')}</span>
+            <span className="drawer-meta__value">
+              {task.priority === 'high' ? t('tareas.priority.high') :
+               task.priority === 'mid' ? t('tareas.priority.mid') :
+               t('tareas.priority.low')}
+            </span>
+          </div>
         </div>
       </div>
 
       <div className="drawer-actions">
-        {task.col !== 'done' && (
-          <button type="button" className="btn btn-primary">
+        {!isDone ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => onUpdate({
+              status: 'done',
+              is_done: true,
+              done_at: new Date().toISOString(),
+            })}
+          >
             <span className="material-symbols-outlined">check</span>
             {t('drawer.markDone')}
           </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => onUpdate({
+              status: 'not_started',
+              is_done: false,
+              done_at: null,
+            })}
+          >
+            <span className="material-symbols-outlined">undo</span>
+            {language === 'es' ? 'Reabrir' : 'Reopen'}
+          </button>
         )}
-        <button type="button" className="btn btn-secondary">
-          <span className="material-symbols-outlined">edit</span>
-          {t('drawer.edit')}
+        <button type="button" className="btn btn-danger" onClick={onDelete}>
+          <span className="material-symbols-outlined">delete</span>
+          {t('drawer.delete')}
         </button>
       </div>
     </div>
   )
 }
 
+// ─── Page ────────────────────────────────────────────────────────────────
 export default function TareasPage() {
-  const { t } = useTranslation()
-  const [tasks, setTasks] = useState<MockTask[]>(MOCK_TASKS)
+  const { t, language } = useTranslation()
+  const supabase = useMemo(() => createClient(), [])
+
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [exams, setExams] = useState<Exam[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [drawerId, setDrawerId] = useState<string | null>(null)
 
@@ -305,15 +384,36 @@ export default function TareasPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  const fetchAll = useCallback(async () => {
+    const [tk, sb, ex] = await Promise.all([
+      supabase.from('tasks').select('*').order('position').order('created_at'),
+      supabase.from('subjects').select('*').order('name'),
+      supabase.from('exams').select('*'),
+    ])
+    if (tk.data) setTasks(tk.data as Task[])
+    if (sb.data) setSubjects(sb.data as Subject[])
+    if (ex.data) setExams(ex.data as Exam[])
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => {
+    fetchAll()
+    const ch = supabase.channel('tareas-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchAll)
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [supabase, fetchAll])
+
+  // Derived
   const itemsByCol = useMemo(() => {
-    const map: Record<TaskCol, MockTask[]> = { pending: [], doing: [], done: [] }
-    for (const tk of tasks) map[tk.col].push(tk)
+    const map: Record<TaskCol, Task[]> = { pending: [], doing: [], done: [] }
+    for (const tk of tasks) map[statusToCol(tk.status)].push(tk)
     return map
   }, [tasks])
 
   const counts = {
     total: tasks.length,
-    urgent: tasks.filter(tk => tk.priority === 'high' && tk.col !== 'done').length,
+    urgent: tasks.filter(tk => tk.priority === 'high' && !tk.is_done).length,
     doing: itemsByCol.doing.length,
   }
   const sub = t('tareas.subTpl')
@@ -323,92 +423,117 @@ export default function TareasPage() {
 
   const findColOfId = (id: string): TaskCol | null => {
     if (id.startsWith('col-')) return id.slice(4) as TaskCol
-    const t = tasks.find(t => t.id === id)
-    return t ? t.col : null
+    const tk = tasks.find(tk => tk.id === id)
+    return tk ? statusToCol(tk.status) : null
   }
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
 
+  // Live cross-column move during drag — updates local status optimistically.
   const onDragOver = (e: DragOverEvent) => {
     const { active, over } = e
     if (!over) return
-    const activeIdStr = String(active.id)
-    const overIdStr = String(over.id)
-    if (activeIdStr === overIdStr) return
-
-    const activeCol = findColOfId(activeIdStr)
-    const overCol = findColOfId(overIdStr)
-    if (!activeCol || !overCol || activeCol === overCol) return
-
+    const aId = String(active.id)
+    const oId = String(over.id)
+    if (aId === oId) return
+    const aCol = findColOfId(aId)
+    const oCol = findColOfId(oId)
+    if (!aCol || !oCol || aCol === oCol) return
     setTasks(prev => prev.map(tk => {
-      if (tk.id !== activeIdStr) return tk
-      const next: MockTask = { ...tk, col: overCol }
-      // Adjust default fields when moving between columns
-      if (overCol === 'doing' && next.progress == null) next.progress = 0
-      if (overCol !== 'doing') delete (next as Partial<MockTask>).progress
-      if (overCol === 'done') {
-        next.due = t('tareas.due.now')
-      }
-      return next
+      if (tk.id !== aId) return tk
+      return { ...tk, status: colToStatus(oCol) }
     }))
   }
 
-  const onDragEnd = (e: DragEndEvent) => {
+  const onDragEnd = async (e: DragEndEvent) => {
     setActiveId(null)
     const { active, over } = e
     if (!over) return
-    const activeIdStr = String(active.id)
-    const overIdStr = String(over.id)
-    if (activeIdStr === overIdStr) return
+    const aId = String(active.id)
+    const oId = String(over.id)
 
-    const activeCol = findColOfId(activeIdStr)
-    if (!activeCol) return
+    const task = tasks.find(tk => tk.id === aId)
+    if (!task) return
+    const finalCol = statusToCol(task.status)
 
-    // Reorder within same column when dropped on another card
-    if (!overIdStr.startsWith('col-')) {
-      const overCol = findColOfId(overIdStr)
-      if (overCol === activeCol) {
+    // Reorder within same column
+    if (!oId.startsWith('col-') && oId !== aId) {
+      const oCol = findColOfId(oId)
+      if (oCol === finalCol) {
         setTasks(prev => {
-          const colItems = prev.filter(tk => tk.col === activeCol)
-          const others = prev.filter(tk => tk.col !== activeCol)
-          const oldIdx = colItems.findIndex(tk => tk.id === activeIdStr)
-          const newIdx = colItems.findIndex(tk => tk.id === overIdStr)
+          const colItems = prev.filter(tk => statusToCol(tk.status) === finalCol)
+          const others = prev.filter(tk => statusToCol(tk.status) !== finalCol)
+          const oldIdx = colItems.findIndex(tk => tk.id === aId)
+          const newIdx = colItems.findIndex(tk => tk.id === oId)
           if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return prev
           const reordered = arrayMove(colItems, oldIdx, newIdx)
           return [...others, ...reordered]
         })
       }
     }
+
+    // Persist status if it changed
+    const newStatus = colToStatus(finalCol)
+    const isDone = finalCol === 'done'
+    const patch: Partial<Task> = {
+      status: newStatus,
+      is_done: isDone,
+      done_at: isDone ? new Date().toISOString() : null,
+    }
+    await supabase.from('tasks').update(patch).eq('id', aId)
   }
 
   const openCard = (id: string) => setDrawerId(id)
-  const deleteCard = (id: string) => setTasks(prev => prev.filter(tk => tk.id !== id))
 
-  const addCard = (col: TaskCol, title: string, subjectIdx: number) => {
-    const sub = SUBJECT_PALETTE[subjectIdx]
-    const newTask: MockTask = {
-      id: `t-new-${Date.now()}`,
-      col,
-      subjectCode: sub.code,
-      subjectColor: sub.color,
-      priority: 'mid',
-      title,
-      due: col === 'doing' ? t('tareas.due.now') : t('tareas.due.today'),
-      ...(col === 'doing' ? { progress: 0 } : {}),
+  const deleteCard = async (id: string) => {
+    setTasks(prev => prev.filter(tk => tk.id !== id))
+    if (drawerId === id) setDrawerId(null)
+    await supabase.from('tasks').delete().eq('id', id)
+  }
+
+  const updateTask = async (id: string, patch: Partial<Task>) => {
+    setTasks(prev => prev.map(tk => tk.id === id ? { ...tk, ...patch } : tk))
+    await supabase.from('tasks').update(patch).eq('id', id)
+  }
+
+  const addCard = async (col: TaskCol, title: string, subjectId: string | null) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const status = colToStatus(col)
+    const isDone = col === 'done'
+    const insert = {
+      user_id: user.id,
+      text: title,
+      priority: 'mid' as const,
+      due_date: null,
+      subject_id: subjectId,
+      is_done: isDone,
+      done_at: isDone ? new Date().toISOString() : null,
+      status,
+      position: 0,
     }
-    setTasks(prev => [...prev, newTask])
+    const { data } = await supabase.from('tasks').insert(insert).select().single()
+    if (data) {
+      setTasks(prev => [...prev, data as Task])
+    }
   }
 
   const drawerTask = drawerId ? tasks.find(tk => tk.id === drawerId) ?? null : null
   const activeTask = activeId ? tasks.find(tk => tk.id === activeId) ?? null : null
 
+  // Real DashMetaBar values
+  const now = new Date()
+  const isoWeek = computeIsoWeek(now)
+  const avg = computeWeightedAvg(subjects, exams)
+  const alertDueLabel = computeAlertDueLabel(tasks, exams, language)
+
   return (
     <div className="max-w-[1240px] mx-auto reveal-stagger">
       <DashMetaBar
-        weekIndex={17}
-        weekTotal={20}
-        avg={13.6}
-        alertDueLabel="1 entrega cierra en 4h 34m"
+        weekIndex={isoWeek}
+        weekTotal={52}
+        avg={avg}
+        alertDueLabel={alertDueLabel}
       />
 
       <header className="screen-head" style={{ marginTop: 14 }}>
@@ -418,17 +543,13 @@ export default function TareasPage() {
             {t('tareas.titleA')} <span className="serif">{t('tareas.titleSerif')}</span>{' '}
             {t('tareas.titleB')}
           </h1>
-          <p className="screen-head__sub">{sub}</p>
+          <p className="screen-head__sub">{loading ? '…' : sub}</p>
         </div>
 
         <div className="screen-head__actions">
           <button type="button" className="btn btn-secondary">
             <span className="material-symbols-outlined">tune</span>
             {t('tareas.filter')}
-          </button>
-          <button type="button" className="btn-new">
-            <span className="material-symbols-outlined">add</span>
-            {t('tareas.newTask')}
           </button>
         </div>
       </header>
@@ -446,6 +567,7 @@ export default function TareasPage() {
               key={col}
               col={col}
               items={itemsByCol[col]}
+              subjects={subjects}
               onOpen={openCard}
               onDelete={deleteCard}
               onAdd={addCard}
@@ -455,8 +577,8 @@ export default function TareasPage() {
 
         <DragOverlay dropAnimation={null}>
           {activeTask ? (
-            <div className={`kan-card kan-card-overlay ${subjectTag(activeTask.subjectColor)}${activeTask.col === 'done' ? ' is-done' : ''}`}>
-              <TaskCardInner task={activeTask} />
+            <div className={`kan-card kan-card-overlay ${subjectTag(subjectInfo(activeTask.subject_id, subjects).color)}${statusToCol(activeTask.status) === 'done' ? ' is-done' : ''}`}>
+              <TaskCardInner task={activeTask} subjects={subjects} />
             </div>
           ) : null}
         </DragOverlay>
@@ -466,9 +588,16 @@ export default function TareasPage() {
         open={!!drawerId}
         onClose={() => setDrawerId(null)}
         kicker={t('drawer.detail')}
-        title={drawerTask ? drawerTask.title : ''}
+        title={drawerTask ? drawerTask.text : ''}
       >
-        {drawerTask && <TaskDrawerBody task={drawerTask} />}
+        {drawerTask && (
+          <TaskDrawerBody
+            task={drawerTask}
+            subjects={subjects}
+            onUpdate={(patch) => updateTask(drawerTask.id, patch)}
+            onDelete={() => deleteCard(drawerTask.id)}
+          />
+        )}
       </SideDrawer>
     </div>
   )
