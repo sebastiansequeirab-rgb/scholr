@@ -747,6 +747,13 @@ export default function NotesPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  // Lock body scroll while /notes is mounted (shell is position: fixed on desktop)
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+  }, [])
+
   // ?subject= and ?new= handling
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -863,7 +870,7 @@ export default function NotesPage() {
 
   return (
     <div
-      className="notes-shell-v2 -m-4 lg:-m-8"
+      className="notes-shell-v2"
       style={{
         // Mobile view-toggle via CSS vars consumed by .notes-list-v2 / .notes-editor-v2
         ['--notes-list-display' as string]: mobileShowEditor ? 'none' : 'flex',
