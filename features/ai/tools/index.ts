@@ -15,6 +15,21 @@ function supabaseAs(accessToken: string) {
   )
 }
 
+// Extract plain text from a Tiptap JSON note (or raw string fallback)
+function extractPlainText(title: string | null | undefined, content: string | null | undefined): string {
+  let plain = title ?? ''
+  try {
+    const doc = JSON.parse(content ?? '{}')
+    type Node = { text?: string; content?: Node[] }
+    const walk = (nodes: Node[]): string =>
+      nodes.map(n => n.text ?? (n.content ? walk(n.content) : '')).join(' ')
+    if (doc.content) plain += '\n' + walk(doc.content as Node[])
+  } catch {
+    plain += '\n' + (content ?? '')
+  }
+  return plain.replace(/\s+/g, ' ').trim()
+}
+
 // ─── Function declarations (sent to Groq) ────────────────────────────────────
 
 export const TOOL_DECLARATIONS: ToolDefinition[] = [
@@ -31,6 +46,14 @@ export const TOOL_DECLARATIONS: ToolDefinition[] = [
     function: {
       name: 'get_today_schedule',
       description: 'Get the class schedule for today.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_week_schedule',
+      description: 'Get the full weekly class schedule (all 7 days, every class).',
       parameters: { type: 'object', properties: {} },
     },
   },
@@ -59,13 +82,41 @@ export const TOOL_DECLARATIONS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'get_notes_by_subject',
-      description: 'Get notes for a specific subject.',
+      description: 'Get notes for a specific subject. Use when the user asks about notes of a known subject.',
       parameters: {
         type: 'object',
         properties: {
           subject_id: { type: 'string', description: 'UUID of the subject' },
         },
         required: ['subject_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_recent_notes',
+      description: 'Get the most recent notes across ALL subjects (with title, subject name and last update). Use when the user asks "what notes do I have", "my notes", or wants a global view of their notebook.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Max notes to return (default 12, max 30)' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_notes',
+      description: 'Search the user notes by a keyword or phrase across title and content (all subjects). Returns matching notes with snippet, title and subject. Use when the user asks "find my note about X", "did I write about Y", or wants a specific topic from their notebook.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Keyword or phrase to search for' },
+          limit: { type: 'number', description: 'Max matching notes to return (default 8, max 20)' },
+        },
+        required: ['query'],
       },
     },
   },
@@ -179,6 +230,29 @@ export async function executeTool(
         return { ok: true, data: schedules ?? [] }
       }
 
+      case 'get_week_schedule': {
+        const { data: schedules, error } = await db
+          .from('schedules')
+          .select('day_of_week, start_time, end_time, room, subjects(name, color)')
+          .eq('user_id', userId)
+          .order('day_of_week')
+          .order('start_time')
+        if (error) return { ok: false, error: error.message }
+        const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+        const grouped: Record<string, unknown[]> = {}
+        for (const d of dayNames) grouped[d] = []
+        for (const s of (schedules ?? [])) {
+          const day = dayNames[s.day_of_week as number]
+          grouped[day].push({
+            start: (s.start_time as string)?.slice(0, 5) ?? null,
+            end:   (s.end_time   as string)?.slice(0, 5) ?? null,
+            room:  s.room ?? null,
+            subject: (s.subjects as unknown as { name?: string } | null)?.name ?? null,
+          })
+        }
+        return { ok: true, data: grouped }
+      }
+
       case 'get_upcoming_exams': {
         const limit = typeof args.limit === 'number' ? Math.min(args.limit, 10) : 5
         const today = new Date().toISOString().split('T')[0]
@@ -220,18 +294,65 @@ export async function executeTool(
           .order('updated_at', { ascending: false })
           .limit(10)
         if (error) return { ok: false, error: error.message }
-        // Strip Tiptap JSON to plain text for the model
-        const notes = (data ?? []).map(n => {
-          let plain = n.title || ''
-          try {
-            const doc = JSON.parse(n.content || '{}')
-            const extract = (nodes: { type?: string; text?: string; content?: unknown[] }[]): string =>
-              nodes.map(node => node.text ?? (node.content ? extract(node.content as { type?: string; text?: string; content?: unknown[] }[]) : '')).join(' ')
-            if (doc.content) plain += '\n' + extract(doc.content)
-          } catch { plain += '\n' + (n.content || '') }
-          return { id: n.id, title: n.title, updated_at: n.updated_at, text: plain.slice(0, 2000) }
-        })
+        const notes = (data ?? []).map(n => ({
+          id: n.id,
+          title: n.title,
+          updated_at: n.updated_at,
+          text: extractPlainText(n.title, n.content).slice(0, 2000),
+        }))
         return { ok: true, data: notes }
+      }
+
+      case 'get_recent_notes': {
+        const limit = typeof args.limit === 'number' ? Math.min(Math.max(1, args.limit), 30) : 12
+        const { data, error } = await db
+          .from('notes')
+          .select('id, title, content, updated_at, subject_id, subjects(name)')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(limit)
+        if (error) return { ok: false, error: error.message }
+        const notes = (data ?? []).map(n => ({
+          id:         n.id,
+          title:      n.title,
+          subject:    (n.subjects as unknown as { name?: string } | null)?.name ?? null,
+          updated_at: n.updated_at,
+          preview:    extractPlainText(n.title, n.content).slice(0, 280),
+        }))
+        return { ok: true, data: notes }
+      }
+
+      case 'search_notes': {
+        const query = String(args.query ?? '').trim().toLowerCase()
+        if (!query) return { ok: false, error: 'query required' }
+        const limit = typeof args.limit === 'number' ? Math.min(Math.max(1, args.limit), 20) : 8
+        const { data, error } = await db
+          .from('notes')
+          .select('id, title, content, updated_at, subject_id, subjects(name)')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(80)
+        if (error) return { ok: false, error: error.message }
+        const matches = (data ?? [])
+          .map(n => {
+            const plain = extractPlainText(n.title, n.content)
+            const haystack = plain.toLowerCase()
+            const idx = haystack.indexOf(query)
+            if (idx === -1) return null
+            const start = Math.max(0, idx - 60)
+            const end   = Math.min(plain.length, idx + query.length + 120)
+            const snippet = (start > 0 ? '…' : '') + plain.slice(start, end) + (end < plain.length ? '…' : '')
+            return {
+              id:         n.id,
+              title:      n.title,
+              subject:    (n.subjects as unknown as { name?: string } | null)?.name ?? null,
+              updated_at: n.updated_at,
+              snippet,
+            }
+          })
+          .filter((m): m is NonNullable<typeof m> => m !== null)
+          .slice(0, limit)
+        return { ok: true, data: matches }
       }
 
       case 'get_subject_progress': {

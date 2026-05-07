@@ -7,7 +7,7 @@ import type { AIRequest, AIResponse } from '@/features/ai/types'
 import { buildChatSystemPrompt } from '@/features/ai/prompts/chatSystemPrompt'
 
 const MAX_HISTORY     = 8  // last N messages sent to model
-const MAX_TOOL_ROUNDS = 3  // max chained tool calls per request
+const MAX_TOOL_ROUNDS = 5  // max chained tool calls per request
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
 

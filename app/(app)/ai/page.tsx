@@ -44,8 +44,11 @@ export default function AIPage() {
   return (
     <div className="reveal-stagger ai-shell-2">
 
-      {/* ─────────── Hero ─────────── */}
-      <section className="ai-hero-2 mb-3">
+      {/* ─────────── Chat ─────────── */}
+      <AIChatHub language={language as 'es' | 'en'} ctxExtra={ctxExtra} />
+
+      {/* ─────────── Hero (debajo del chat) ─────────── */}
+      <section className="ai-hero-2 mt-3">
         <div className="ai-hero-2__bg" />
         <div className="ai-hero-2__orb" />
         <div className="ai-hero-2__content">
@@ -85,9 +88,6 @@ export default function AIPage() {
           </div>
         </div>
       </section>
-
-      {/* ─────────── Chat ─────────── */}
-      <AIChatHub language={language as 'es' | 'en'} ctxExtra={ctxExtra} />
     </div>
   )
 }
