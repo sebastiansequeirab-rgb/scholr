@@ -244,11 +244,13 @@
     "titleSerif": "plan",
     "titleB": "",
     "subTpl": "{n} tasks · {urgent} urgent · {doing} in progress",
-    "viewKanban": "Kanban",
-    "viewList": "List",
     "filter": "Filter",
     "newTask": "New task",
     "addTask": "Add task",
+    "quickPlaceholder": "What needs doing?",
+    "quickHint": "Enter to save · Esc cancels",
+    "deleteAria": "Delete task",
+    "dropHere": "Drop here",
     "cols": {
       "pending": "To do",
       "doing": "In progress",
@@ -263,7 +265,8 @@
       "today": "Today",
       "tomorrow": "Tomorrow",
       "free": "free",
-      "agoDays": "{n}d ago"
+      "agoDays": "{n}d ago",
+      "now": "Now"
     }
   },
   "evaluaciones": {
@@ -309,7 +312,10 @@
     "edit": "Edit",
     "markDone": "Mark done",
     "delete": "Delete",
-    "openGuide": "Open guide"
+    "openGuide": "Open guide",
+    "studyPlan": "Study plan",
+    "studyHours": "Estimated hours",
+    "completed": "Completed"
   },
   "tasks": {
     "title": "Tasks",

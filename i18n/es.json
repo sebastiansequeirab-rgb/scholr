@@ -244,11 +244,13 @@
     "titleSerif": "plan",
     "titleB": "de trabajo",
     "subTpl": "{n} tareas · {urgent} urgente · {doing} en curso",
-    "viewKanban": "Kanban",
-    "viewList": "Lista",
     "filter": "Filtrar",
     "newTask": "Nueva tarea",
     "addTask": "Agregar tarea",
+    "quickPlaceholder": "¿Qué hay que hacer?",
+    "quickHint": "Enter para guardar · Esc cancela",
+    "deleteAria": "Eliminar tarea",
+    "dropHere": "Suelta aquí",
     "cols": {
       "pending": "Pendientes",
       "doing": "En curso",
@@ -263,7 +265,8 @@
       "today": "Hoy",
       "tomorrow": "Mañana",
       "free": "libre",
-      "agoDays": "Hace {n} días"
+      "agoDays": "Hace {n} días",
+      "now": "Ahora"
     }
   },
   "evaluaciones": {
@@ -309,7 +312,10 @@
     "edit": "Editar",
     "markDone": "Marcar hecha",
     "delete": "Eliminar",
-    "openGuide": "Abrir guía"
+    "openGuide": "Abrir guía",
+    "studyPlan": "Plan de estudio",
+    "studyHours": "Horas estimadas",
+    "completed": "Completado"
   },
   "tasks": {
     "title": "Pendientes",

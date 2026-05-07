@@ -1,19 +1,46 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCorners,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
+
 import { useTranslation } from '@/hooks/useTranslation'
 import { subjectTag } from '@/lib/utils'
 import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 import { SideDrawer } from '@/components/ui/SideDrawer'
-import { MOCK_TASKS, type MockTask, type TaskCol } from '@/features/tareas/data/mocks'
+import { MOCK_TASKS, type MockTask, type TaskCol, type TaskPriority } from '@/features/tareas/data/mocks'
 
-const COLS: { id: TaskCol; iconColor: string }[] = [
-  { id: 'pending', iconColor: 'var(--warning)' },
-  { id: 'doing',   iconColor: 'var(--info)' },
-  { id: 'done',    iconColor: 'var(--success)' },
-]
+const COLS: TaskCol[] = ['pending', 'doing', 'done']
 
-function PrioBadge({ p }: { p: MockTask['priority'] }) {
+const SUBJECT_PALETTE = [
+  { code: 'INST', color: '#a78bfa' },
+  { code: 'MATE', color: '#34d399' },
+  { code: 'CALC', color: '#fbbf24' },
+  { code: 'TEC',  color: '#22d3ee' },
+  { code: 'PROG', color: '#60a5fa' },
+  { code: 'TRAD', color: '#fb7185' },
+] as const
+
+function PrioBadge({ p }: { p: TaskPriority | null }) {
   const { t } = useTranslation()
   if (!p) return null
   const cls =
@@ -25,6 +52,180 @@ function PrioBadge({ p }: { p: MockTask['priority'] }) {
     p === 'mid'  ? t('tareas.priority.mid') :
                    t('tareas.priority.low')
   return <span className={`badge ${cls}`}>{label}</span>
+}
+
+function TaskCardInner({ task }: { task: MockTask }) {
+  const isDone = task.col === 'done'
+  return (
+    <>
+      <div className="kan-card__head">
+        <span className="subj-chip">{task.subjectCode}</span>
+        {task.grade && <span className="grade-chip">{task.grade}</span>}
+        <PrioBadge p={task.priority} />
+      </div>
+
+      <div className="kan-card__title">{task.title}</div>
+      {task.description && <div className="kan-card__desc">{task.description}</div>}
+
+      {task.col === 'doing' && task.progress != null && (
+        <div className="kan-card__progress" aria-hidden>
+          <div className="kan-card__progress-fill" style={{ width: `${task.progress}%` }} />
+        </div>
+      )}
+
+      <div className="kan-card__foot">
+        <span className="material-symbols-outlined">schedule</span>
+        <span>{task.due}</span>
+      </div>
+
+      {isDone && (
+        <span className="kan-card__check" aria-hidden>
+          <span className="material-symbols-outlined">check</span>
+        </span>
+      )}
+    </>
+  )
+}
+
+function SortableTaskCard({
+  task,
+  onOpen,
+  onDelete,
+}: {
+  task: MockTask
+  onOpen: (id: string) => void
+  onDelete: (id: string) => void
+}) {
+  const { t } = useTranslation()
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    data: { col: task.col },
+  })
+
+  const tagClass = subjectTag(task.subjectColor)
+  const isDone = task.col === 'done'
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(task.id)}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !isDragging) {
+          e.preventDefault()
+          onOpen(task.id)
+        }
+      }}
+      className={`kan-card ${tagClass}${isDone ? ' is-done' : ''}${isDragging ? ' is-dragging' : ''}`}
+    >
+      <button
+        type="button"
+        className="kan-card__delete"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); onDelete(task.id) }}
+        aria-label={t('tareas.deleteAria')}
+      >
+        <span className="material-symbols-outlined">close</span>
+      </button>
+      <TaskCardInner task={task} />
+    </div>
+  )
+}
+
+function KanColumn({
+  col,
+  items,
+  onOpen,
+  onDelete,
+  onAdd,
+}: {
+  col: TaskCol
+  items: MockTask[]
+  onOpen: (id: string) => void
+  onDelete: (id: string) => void
+  onAdd: (col: TaskCol, title: string, subjectIdx: number) => void
+}) {
+  const { t } = useTranslation()
+  const { setNodeRef, isOver } = useDroppable({ id: `col-${col}`, data: { col } })
+
+  const [adding, setAdding] = useState(false)
+  const [title, setTitle] = useState('')
+  const [subjectIdx, setSubjectIdx] = useState(0)
+
+  const submit = () => {
+    if (!title.trim()) { setAdding(false); return }
+    onAdd(col, title.trim(), subjectIdx)
+    setTitle('')
+    setSubjectIdx(0)
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`kan-col${isOver ? ' is-over' : ''}`}
+    >
+      <div className="kan-col__head">
+        <div className="kan-col__title-wrap">
+          <span className="kan-col__title">{t(`tareas.cols.${col}`)}</span>
+          <span className="kan-col__count">{items.length}</span>
+        </div>
+        <button type="button" className="kan-col__more" aria-label="Más">
+          <span className="material-symbols-outlined">more_horiz</span>
+        </button>
+      </div>
+
+      <SortableContext items={items.map(t => t.id)} strategy={verticalListSortingStrategy}>
+        {items.length === 0 && !adding && (
+          <div className="kan-col__empty">{t('tareas.dropHere')}</div>
+        )}
+        {items.map(tk => (
+          <SortableTaskCard key={tk.id} task={tk} onOpen={onOpen} onDelete={onDelete} />
+        ))}
+      </SortableContext>
+
+      {col !== 'done' && (
+        adding ? (
+          <div className="quick-add">
+            <input
+              className="quick-add__input"
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); submit() }
+                else if (e.key === 'Escape') { setAdding(false); setTitle('') }
+              }}
+              placeholder={t('tareas.quickPlaceholder')}
+            />
+            <div className="quick-add__row">
+              <button
+                type="button"
+                className="quick-add__select"
+                onClick={() => setSubjectIdx((i) => (i + 1) % SUBJECT_PALETTE.length)}
+                title="Cambiar materia"
+              >
+                {SUBJECT_PALETTE[subjectIdx].code}
+              </button>
+              <span className="quick-add__hint">{t('tareas.quickHint')}</span>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="kan-col__add" onClick={() => setAdding(true)}>
+            <span className="material-symbols-outlined">add</span>
+            {t('tareas.addTask')}
+          </button>
+        )
+      )}
+    </div>
+  )
 }
 
 function TaskDrawerBody({ task }: { task: MockTask }) {
@@ -93,70 +294,113 @@ function TaskDrawerBody({ task }: { task: MockTask }) {
   )
 }
 
-function TaskCard({ task, onOpen }: { task: MockTask; onOpen: (id: string) => void }) {
-  const tagClass = subjectTag(task.subjectColor)
-  const isDone = task.col === 'done'
-  return (
-    <button
-      type="button"
-      className={`kan-card ${tagClass}${isDone ? ' is-done' : ''}`}
-      onClick={() => onOpen(task.id)}
-    >
-      <div className="kan-card__head">
-        <span className="subj-chip">{task.subjectCode}</span>
-        {task.grade && <span className="grade-chip">{task.grade}</span>}
-        <PrioBadge p={task.priority} />
-      </div>
-
-      <div className="kan-card__title">{task.title}</div>
-      {task.description && <div className="kan-card__desc">{task.description}</div>}
-
-      {task.col === 'doing' && task.progress != null && (
-        <div className="kan-card__progress" aria-hidden>
-          <div className="kan-card__progress-fill" style={{ width: `${task.progress}%` }} />
-        </div>
-      )}
-
-      <div className="kan-card__foot">
-        <span className="material-symbols-outlined">schedule</span>
-        <span>{task.due}</span>
-      </div>
-
-      {isDone && (
-        <span className="kan-card__check" aria-hidden>
-          <span className="material-symbols-outlined">check</span>
-        </span>
-      )}
-    </button>
-  )
-}
-
 export default function TareasPage() {
   const { t } = useTranslation()
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban')
+  const [tasks, setTasks] = useState<MockTask[]>(MOCK_TASKS)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [drawerId, setDrawerId] = useState<string | null>(null)
 
-  const byCol = (col: TaskCol) => MOCK_TASKS.filter(tk => tk.col === col)
-  const counts = {
-    pending: byCol('pending').length,
-    doing:   byCol('doing').length,
-    done:    byCol('done').length,
-    total:   MOCK_TASKS.length,
-    urgent:  MOCK_TASKS.filter(tk => tk.priority === 'high' && tk.col !== 'done').length,
-  }
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
+  const itemsByCol = useMemo(() => {
+    const map: Record<TaskCol, MockTask[]> = { pending: [], doing: [], done: [] }
+    for (const tk of tasks) map[tk.col].push(tk)
+    return map
+  }, [tasks])
+
+  const counts = {
+    total: tasks.length,
+    urgent: tasks.filter(tk => tk.priority === 'high' && tk.col !== 'done').length,
+    doing: itemsByCol.doing.length,
+  }
   const sub = t('tareas.subTpl')
     .replace('{n}', String(counts.total))
     .replace('{urgent}', String(counts.urgent))
     .replace('{doing}', String(counts.doing))
 
-  const openCard = (id: string) => {
-    // eslint-disable-next-line no-console
-    console.log('[tareas] open', id)
-    setDrawerId(id)
+  const findColOfId = (id: string): TaskCol | null => {
+    if (id.startsWith('col-')) return id.slice(4) as TaskCol
+    const t = tasks.find(t => t.id === id)
+    return t ? t.col : null
   }
 
-  const drawerTask = drawerId ? MOCK_TASKS.find(t => t.id === drawerId) : null
+  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
+
+  const onDragOver = (e: DragOverEvent) => {
+    const { active, over } = e
+    if (!over) return
+    const activeIdStr = String(active.id)
+    const overIdStr = String(over.id)
+    if (activeIdStr === overIdStr) return
+
+    const activeCol = findColOfId(activeIdStr)
+    const overCol = findColOfId(overIdStr)
+    if (!activeCol || !overCol || activeCol === overCol) return
+
+    setTasks(prev => prev.map(tk => {
+      if (tk.id !== activeIdStr) return tk
+      const next: MockTask = { ...tk, col: overCol }
+      // Adjust default fields when moving between columns
+      if (overCol === 'doing' && next.progress == null) next.progress = 0
+      if (overCol !== 'doing') delete (next as Partial<MockTask>).progress
+      if (overCol === 'done') {
+        next.due = t('tareas.due.now')
+      }
+      return next
+    }))
+  }
+
+  const onDragEnd = (e: DragEndEvent) => {
+    setActiveId(null)
+    const { active, over } = e
+    if (!over) return
+    const activeIdStr = String(active.id)
+    const overIdStr = String(over.id)
+    if (activeIdStr === overIdStr) return
+
+    const activeCol = findColOfId(activeIdStr)
+    if (!activeCol) return
+
+    // Reorder within same column when dropped on another card
+    if (!overIdStr.startsWith('col-')) {
+      const overCol = findColOfId(overIdStr)
+      if (overCol === activeCol) {
+        setTasks(prev => {
+          const colItems = prev.filter(tk => tk.col === activeCol)
+          const others = prev.filter(tk => tk.col !== activeCol)
+          const oldIdx = colItems.findIndex(tk => tk.id === activeIdStr)
+          const newIdx = colItems.findIndex(tk => tk.id === overIdStr)
+          if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return prev
+          const reordered = arrayMove(colItems, oldIdx, newIdx)
+          return [...others, ...reordered]
+        })
+      }
+    }
+  }
+
+  const openCard = (id: string) => setDrawerId(id)
+  const deleteCard = (id: string) => setTasks(prev => prev.filter(tk => tk.id !== id))
+
+  const addCard = (col: TaskCol, title: string, subjectIdx: number) => {
+    const sub = SUBJECT_PALETTE[subjectIdx]
+    const newTask: MockTask = {
+      id: `t-new-${Date.now()}`,
+      col,
+      subjectCode: sub.code,
+      subjectColor: sub.color,
+      priority: 'mid',
+      title,
+      due: col === 'doing' ? t('tareas.due.now') : t('tareas.due.today'),
+      ...(col === 'doing' ? { progress: 0 } : {}),
+    }
+    setTasks(prev => [...prev, newTask])
+  }
+
+  const drawerTask = drawerId ? tasks.find(tk => tk.id === drawerId) ?? null : null
+  const activeTask = activeId ? tasks.find(tk => tk.id === activeId) ?? null : null
 
   return (
     <div className="max-w-[1240px] mx-auto reveal-stagger">
@@ -178,26 +422,6 @@ export default function TareasPage() {
         </div>
 
         <div className="screen-head__actions">
-          <div className="seg" role="tablist" aria-label="View mode">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={viewMode === 'kanban'}
-              className={`seg__btn${viewMode === 'kanban' ? ' is-active' : ''}`}
-              onClick={() => setViewMode('kanban')}
-            >
-              {t('tareas.viewKanban')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={viewMode === 'list'}
-              className={`seg__btn${viewMode === 'list' ? ' is-active' : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              {t('tareas.viewList')}
-            </button>
-          </div>
           <button type="button" className="btn btn-secondary">
             <span className="material-symbols-outlined">tune</span>
             {t('tareas.filter')}
@@ -209,53 +433,42 @@ export default function TareasPage() {
         </div>
       </header>
 
-      <section className="kan-grid">
-        {COLS.map(({ id }) => {
-          const items = byCol(id)
-          return (
-            <div key={id} className="kan-col">
-              <div className="kan-col__head">
-                <div className="kan-col__title-wrap">
-                  <span className="kan-col__title">{t(`tareas.cols.${id}`)}</span>
-                  <span className="kan-col__count">{items.length}</span>
-                </div>
-                <button type="button" className="kan-col__more" aria-label="Más">
-                  <span className="material-symbols-outlined">more_horiz</span>
-                </button>
-              </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+      >
+        <section className="kan-grid">
+          {COLS.map(col => (
+            <KanColumn
+              key={col}
+              col={col}
+              items={itemsByCol[col]}
+              onOpen={openCard}
+              onDelete={deleteCard}
+              onAdd={addCard}
+            />
+          ))}
+        </section>
 
-              {items.map(tk => (
-                <TaskCard key={tk.id} task={tk} onOpen={openCard} />
-              ))}
-
-              {id !== 'done' && (
-                <button type="button" className="kan-col__add">
-                  <span className="material-symbols-outlined">add</span>
-                  {t('tareas.addTask')}
-                </button>
-              )}
+        <DragOverlay dropAnimation={null}>
+          {activeTask ? (
+            <div className={`kan-card kan-card-overlay ${subjectTag(activeTask.subjectColor)}${activeTask.col === 'done' ? ' is-done' : ''}`}>
+              <TaskCardInner task={activeTask} />
             </div>
-          )
-        })}
-      </section>
-
-      <button type="button" className="fab-new" aria-label={t('tareas.newTask')}>
-        <span className="material-symbols-outlined">add</span>
-      </button>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <SideDrawer
         open={!!drawerId}
         onClose={() => setDrawerId(null)}
         kicker={t('drawer.detail')}
-        title={drawerTask ? drawerTask.title : (drawerId ?? '')}
+        title={drawerTask ? drawerTask.title : ''}
       >
-        {drawerTask ? (
-          <TaskDrawerBody task={drawerTask} />
-        ) : (
-          <p className="side-drawer__placeholder">
-            {t('drawer.placeholder').replace('{id}', drawerId || '')}
-          </p>
-        )}
+        {drawerTask && <TaskDrawerBody task={drawerTask} />}
       </SideDrawer>
     </div>
   )

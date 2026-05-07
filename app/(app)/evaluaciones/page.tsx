@@ -5,16 +5,21 @@ import { useTranslation } from '@/hooks/useTranslation'
 import { subjectTag } from '@/lib/utils'
 import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 import { SideDrawer } from '@/components/ui/SideDrawer'
-import { MOCK_EVALS, type MockEval } from '@/features/evaluaciones/data/mocks'
+import { MOCK_EVALS, type MockEval, type StudyStep } from '@/features/evaluaciones/data/mocks'
 
 function EvalDrawerBody({ ev }: { ev: MockEval }) {
   const { t } = useTranslation()
   const tagClass = subjectTag(ev.subjectColor)
   const weightLabel = t('evaluaciones.weightLabel').replace('{n}', String(ev.weight))
-  const countdownClass =
-    ev.countdownTone === 'danger'  ? 'drawer-meta__value is-mono' :
-    ev.countdownTone === 'warning' ? 'drawer-meta__value is-mono' :
-                                     'drawer-meta__value is-mono'
+
+  const [steps, setSteps] = useState<StudyStep[]>(ev.studyPlan)
+  const completedCount = steps.filter(s => s.done).length
+  const totalCount = steps.length
+
+  const toggleStep = (idx: number) => {
+    setSteps(prev => prev.map((s, i) => i === idx ? { ...s, done: !s.done } : s))
+  }
+
   const countdownColor =
     ev.countdownTone === 'danger'  ? 'var(--danger)' :
     ev.countdownTone === 'warning' ? 'var(--warning)' :
@@ -32,32 +37,20 @@ function EvalDrawerBody({ ev }: { ev: MockEval }) {
         <div className="drawer-section__label">{t('drawer.detail')}</div>
         <div className="drawer-meta">
           <div className="drawer-meta__row">
-            <span className="drawer-meta__label">{t('drawer.subject')}</span>
-            <span className="drawer-meta__value is-mono">{ev.subjectCode}</span>
-          </div>
-          <div className="drawer-meta__row">
-            <span className="drawer-meta__label">{t('drawer.type')}</span>
-            <span className="drawer-meta__value is-mono">{ev.type}</span>
-          </div>
-          <div className="drawer-meta__row">
-            <span className="drawer-meta__label">{t('drawer.weight')}</span>
-            <span className="drawer-meta__value is-mono">{ev.weight}%</span>
-          </div>
-          <div className="drawer-meta__row">
             <span className="drawer-meta__label">{t('drawer.date')}</span>
-            <span className="drawer-meta__value is-mono">{ev.day} {ev.month}</span>
-          </div>
-          <div className="drawer-meta__row">
-            <span className="drawer-meta__label">{t('drawer.time')}</span>
-            <span className="drawer-meta__value is-mono">{ev.time}</span>
+            <span className="drawer-meta__value is-mono">{ev.day} {ev.month} · {ev.time}</span>
           </div>
           <div className="drawer-meta__row">
             <span className="drawer-meta__label">{t('drawer.location')}</span>
             <span className="drawer-meta__value">{ev.location}</span>
           </div>
           <div className="drawer-meta__row">
+            <span className="drawer-meta__label">{t('drawer.weight')}</span>
+            <span className="drawer-meta__value is-mono">{ev.weight}%</span>
+          </div>
+          <div className="drawer-meta__row">
             <span className="drawer-meta__label">{t('drawer.countdown')}</span>
-            <span className={countdownClass} style={{ color: countdownColor }}>{ev.countdown}</span>
+            <span className="drawer-meta__value is-mono" style={{ color: countdownColor }}>{ev.countdown}</span>
           </div>
         </div>
       </div>
@@ -72,11 +65,36 @@ function EvalDrawerBody({ ev }: { ev: MockEval }) {
         </div>
       </div>
 
+      <div className="drawer-section">
+        <div className="drawer-section__label">{t('drawer.studyPlan')}</div>
+        <div className="drawer-stats">
+          <div className="drawer-stat">
+            <div className="drawer-stat__label">{t('drawer.studyHours')}</div>
+            <div className="drawer-stat__value">{ev.estimatedHours}h</div>
+          </div>
+          <div className="drawer-stat">
+            <div className="drawer-stat__label">{t('drawer.completed')}</div>
+            <div className="drawer-stat__value">{completedCount}/{totalCount}</div>
+          </div>
+        </div>
+        <div className="drawer-checklist">
+          {steps.map((step, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`drawer-step${step.done ? ' is-done' : ''}`}
+              onClick={() => toggleStep(idx)}
+            >
+              <span className="drawer-step__check" aria-hidden>
+                <span className="material-symbols-outlined">check</span>
+              </span>
+              <span className="drawer-step__text">{step.text}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="drawer-actions">
-        <button type="button" className="btn btn-primary">
-          <span className="material-symbols-outlined">menu_book</span>
-          {t('drawer.openGuide')}
-        </button>
         <button type="button" className="btn btn-secondary">
           <span className="material-symbols-outlined">edit</span>
           {t('drawer.edit')}
@@ -167,7 +185,7 @@ function EvalRow({ ev, onOpen }: { ev: MockEval; onOpen: (id: string) => void })
         <button
           type="button"
           className="eval-card__guide"
-          onClick={(e) => { e.stopPropagation(); /* eslint-disable-next-line no-console */ console.log('[eval] guide', ev.id) }}
+          onClick={(e) => { e.stopPropagation(); onOpen(ev.id) }}
         >
           {t('evaluaciones.openGuide')}
           <span className="material-symbols-outlined">north_east</span>

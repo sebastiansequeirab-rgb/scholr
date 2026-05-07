@@ -4524,6 +4524,191 @@ button.card:hover {
 }
 .kan-card.is-done:hover { opacity: 0.82; }
 
+/* ─── Drag-and-drop states ─── */
+.kan-card.is-dragging {
+  opacity: 0.35;
+}
+.kan-card-overlay {
+  /* DragOverlay clone uses this on top of base .kan-card */
+  cursor: grabbing;
+  box-shadow: 0 14px 40px -10px color-mix(in srgb, #000 55%, transparent);
+  transform: rotate(2deg);
+  background: var(--s-base);
+}
+.kan-col.is-over {
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--s-dim));
+  outline: 1.5px dashed color-mix(in srgb, var(--color-primary) 40%, transparent);
+  outline-offset: -2px;
+}
+.kan-col__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-outline);
+  border: 1px dashed var(--border-default);
+  border-radius: 10px;
+}
+.kan-card__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--s-base);
+  color: var(--color-outline);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s ease, color .15s ease, background-color .15s ease;
+}
+.kan-card:hover .kan-card__delete { opacity: 1; }
+.kan-card__delete:hover {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.kan-card__delete .material-symbols-outlined { font-size: 13px !important; }
+
+/* ─── Inline quick-add ─── */
+.quick-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--s-low);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+}
+.quick-add__input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--on-surface);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 4px 0;
+}
+.quick-add__input::placeholder {
+  color: var(--color-outline);
+}
+.quick-add__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.quick-add__select {
+  background: var(--s-base);
+  color: var(--on-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.quick-add__hint {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--color-outline);
+  margin-left: auto;
+}
+
+/* ─── Drawer study plan ─── */
+.drawer-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.drawer-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--s-low);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+  text-align: left;
+  width: 100%;
+}
+.drawer-step:hover { background: var(--s-base); border-color: var(--border-default); }
+.drawer-step__check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-default);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  color: transparent;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.drawer-step.is-done .drawer-step__check {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--on-primary, #fff);
+}
+.drawer-step.is-done .drawer-step__check .material-symbols-outlined { font-size: 13px !important; }
+.drawer-step__text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--on-surface);
+  line-height: 1.45;
+}
+.drawer-step.is-done .drawer-step__text {
+  color: var(--on-surface-variant);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-outline);
+}
+.drawer-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.drawer-stat {
+  padding: 12px;
+  background: var(--s-low);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+.drawer-stat__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+}
+.drawer-stat__value {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
 /* ─── FAB ─── */
 .fab-new {
   position: fixed;
