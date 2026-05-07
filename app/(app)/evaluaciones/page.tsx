@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/hooks/useTranslation'
 import { subjectTag } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -8,6 +9,8 @@ import { computeAlertDueLabel, computeIsoWeek, computeWeightedAvg, subjectInfo }
 import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 import { SideDrawer } from '@/components/ui/SideDrawer'
 import type { ActivityType, Exam, StudyStep, Subject, Task } from '@/types'
+
+const ACTIVITY_TYPES: ActivityType[] = ['exam', 'workshop', 'activity', 'task', 'study_session']
 
 type Urgency = 'today' | 'tomorrow' | 'soon' | 'later' | 'past'
 type CountdownTone = 'danger' | 'warning' | 'muted'
@@ -200,6 +203,172 @@ function EvalRow({
       </div>
 
       <div className={countdownClass}>{row.countdown}</div>
+    </div>
+  )
+}
+
+// ─── Create form (Nueva evaluación) ──────────────────────────────────────
+function ExamCreateForm({
+  subjects,
+  onSaved,
+  onCancel,
+}: {
+  subjects: Subject[]
+  onSaved: () => void
+  onCancel: () => void
+}) {
+  const { t, language } = useTranslation()
+  const supabase = useMemo(() => createClient(), [])
+
+  const today = new Date().toISOString().slice(0, 10)
+  const [title, setTitle] = useState('')
+  const [subjectId, setSubjectId] = useState('')
+  const [date, setDate] = useState(today)
+  const [time, setTime] = useState('')
+  const [activityType, setActivityType] = useState<ActivityType>('exam')
+  const [percentage, setPercentage] = useState('')
+  const [location, setLocation] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    setError(null)
+    if (!title.trim()) {
+      setError(language === 'es' ? 'El título es obligatorio.' : 'Title is required.')
+      return
+    }
+    setSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSaving(false); setError(language === 'es' ? 'No estás autenticado.' : 'Not authenticated.'); return }
+
+    const pctNum = percentage.trim() === '' ? null : Number(percentage)
+    const insert = {
+      user_id: user.id,
+      title: title.trim(),
+      subject_id: subjectId || null,
+      exam_date: date,
+      exam_time: time || null,
+      location: location.trim() || null,
+      activity_type: activityType,
+      percentage: pctNum != null && !isNaN(pctNum) ? pctNum : null,
+      study_plan: [],
+      estimated_hours: null,
+    }
+    const { error: dbErr } = await supabase.from('exams').insert(insert)
+    setSaving(false)
+    if (dbErr) {
+      setError(dbErr.message)
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <div className="drawer-form">
+      <div className="drawer-form__field">
+        <label className="drawer-form__label">{t('drawer.detail')}</label>
+        <input
+          className="drawer-form__input"
+          autoFocus
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={language === 'es' ? 'Ej. Parcial Cálculo I' : 'e.g. Calculus midterm'}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit() }}
+        />
+      </div>
+
+      <div className="drawer-form__field">
+        <label className="drawer-form__label">{t('drawer.subject')}</label>
+        <select
+          className="drawer-form__select"
+          value={subjectId}
+          onChange={(e) => setSubjectId(e.target.value)}
+        >
+          <option value="">{language === 'es' ? 'Sin materia' : 'No subject'}</option>
+          {subjects.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="drawer-form__field">
+        <label className="drawer-form__label">{t('drawer.type')}</label>
+        <div className="drawer-form__type-grid">
+          {ACTIVITY_TYPES.map(at => (
+            <button
+              key={at}
+              type="button"
+              className={`drawer-form__type${activityType === at ? ' is-active' : ''}`}
+              onClick={() => setActivityType(at)}
+            >
+              {t(`evaluaciones.activity.${at}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="drawer-form__row">
+        <div className="drawer-form__field">
+          <label className="drawer-form__label">{t('drawer.date')}</label>
+          <input
+            className="drawer-form__input"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+        <div className="drawer-form__field">
+          <label className="drawer-form__label">{t('drawer.time')}</label>
+          <input
+            className="drawer-form__input"
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="drawer-form__row">
+        <div className="drawer-form__field">
+          <label className="drawer-form__label">{t('drawer.weight')}</label>
+          <input
+            className="drawer-form__input"
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            value={percentage}
+            onChange={(e) => setPercentage(e.target.value)}
+            placeholder="—"
+          />
+        </div>
+        <div className="drawer-form__field">
+          <label className="drawer-form__label">{t('drawer.location')}</label>
+          <input
+            className="drawer-form__input"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder={language === 'es' ? 'Aula, campus virtual…' : 'Room, online…'}
+          />
+        </div>
+      </div>
+
+      {error && <div className="drawer-form__error">{error}</div>}
+
+      <div className="drawer-actions">
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={saving}
+          onClick={submit}
+        >
+          <span className="material-symbols-outlined">check</span>
+          {saving ? '…' : (t('common.save') || (language === 'es' ? 'Guardar' : 'Save'))}
+        </button>
+        <button type="button" className="btn btn-secondary" disabled={saving} onClick={onCancel}>
+          {t('drawer.close')}
+        </button>
+      </div>
     </div>
   )
 }
@@ -482,11 +651,15 @@ export default function EvaluacionesPage() {
   const { t, language } = useTranslation()
   const supabase = useMemo(() => createClient(), [])
 
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [exams, setExams] = useState<Exam[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [drawerId, setDrawerId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
 
   const fetchAll = useCallback(async () => {
     const [ex, sb, tk] = await Promise.all([
@@ -532,6 +705,14 @@ export default function EvaluacionesPage() {
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [supabase, fetchAll])
+
+  // Auto-open create form when arriving via ?new=1
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setCreating(true)
+      router.replace('/evaluaciones', { scroll: false })
+    }
+  }, [searchParams, router])
 
   // Derive upcoming rows
   const todayISO = new Date().toISOString().slice(0, 10)
@@ -602,6 +783,10 @@ export default function EvaluacionesPage() {
             <span className="material-symbols-outlined">tune</span>
             {t('evaluaciones.filter')}
           </button>
+          <button type="button" className="btn-new" onClick={() => setCreating(true)}>
+            <span className="material-symbols-outlined">add</span>
+            {t('evaluaciones.add')}
+          </button>
         </div>
       </header>
 
@@ -626,12 +811,22 @@ export default function EvaluacionesPage() {
       )}
 
       <SideDrawer
-        open={!!drawerId}
-        onClose={() => setDrawerId(null)}
-        kicker={t('drawer.detail')}
-        title={drawerExam ? drawerExam.title : ''}
+        open={creating || !!drawerId}
+        onClose={() => { setCreating(false); setDrawerId(null) }}
+        kicker={creating
+          ? (language === 'es' ? 'Nueva' : 'New')
+          : t('drawer.detail')}
+        title={creating
+          ? (language === 'es' ? 'Crear evaluación' : 'Create exam')
+          : (drawerExam ? drawerExam.title : '')}
       >
-        {drawerExam && (
+        {creating ? (
+          <ExamCreateForm
+            subjects={subjects}
+            onSaved={() => { setCreating(false); fetchAll() }}
+            onCancel={() => setCreating(false)}
+          />
+        ) : drawerExam && (
           <EvalDrawerBody
             exam={drawerExam}
             subjects={subjects}

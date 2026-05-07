@@ -88,7 +88,14 @@ export function Topbar() {
             <span className="material-symbols-outlined">dark_mode</span>
           </button>
         </div>
-        <Link href="/planner?create=task" className="btn-new">
+        <Link
+          href={
+            pathname.startsWith('/evaluaciones') ? '/evaluaciones?new=1' :
+            pathname.startsWith('/notes')        ? '/notes?new=1' :
+            '/tareas?new=1'
+          }
+          className="btn-new"
+        >
           <span className="material-symbols-outlined">add</span>
           {language === 'es' ? 'Nuevo' : 'New'}
         </Link>

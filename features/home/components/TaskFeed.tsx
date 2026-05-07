@@ -68,7 +68,7 @@ export function TaskFeed({ tasks, subjects }: { tasks: Task[]; subjects: Subject
             </span>
           )}
         </h2>
-        <a href="/planner"
+        <a href="/tareas"
           className="mono text-[10px] uppercase tracking-widest transition-opacity hover:opacity-60"
           style={{ color: 'var(--color-primary)' }}>
           {t('dashboard.viewAll')}

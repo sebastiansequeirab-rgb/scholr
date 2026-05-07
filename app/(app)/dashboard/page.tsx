@@ -143,7 +143,7 @@ export default async function DashboardPage() {
         title: top.text,
         meta: sub ? `${sub.name} · ${t('dashboard.todayCloses') || 'Cierra hoy 23:59'}` : '',
         deadlineISO,
-        href: '/planner',
+        href: '/tareas',
       }
     }
     if (nextExam) {
@@ -155,7 +155,7 @@ export default async function DashboardPage() {
           title: nextExam.title,
           meta: sub ? sub.name : '',
           deadlineISO: `${nextExam.exam_date}T23:59:00`,
-          href: '/planner',
+          href: '/evaluaciones',
         }
       }
     }
@@ -448,7 +448,7 @@ export default async function DashboardPage() {
                 <span className="dash-col__count">{pendingTasks.length}</span>
               )}
             </div>
-            <Link href="/planner" className="dash-col__more">
+            <Link href="/tareas" className="dash-col__more">
               {t('dashboard.viewAll')}
               <span className="material-symbols-outlined">chevron_right</span>
             </Link>
@@ -517,7 +517,7 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <Link href="/planner?create=task" className="dash-col__add">
+          <Link href="/tareas?new=1" className="dash-col__add">
             <span className="material-symbols-outlined">add</span>
             {t('dashboard.addTaskCta') || 'Agregar tarea'}
           </Link>
@@ -533,7 +533,7 @@ export default async function DashboardPage() {
                 <span className="dash-col__count">{upcomingExams.length}</span>
               )}
             </div>
-            <Link href="/planner" className="dash-col__more">
+            <Link href="/evaluaciones" className="dash-col__more">
               {t('dashboard.viewAll')}
               <span className="material-symbols-outlined">chevron_right</span>
             </Link>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   DndContext,
   DragOverlay,
@@ -179,6 +180,7 @@ function KanColumn({
   onOpen,
   onDelete,
   onAdd,
+  autoOpenAdd,
 }: {
   col: TaskCol
   items: Task[]
@@ -186,6 +188,7 @@ function KanColumn({
   onOpen: (id: string) => void
   onDelete: (id: string) => void
   onAdd: (col: TaskCol, title: string, subjectId: string | null) => Promise<void>
+  autoOpenAdd?: boolean
 }) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: `col-${col}`, data: { col } })
@@ -193,6 +196,10 @@ function KanColumn({
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
   const [subjectIdx, setSubjectIdx] = useState(0)
+
+  useEffect(() => {
+    if (autoOpenAdd) setAdding(true)
+  }, [autoOpenAdd])
 
   const subjectOptions = useMemo<(Subject | null)[]>(
     () => [null, ...subjects],
@@ -379,10 +386,22 @@ export default function TareasPage() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [drawerId, setDrawerId] = useState<string | null>(null)
 
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [autoOpenPending, setAutoOpenPending] = useState(false)
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
+
+  // Auto-open the Pendientes quick-add when arriving via ?new=1
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setAutoOpenPending(true)
+      router.replace('/tareas', { scroll: false })
+    }
+  }, [searchParams, router])
 
   const fetchAll = useCallback(async () => {
     const [tk, sb, ex] = await Promise.all([
@@ -571,6 +590,7 @@ export default function TareasPage() {
               onOpen={openCard}
               onDelete={deleteCard}
               onAdd={addCard}
+              autoOpenAdd={col === 'pending' && autoOpenPending}
             />
           ))}
         </section>

@@ -610,13 +610,13 @@ export function EvaluationImportWizard({ language, onDone }: Props) {
           <span className="font-mono tabular">{savedCount}</span> <span className="serif">{t('evaluaciones registradas', 'evaluations saved')}</span>
         </p>
         <p className="text-xs mt-1" style={{ color: 'var(--color-outline)' }}>
-          {t('Ya aparecen en tu Planner.', 'They now appear in your Planner.')}
+          {t('Ya aparecen en tus evaluaciones.', 'They now appear in your evaluations.')}
         </p>
       </div>
       <div className="flex gap-3">
-        <a href="/planner" className="btn btn-primary text-sm">
-          <span className="material-symbols-outlined">checklist</span>
-          {t('Ver Planner', 'View Planner')}
+        <a href="/evaluaciones" className="btn btn-primary text-sm">
+          <span className="material-symbols-outlined">edit_note</span>
+          {t('Ver evaluaciones', 'View evaluations')}
         </a>
       </div>
       <button onClick={() => { reset(); onDone() }}
