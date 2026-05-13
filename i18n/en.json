@@ -572,8 +572,8 @@
   },
   "teacher": {
     "nav": {
-      "dashboard": "Panel",
-      "panel": "Panel",
+      "dashboard": "Home",
+      "panel": "Home",
       "courses": "Courses",
       "grades": "Grades",
       "announcements": "Announcements",
