@@ -227,12 +227,16 @@ export default async function DashboardPage() {
   const todayClassesCount = todaySchedules.length
 
   // Pending tasks for the "Tareas" col, sorted by due date.
-  // Filter placeholder items lacking minimum metadata.
+  // Hide tasks overdue by more than 7 days (still visible on /tareas).
   const pendingTasks = allTasks
     .filter(t => {
       if (t.is_done) return false
-      const text = (t.text ?? '').trim()
-      if (text.length < 3 && !t.due_date && !t.notes) return false
+      if (t.due_date) {
+        const overdueDays = Math.round(
+          (new Date(todayStr).getTime() - new Date(t.due_date).getTime()) / 86400000,
+        )
+        if (overdueDays > 7) return false
+      }
       return true
     })
     .sort((a, b) => {
