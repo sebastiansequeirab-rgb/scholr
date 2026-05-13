@@ -91,19 +91,14 @@ export function TasksList({
               onClick={() => setOpenId(task.id)}
               aria-label={task.text}
             >
+              <div className="task-row__when-left">
+                {dueLabel && <strong>{dueLabel}</strong>}
+                {dueTime && <span>{dueTime}</span>}
+              </div>
               <div className="task-row__bar" />
               <div className="task-row__body">
-                <div className="task-row__head">
-                  {sub && <span className="task-row__chip">{subjCode}</span>}
-                  <span className="task-row__title truncate">{task.text}</span>
-                </div>
-                {(dueLabel || dueTime) && (
-                  <span className="task-row__when">
-                    <span className="material-symbols-outlined">schedule</span>
-                    {dueLabel}
-                    {dueLabel && dueTime ? ` · ${dueTime}` : dueTime}
-                  </span>
-                )}
+                {sub && <span className="task-row__chip">{subjCode}</span>}
+                <span className="task-row__title">{task.text}</span>
               </div>
               <span className={`task-row__prio task-row__prio--${prio}`}>
                 {priorityLabel(prio, lang)}

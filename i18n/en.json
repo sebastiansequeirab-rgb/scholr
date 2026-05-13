@@ -136,7 +136,12 @@
     "statCompleted": "Done",
     "statUrgent": "Urgent",
     "statWeek": "This week",
-    "statUpcoming": "Upcoming"
+    "statUpcoming": "Upcoming",
+    "expiredLabel": "Closed",
+    "expiredCopy": "Closed today",
+    "morningGreet": "Good morning",
+    "afternoonGreet": "Good afternoon",
+    "eveningGreet": "Good evening"
   },
   "feeds": {
     "tasks": "Tasks",

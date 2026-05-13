@@ -6,8 +6,9 @@ import { useTranslation } from '@/hooks/useTranslation'
 
 /**
  * Banner urgente con countdown vivo "HH:MM" hasta el deadline.
- * Si el deadline ya pasó, muestra "00:00".
- * Si está a más de 24h, cae a un formato "Xd HHh".
+ * - Si quedan minutos: countdown vivo.
+ * - Si ya venció pero hace <24h: estado "Vencida" (sin countdown).
+ * - Si pasó más de 24h: no renderiza.
  */
 export function UrgentCountdown({
   href,
@@ -16,7 +17,7 @@ export function UrgentCountdown({
   meta,
 }: {
   href: string
-  deadlineISO: string  // full ISO datetime; for date-only use we caller pads to T23:59
+  deadlineISO: string
   title: string
   meta?: string
 }) {
@@ -24,14 +25,21 @@ export function UrgentCountdown({
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
-    const id = setInterval(() => setTick(n => n + 1), 60_000) // refresh every minute
+    const id = setInterval(() => setTick(n => n + 1), 60_000)
     return () => clearInterval(id)
   }, [])
 
   const deadline = new Date(deadlineISO).getTime()
   const now = Date.now()
-  const diffMs = Math.max(0, deadline - now)
-  const totalMin = Math.floor(diffMs / 60000)
+  const diffMs = deadline - now
+  void tick
+
+  // Pasó hace más de 24h → ocultar
+  if (diffMs < -24 * 60 * 60 * 1000) return null
+
+  const expired = diffMs <= 0
+
+  const totalMin = Math.floor(Math.max(0, diffMs) / 60000)
   const days = Math.floor(totalMin / (24 * 60))
   const hours = Math.floor((totalMin % (24 * 60)) / 60)
   const mins = totalMin % 60
@@ -40,16 +48,19 @@ export function UrgentCountdown({
     ? `${days}d ${hours.toString().padStart(2, '0')}h`
     : `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
 
-  // touch tick to keep React happy (linter)
-  void tick
-
   return (
-    <Link href={href} className="urgent-banner-2">
-      <span className="urgent-banner-2__pill">
-        <span className="material-symbols-outlined">flag</span>
-        {t('dashboard.urgentLabel')}
+    <Link href={href} className={`urgent-banner-2${expired ? ' urgent-banner-2--expired' : ''}`}>
+      <span className={`urgent-banner-2__pill${expired ? ' urgent-banner-2__pill--expired' : ''}`}>
+        <span className="material-symbols-outlined">{expired ? 'block' : 'flag'}</span>
+        {expired ? t('dashboard.expiredLabel') : t('dashboard.urgentLabel')}
       </span>
-      <span className="urgent-banner-2__count">{countdown}</span>
+      {expired ? (
+        <span className="urgent-banner-2__count urgent-banner-2__count--expired">
+          {t('dashboard.expiredCopy')}
+        </span>
+      ) : (
+        <span className="urgent-banner-2__count">{countdown}</span>
+      )}
       <div className="urgent-banner-2__text">
         <strong>{title}</strong>
         {meta && <span className="meta"> · {meta}</span>}

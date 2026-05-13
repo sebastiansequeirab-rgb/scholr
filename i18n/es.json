@@ -136,7 +136,12 @@
     "statCompleted": "Hechas",
     "statUrgent": "Urgentes",
     "statWeek": "Esta semana",
-    "statUpcoming": "Próximas"
+    "statUpcoming": "Próximas",
+    "expiredLabel": "Vencida",
+    "expiredCopy": "Venció hoy",
+    "morningGreet": "Buenos días",
+    "afternoonGreet": "Buenas tardes",
+    "eveningGreet": "Buenas noches"
   },
   "feeds": {
     "tasks": "Tareas",

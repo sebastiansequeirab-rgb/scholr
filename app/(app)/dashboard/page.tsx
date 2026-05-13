@@ -2,10 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { Task, Exam, Subject, Schedule } from '@/types'
 import { getTranslator } from '@/lib/i18n/server'
-import { LiveClock } from '@/features/home/components/LiveClock'
 import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 import { UrgentCountdown } from '@/features/home/components/UrgentCountdown'
 import { DashboardRefresher } from '@/features/home/components/DashboardRefresher'
+import { GreetingTitle } from '@/features/home/components/GreetingTitle'
 import { AnnouncementsStrip, type DashAnnouncement } from '@/features/home/components/AnnouncementsStrip'
 import { AgendaList } from '@/features/home/components/AgendaList'
 import { TasksList } from '@/features/home/components/TasksList'
@@ -98,17 +98,20 @@ export default async function DashboardPage() {
     }
   }
 
-  const announcements: DashAnnouncement[] = annRows.map(a => ({
-    id: a.id,
-    title: a.title,
-    content: a.content,
-    priority: a.priority,
-    created_at: a.created_at,
-    teacherName: a.teacher_id ? (teacherNameMap[a.teacher_id] ?? null) : null,
-    subjectName: a.subjects?.name ?? null,
-    subjectColor: a.subjects?.color ?? null,
-    read: readSet.has(a.id),
-  }))
+  const announcements: DashAnnouncement[] = annRows
+    .map(a => ({
+      id: a.id,
+      title: a.title,
+      content: a.content,
+      priority: a.priority,
+      created_at: a.created_at,
+      teacherName: a.teacher_id ? (teacherNameMap[a.teacher_id] ?? null) : null,
+      subjectName: a.subjects?.name ?? null,
+      subjectColor: a.subjects?.color ?? null,
+      read: readSet.has(a.id),
+    }))
+    // Filter placeholder content from the home strip (item still exists on /anuncios)
+    .filter(a => (a.content?.trim().length ?? 0) > 0 || a.title.trim().length >= 4)
 
   const allTasks    = (tasks     || []) as Task[]
   const allExams    = examsWithGrades as Exam[]
@@ -140,13 +143,6 @@ export default async function DashboardPage() {
     .filter(s => s.day_of_week === todayDow)
     .sort((a, b) => a.start_time.localeCompare(b.start_time))
 
-  const greet = () => {
-    const h = nowDate.getHours()
-    if (h < 12) return t('dashboard.morning')
-    if (h < 18) return t('dashboard.afternoon')
-    return t('dashboard.evening')
-  }
-
   const firstName = profile?.full_name?.split(' ')[0] || t('dashboard.studentFallback')
 
   const nextExam = upcomingExams[0]
@@ -161,7 +157,7 @@ export default async function DashboardPage() {
       return {
         kind: 'task' as const,
         title: top.text,
-        meta: sub ? `${sub.name} · ${t('dashboard.todayCloses') || 'Cierra hoy 23:59'}` : '',
+        meta: sub ? sub.name : '',
         deadlineISO,
         href: '/tareas',
       }
@@ -230,9 +226,15 @@ export default async function DashboardPage() {
   // ── Stats for the hero pills ──
   const todayClassesCount = todaySchedules.length
 
-  // Pending tasks for the "Tareas" col, sorted by due date
+  // Pending tasks for the "Tareas" col, sorted by due date.
+  // Filter placeholder items lacking minimum metadata.
   const pendingTasks = allTasks
-    .filter(t => !t.is_done)
+    .filter(t => {
+      if (t.is_done) return false
+      const text = (t.text ?? '').trim()
+      if (text.length < 3 && !t.due_date && !t.notes) return false
+      return true
+    })
     .sort((a, b) => {
       const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity
       const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity
@@ -254,56 +256,47 @@ export default async function DashboardPage() {
 
       {/* ─────────── GREETING HERO ─────────── */}
       <section className="dash-hero">
-        <div className="min-w-0">
-          <span className="dash-hero__eyebrow">
-            {t('dashboard.brandTag')} · {t('dashboard.assistantTag') || 'Asistente Académico'}
-          </span>
-          <h1 className="dash-hero__title">
-            {greet()}, <span className="serif">{firstName}</span>.
-          </h1>
+        <GreetingTitle firstName={firstName} />
 
-          <div className="dash-hero__stats">
-            {/* Hechas — Clases hoy */}
-            <div className="dash-hero__stat">
-              <span className="material-symbols-outlined">check_circle</span>
-              <span className="dash-hero__stat-num">{completedCount}</span>
-              <span className="dash-hero__stat-eyebrow">{t('dashboard.statCompleted')}</span>
-              <span className="dash-hero__stat-label">
-                {todayClassesCount} {language === 'es' ? 'clases hoy' : 'classes today'}
-              </span>
-            </div>
+        <div className="dash-hero__stats">
+          {/* Hechas — Clases hoy */}
+          <div className="dash-hero__stat">
+            <span className="material-symbols-outlined">check_circle</span>
+            <span className="dash-hero__stat-num">{completedCount}</span>
+            <span className="dash-hero__stat-eyebrow">{t('dashboard.statCompleted')}</span>
+            <span className="dash-hero__stat-label">
+              {todayClassesCount} {language === 'es' ? 'clases hoy' : 'classes today'}
+            </span>
+          </div>
 
-            {/* Urgentes — Pendiente */}
-            <div className={`dash-hero__stat ${urgentTasks.length > 0 ? 'dash-hero__stat--urgent' : ''}`}>
-              <span className="material-symbols-outlined">priority_high</span>
-              <span className="dash-hero__stat-num">{urgentTasks.length}</span>
-              <span className="dash-hero__stat-eyebrow">{language === 'es' ? 'URGENTE' : 'URGENT'}</span>
-              <span className="dash-hero__stat-label">
-                {urgentTasks.length === 1
-                  ? (language === 'es' ? 'Pendiente' : 'Pending')
-                  : (language === 'es' ? 'Pendientes' : 'Pending')}
-              </span>
-            </div>
+          {/* Urgentes — Pendiente */}
+          <div className={`dash-hero__stat ${urgentTasks.length > 0 ? 'dash-hero__stat--urgent' : ''}`}>
+            <span className="material-symbols-outlined">priority_high</span>
+            <span className="dash-hero__stat-num">{urgentTasks.length}</span>
+            <span className="dash-hero__stat-eyebrow">{language === 'es' ? 'URGENTE' : 'URGENT'}</span>
+            <span className="dash-hero__stat-label">
+              {urgentTasks.length === 1
+                ? (language === 'es' ? 'Pendiente' : 'Pending')
+                : (language === 'es' ? 'Pendientes' : 'Pending')}
+            </span>
+          </div>
 
-            {/* Esta sem — Tareas */}
-            <div className="dash-hero__stat">
-              <span className="material-symbols-outlined">task_alt</span>
-              <span className="dash-hero__stat-num">{weekTasks}</span>
-              <span className="dash-hero__stat-eyebrow">{language === 'es' ? 'ESTA SEM.' : 'THIS WEEK'}</span>
-              <span className="dash-hero__stat-label">{language === 'es' ? 'Tareas' : 'Tasks'}</span>
-            </div>
+          {/* Esta sem — Tareas */}
+          <div className="dash-hero__stat">
+            <span className="material-symbols-outlined">task_alt</span>
+            <span className="dash-hero__stat-num">{weekTasks}</span>
+            <span className="dash-hero__stat-eyebrow">{language === 'es' ? 'ESTA SEM.' : 'THIS WEEK'}</span>
+            <span className="dash-hero__stat-label">{language === 'es' ? 'Tareas' : 'Tasks'}</span>
+          </div>
 
-            {/* Próximas — Evaluaciones */}
-            <div className="dash-hero__stat">
-              <span className="material-symbols-outlined">edit_calendar</span>
-              <span className="dash-hero__stat-num">{upcomingExams.length}</span>
-              <span className="dash-hero__stat-eyebrow">{t('dashboard.statUpcoming')}</span>
-              <span className="dash-hero__stat-label">{language === 'es' ? 'Evaluaciones' : 'Evaluations'}</span>
-            </div>
+          {/* Próximas — Evaluaciones */}
+          <div className="dash-hero__stat">
+            <span className="material-symbols-outlined">edit_calendar</span>
+            <span className="dash-hero__stat-num">{upcomingExams.length}</span>
+            <span className="dash-hero__stat-eyebrow">{t('dashboard.statUpcoming')}</span>
+            <span className="dash-hero__stat-label">{language === 'es' ? 'Evaluaciones' : 'Evaluations'}</span>
           </div>
         </div>
-
-        <LiveClock />
       </section>
 
       {/* ─────────── URGENT BANNER ─────────── */}
@@ -338,11 +331,13 @@ export default async function DashboardPage() {
             </Link>
           </div>
 
-          {todaySchedules.length === 0 ? (
-            <EmptyToday t={t} h={nowDate.getHours()} />
-          ) : (
-            <AgendaList schedules={todaySchedules} subjects={allSubjects} />
-          )}
+          <div className="dash-col__items">
+            {todaySchedules.length === 0 ? (
+              <EmptyToday t={t} h={nowDate.getHours()} />
+            ) : (
+              <AgendaList schedules={todaySchedules} subjects={allSubjects} />
+            )}
+          </div>
         </section>
 
         {/* ── Tareas (sin tabs) ── */}
@@ -361,13 +356,15 @@ export default async function DashboardPage() {
             </Link>
           </div>
 
-          {pendingTasks.length === 0 ? (
-            <p className="text-[12px]" style={{ color: 'var(--color-outline)', padding: '8px 0' }}>
-              {t('feeds.noTasks') || 'Sin tareas pendientes'}
-            </p>
-          ) : (
-            <TasksList tasks={pendingTasks} subjects={allSubjects} todayStr={todayStr} />
-          )}
+          <div className="dash-col__items">
+            {pendingTasks.length === 0 ? (
+              <p className="text-[12px]" style={{ color: 'var(--color-outline)', padding: '8px 0' }}>
+                {t('feeds.noTasks') || 'Sin tareas pendientes'}
+              </p>
+            ) : (
+              <TasksList tasks={pendingTasks} subjects={allSubjects} todayStr={todayStr} />
+            )}
+          </div>
 
           <Link href="/tareas?new=1" className="dash-col__add">
             <span className="material-symbols-outlined">add</span>
@@ -391,13 +388,15 @@ export default async function DashboardPage() {
             </Link>
           </div>
 
-          {upcomingExams.length === 0 ? (
-            <p className="text-[12px]" style={{ color: 'var(--color-outline)', padding: '8px 0' }}>
-              {t('feeds.noActivities') || 'Sin actividades próximas'}
-            </p>
-          ) : (
-            <EvaluationsList exams={upcomingExams} subjects={allSubjects} todayStr={todayStr} />
-          )}
+          <div className="dash-col__items">
+            {upcomingExams.length === 0 ? (
+              <p className="text-[12px]" style={{ color: 'var(--color-outline)', padding: '8px 0' }}>
+                {t('feeds.noActivities') || 'Sin actividades próximas'}
+              </p>
+            ) : (
+              <EvaluationsList exams={upcomingExams} subjects={allSubjects} todayStr={todayStr} />
+            )}
+          </div>
         </section>
       </div>
     </div>

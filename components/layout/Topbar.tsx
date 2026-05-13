@@ -72,22 +72,17 @@ export function Topbar() {
       </div>
 
       <div className="topbar__actions">
-        <div className="theme-toggle" suppressHydrationWarning>
-          <button
-            className={isLight ? 'active' : ''}
-            onClick={() => setTheme('light')}
-            aria-label="Light mode"
-          >
-            <span className="material-symbols-outlined">light_mode</span>
-          </button>
-          <button
-            className={!isLight ? 'active' : ''}
-            onClick={() => setTheme('dark')}
-            aria-label="Dark mode"
-          >
-            <span className="material-symbols-outlined">dark_mode</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={() => setTheme(isLight ? 'dark' : 'light')}
+          aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
+          suppressHydrationWarning
+        >
+          <span className="material-symbols-outlined">
+            {isLight ? 'dark_mode' : 'light_mode'}
+          </span>
+        </button>
         <Link
           href={
             pathname.startsWith('/evaluaciones') ? '/evaluaciones?new=1' :
