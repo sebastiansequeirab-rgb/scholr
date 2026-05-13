@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { uniqueById, subjectTag } from '@/lib/utils'
@@ -102,10 +103,19 @@ export default function CalendarPage() {
   const [now,     setNow]     = useState<Date>(() => new Date())
   const [picked,  setPicked]  = useState<CalEvent | null>(null)
 
-  // Mobile bumps default to day view
+  const searchParams = useSearchParams()
+
+  // Apply ?view=day|week|month from URL (used by the dashboard "Agenda" link)
   useEffect(() => {
+    const v = searchParams.get('view')
+    if (v === 'day' || v === 'week' || v === 'month') setView(v)
+  }, [searchParams])
+
+  // Mobile bumps default to day view (only when no explicit ?view= override)
+  useEffect(() => {
+    if (searchParams.get('view')) return
     if (window.innerWidth < 768) setView('day')
-  }, [])
+  }, [searchParams])
 
   // Tick "now" every minute for live indicators
   useEffect(() => {
