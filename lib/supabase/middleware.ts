@@ -28,14 +28,6 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-
-  // /teacher (root) → /teacher/dashboard. Then the rest of the rules below
-  // still apply (auth check, role check, etc.) for the redirected path.
-  if (pathname === '/teacher') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/teacher/dashboard'
-    return NextResponse.redirect(url)
-  }
   const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname.startsWith('/auth/callback')
   const isStudentRoute = pathname.startsWith('/dashboard') ||
     pathname.startsWith('/calendar') ||
