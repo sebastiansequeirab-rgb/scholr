@@ -702,6 +702,9 @@ export default function EvaluacionesPage() {
     fetchAll()
     const ch = supabase.channel('evaluaciones-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'exams' }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'exam_grades' }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, fetchAll)
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [supabase, fetchAll])

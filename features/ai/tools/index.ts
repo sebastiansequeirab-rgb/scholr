@@ -176,6 +176,14 @@ export const TOOL_DECLARATIONS: ToolDefinition[] = [
   {
     type: 'function',
     function: {
+      name: 'get_full_student_context',
+      description: 'Snapshot consolidado del estudiante: perfil, todas las materias con promedios, próximas evaluaciones, tareas pendientes, semana en curso y notas recientes. Usalo cuando necesites contexto académico amplio para responder bien (ej: "¿cómo voy?", "¿qué tengo esta semana?", "armame un plan"). Más eficiente que pedir 5 tools separadas.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'create_exam',
       description: 'Create a graded academic activity that appears in the Planner: exams, assignments, entregas, talleres, workshops, prácticas, or any activity with a percentage/grade. Use activity_type="task" for assignments/entregas/deliveries, "exam" for exams/parciales, "workshop" for talleres/prácticas, "activity" for general graded activities.',
       parameters: {
@@ -388,6 +396,165 @@ export async function executeTool(
         const earned  = examsWithGrades.filter(e => e.effective_grade != null).reduce((s, e) => s + (e.effective_grade! * (e.percentage ?? 0) / 100), 0)
         const pending = examsWithGrades.filter(e => e.effective_grade == null).reduce((s, e) => s + (20 * (e.percentage ?? 0) / 100), 0)
         return { ok: true, data: { exams: examsWithGrades, earned: +earned.toFixed(2), max_possible: +(earned + pending).toFixed(2) } }
+      }
+
+      case 'get_full_student_context': {
+        const today = new Date().toISOString().split('T')[0]
+        const [
+          profileRes,
+          subjectsRes,
+          examsRes,
+          tasksRes,
+          notesRes,
+          schedulesRes,
+        ] = await Promise.all([
+          db.from('profiles').select('full_name, role, language, is_premium, current_week, semester_weeks').eq('id', userId).single(),
+          db.from('subjects').select('id, name, professor, color, credits, accent, teacher_id').order('name'),
+          db.from('exams').select('id, title, exam_date, activity_type, percentage, grade, assigned_by, subject_id').gte('exam_date', '2000-01-01').order('exam_date'),
+          db.from('tasks').select('id, text, priority, due_date, status, is_done, subject_id').eq('user_id', userId).eq('is_done', false).order('due_date', { nullsFirst: false }).limit(20),
+          db.from('notes').select('id, title, content, subject_id, updated_at').eq('user_id', userId).order('updated_at', { ascending: false }).limit(8),
+          db.from('schedules').select('day_of_week, start_time, end_time, room, subject_id').eq('user_id', userId).order('day_of_week').order('start_time'),
+        ])
+
+        const subjects = (subjectsRes.data ?? []) as Array<{ id: string; name: string; professor: string | null; color: string; credits: number | null; accent: string | null; teacher_id: string | null }>
+        const exams = (examsRes.data ?? []) as Array<{ id: string; title: string; exam_date: string; activity_type: string; percentage: number | null; grade: number | null; assigned_by: string | null; subject_id: string | null }>
+        const tasks = (tasksRes.data ?? []) as Array<{ id: string; text: string; priority: string; due_date: string | null; status: string; is_done: boolean; subject_id: string | null }>
+        const notes = (notesRes.data ?? []) as Array<{ id: string; title: string | null; content: string | null; subject_id: string | null; updated_at: string }>
+        const schedules = (schedulesRes.data ?? []) as Array<{ day_of_week: number; start_time: string; end_time: string; room: string | null; subject_id: string | null }>
+
+        // Teacher grades overlay
+        const teacherExamIds = exams.filter(e => e.assigned_by != null).map(e => e.id)
+        const teacherGradeMap: Record<string, number | null> = {}
+        if (teacherExamIds.length > 0) {
+          const { data: grades } = await db
+            .from('exam_grades')
+            .select('exam_id, grade')
+            .eq('student_id', userId)
+            .in('exam_id', teacherExamIds)
+          for (const g of (grades ?? []) as { exam_id: string; grade: number | null }[]) {
+            teacherGradeMap[g.exam_id] = g.grade
+          }
+        }
+        const examsWithGrades = exams.map(e => ({
+          ...e,
+          effective_grade: e.assigned_by != null ? (teacherGradeMap[e.id] ?? null) : e.grade,
+        }))
+
+        // Averages per subject + overall
+        const subjectsWithAvg = subjects.map(s => {
+          const subjExams = examsWithGrades.filter(e => e.subject_id === s.id && e.percentage != null)
+          let earned = 0
+          let coverage = 0
+          for (const e of subjExams) {
+            if (e.effective_grade != null) {
+              earned += (e.effective_grade * (e.percentage ?? 0)) / 100
+              coverage += e.percentage ?? 0
+            }
+          }
+          const avg = coverage > 0 ? +(earned / (coverage / 100)).toFixed(2) : null
+          return {
+            id: s.id,
+            name: s.name,
+            professor: s.professor,
+            credits: s.credits,
+            accent: s.accent,
+            average: avg,
+            points_earned: +earned.toFixed(2),
+            coverage_pct: coverage,
+          }
+        })
+
+        // Overall weighted average by credits
+        let wSum = 0, cSum = 0
+        for (const s of subjectsWithAvg) {
+          if (s.average != null) {
+            const c = s.credits || 1
+            wSum += s.average * c
+            cSum += c
+          }
+        }
+        const overall = cSum > 0 ? +(wSum / cSum).toFixed(2) : null
+
+        // Upcoming exams (next 30 days)
+        const todayDate = new Date(today)
+        const in30 = new Date(todayDate.getTime() + 30 * 86400000).toISOString().split('T')[0]
+        const upcoming = examsWithGrades
+          .filter(e => e.exam_date >= today && e.exam_date <= in30 && e.activity_type !== 'study_session')
+          .slice(0, 10)
+          .map(e => ({
+            id: e.id,
+            title: e.title,
+            date: e.exam_date,
+            type: e.activity_type,
+            percentage: e.percentage,
+            subject: subjects.find(s => s.id === e.subject_id)?.name ?? null,
+          }))
+
+        // Weekly schedule grouped
+        const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+        const weeklySchedule: Record<string, unknown[]> = {}
+        for (const d of dayNames) weeklySchedule[d] = []
+        for (const s of schedules) {
+          const subj = subjects.find(x => x.id === s.subject_id)
+          weeklySchedule[dayNames[s.day_of_week]].push({
+            start: s.start_time?.slice(0, 5) ?? null,
+            end: s.end_time?.slice(0, 5) ?? null,
+            room: s.room,
+            subject: subj?.name ?? null,
+          })
+        }
+
+        // Notes snippets (plain text first 200 chars)
+        const recentNotes = notes.map(n => ({
+          id: n.id,
+          title: n.title ?? '',
+          subject: subjects.find(s => s.id === n.subject_id)?.name ?? null,
+          snippet: extractPlainText(n.title, n.content).slice(0, 200),
+          updated_at: n.updated_at,
+        }))
+
+        const profile = profileRes.data as {
+          full_name: string | null
+          role: string | null
+          language: string | null
+          is_premium: boolean | null
+          current_week: number | null
+          semester_weeks: number | null
+        } | null
+
+        return {
+          ok: true,
+          data: {
+            profile: {
+              name: profile?.full_name ?? null,
+              role: profile?.role ?? 'student',
+              language: profile?.language ?? 'es',
+              is_premium: profile?.is_premium ?? false,
+              current_week: profile?.current_week ?? null,
+              semester_weeks: profile?.semester_weeks ?? null,
+            },
+            today,
+            subjects: subjectsWithAvg,
+            overall_average: overall,
+            upcoming_exams: upcoming,
+            pending_tasks: tasks.map(tk => ({
+              id: tk.id,
+              text: tk.text,
+              priority: tk.priority,
+              due_date: tk.due_date,
+              status: tk.status,
+              subject: subjects.find(s => s.id === tk.subject_id)?.name ?? null,
+            })),
+            weekly_schedule: weeklySchedule,
+            recent_notes: recentNotes,
+            totals: {
+              subjects: subjects.length,
+              pending_tasks: tasks.length,
+              upcoming_exams: upcoming.length,
+              notes: notes.length,
+            },
+          },
+        }
       }
 
       case 'create_task': {

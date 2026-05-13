@@ -64,46 +64,55 @@ export function summarize(grades: GradeItem[]): GradeSummary {
 
   const totalWeight   = grades.reduce((s, g) => s + g.weight, 0)
   const doneWeight    = done.reduce((s, g) => s + g.weight, 0)
-  const pendingWeight = totalWeight - doneWeight
+  const pendingWeight = Math.max(0, totalWeight - doneWeight)
 
-  // Earned (already-rendered grades, scaled to 0..20)
-  const earnedFromDone = done.reduce(
-    (s, g) => s + (g.score! / (g.max || MAX_SCORE)) * MAX_SCORE * (g.weight / 100),
-    0,
-  )
+  // Puntos acumulados (escala 0-20, ponderados al peso total)
+  // Ej: examen 15/20 al 25% → contribuye 15 × 0.25 = 3.75 puntos
+  const pointsEarned = done.reduce((s, g) => {
+    const max = g.max || MAX_SCORE
+    const normalized = clamp((g.score! / max) * MAX_SCORE, 0, MAX_SCORE)
+    return s + normalized * (g.weight / 100)
+  }, 0)
 
+  // Promedio actual (de lo rendido) — qué nota promedio sacaste en lo que ya rendiste
   const currentAverage =
     doneWeight > 0
-      ? clamp(earnedFromDone / (doneWeight / 100), 0, MAX_SCORE)
+      ? clamp(pointsEarned / (doneWeight / 100), 0, MAX_SCORE)
       : null
 
-  // If pending grades match the current average, what's the projected final?
+  // Proyección final asumiendo que el resto pendiente sale igual al promedio actual
+  // = puntos_acumulados + promedio_actual × peso_pendiente / 100
   const projectedFinal =
     currentAverage != null
-      ? clamp(
-          earnedFromDone + (currentAverage / MAX_SCORE) * MAX_SCORE * (pendingWeight / 100),
-          0,
-          MAX_SCORE,
-        )
+      ? clamp(pointsEarned + currentAverage * (pendingWeight / 100), 0, MAX_SCORE)
       : null
 
-  // Average required on remaining weight to reach PASS
+  // Promedio mínimo necesario en lo pendiente para alcanzar PASS (9.5)
   let neededToPass: number | null = null
   if (pendingWeight > 0) {
-    neededToPass = clamp(((PASS - earnedFromDone) * 100) / pendingWeight, 0, MAX_SCORE)
-    // If the calc literally exceeds the scale, mark as Infinity (UI shows "imposible")
-    const rawNeed = ((PASS - earnedFromDone) * 100) / pendingWeight
-    if (rawNeed > MAX_SCORE) neededToPass = Infinity
+    const rawNeed = ((PASS - pointsEarned) * 100) / pendingWeight
+    neededToPass = rawNeed <= 0 ? 0 : (rawNeed > MAX_SCORE ? Infinity : rawNeed)
   } else if (currentAverage != null) {
     neededToPass = currentAverage >= PASS ? 0 : Infinity
   }
 
+  // Status: usar proyección final como guía
   let status: GradeStatus
-  if (currentAverage == null) status = 'pending'
-  else if (neededToPass != null && neededToPass > MAX_SCORE) status = 'fail'
-  else if (currentAverage >= PASS) status = 'pass'
-  else if (neededToPass != null && neededToPass > 14) status = 'risk'
-  else status = 'pass'
+  if (currentAverage == null) {
+    status = 'pending'
+  } else if (neededToPass != null && !Number.isFinite(neededToPass)) {
+    status = 'fail'
+  } else if (projectedFinal != null && projectedFinal >= PASS + 1.5) {
+    status = 'pass'
+  } else if (projectedFinal != null && projectedFinal >= PASS) {
+    status = 'pass'
+  } else if (currentAverage >= PASS && pendingWeight === 0) {
+    status = 'pass'
+  } else if (projectedFinal != null && projectedFinal >= 8) {
+    status = 'risk'
+  } else {
+    status = 'fail'
+  }
 
   return {
     currentAverage,
@@ -112,7 +121,7 @@ export function summarize(grades: GradeItem[]): GradeSummary {
     doneWeight,
     pendingWeight,
     totalWeight,
-    pointsEarned: earnedFromDone,
+    pointsEarned,
     pointsPossibleRemaining: pendingWeight / 5, // 100% = 20pts → 5% = 1pt
     pointsTotalScale: MAX_SCORE,
     status,

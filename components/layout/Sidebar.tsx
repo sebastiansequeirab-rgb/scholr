@@ -9,18 +9,27 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/hooks/useTranslation'
 import { getInitials } from '@/lib/utils'
 import { NAV_ITEMS, BOTTOM_NAV, MORE_ITEMS, MORE_PATHS, SIDE_MENU_ITEMS } from '@/config/nav'
+import { useAppSidebar } from './AppSidebarShell'
 import type { Profile } from '@/types'
 
 interface SidebarProps {
   profile: Profile | null
 }
 
+// Same grouping convention as the teacher sidebar
+const TOP_KEYS = new Set(['dashboard', 'calendar', 'subjects', 'tareas'])
+
 export function Sidebar({ profile }: SidebarProps) {
   const { t, language } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
   const { resolvedTheme } = useTheme()
-  const logoSrc = resolvedTheme === 'light' ? '/logo-icon-blue.png' : '/logo-icon-white.png'
+  const { collapsed, toggle } = useAppSidebar()
+
+  const fullLogo = resolvedTheme === 'light' ? '/logo-light.png' : '/logo-full-white.png'
+  const markLogo = resolvedTheme === 'light' ? '/logo-light-mark.png' : '/logo-icon-white.png'
+  const mobileLogo = resolvedTheme === 'light' ? '/logo-icon-blue.png' : '/logo-icon-white.png'
+
   const [mobileOpen, setMobileOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -37,7 +46,9 @@ export function Sidebar({ profile }: SidebarProps) {
   }
 
   const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + '/')
+    href === '/dashboard'
+      ? pathname === '/dashboard'
+      : pathname === href || pathname.startsWith(href + '/')
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartXRef.current = e.touches[0].clientX
@@ -50,6 +61,26 @@ export function Sidebar({ profile }: SidebarProps) {
   }
 
   const initials = profile?.full_name ? getInitials(profile.full_name) : 'SS'
+  const displayName = profile?.full_name || (language === 'es' ? 'Estudiante' : 'Student')
+
+  const topItems = NAV_ITEMS.filter(i => TOP_KEYS.has(i.key))
+  const generalItems = NAV_ITEMS.filter(i => !TOP_KEYS.has(i.key))
+
+  const renderItem = ({ key, href, icon }: { key: string; href: string; icon: string }) => {
+    const active = isActive(href)
+    return (
+      <Link
+        key={key}
+        href={href}
+        className={`t-sidebar__item ${active ? 'is-active' : ''}`}
+        aria-current={active ? 'page' : undefined}
+        title={collapsed ? t(`nav.${key}`) : undefined}
+      >
+        <span className="material-symbols-outlined">{icon}</span>
+        <span className="t-sidebar__item__label">{t(`nav.${key}`)}</span>
+      </Link>
+    )
+  }
 
   return (
     <>
@@ -59,11 +90,16 @@ export function Sidebar({ profile }: SidebarProps) {
         style={{ borderBottom: '1px solid var(--border-subtle)' }}
       >
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-7 h-7 rounded-[9px] flex items-center justify-center"
-            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
-            <Image src={logoSrc} alt="Skolar" width={18} height={18} priority />
+          <div
+            className="w-7 h-7 rounded-[9px] flex items-center justify-center"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}
+          >
+            <Image src={mobileLogo} alt="Skolar" width={18} height={18} priority />
           </div>
-          <span className="text-[15px] font-bold tracking-tight" style={{ color: 'var(--on-surface)', letterSpacing: '-0.015em' }}>
+          <span
+            className="text-[15px] font-bold tracking-tight"
+            style={{ color: 'var(--on-surface)', letterSpacing: '-0.015em' }}
+          >
             Skolar
           </span>
         </Link>
@@ -71,7 +107,7 @@ export function Sidebar({ profile }: SidebarProps) {
           onClick={() => setMobileOpen(true)}
           className="w-9 h-9 flex items-center justify-center rounded-[10px] active:scale-95 transition-transform"
           style={{ color: 'var(--color-outline)' }}
-          aria-label="Abrir menú"
+          aria-label={language === 'es' ? 'Abrir menú' : 'Open menu'}
         >
           <span className="material-symbols-outlined text-[20px]">menu</span>
         </button>
@@ -100,7 +136,9 @@ export function Sidebar({ profile }: SidebarProps) {
                 <span
                   className="w-9 h-7 rounded-lg flex items-center justify-center transition-colors"
                   style={{
-                    backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)' : 'transparent',
+                    backgroundColor: active
+                      ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)'
+                      : 'transparent',
                   }}
                 >
                   <span
@@ -139,7 +177,9 @@ export function Sidebar({ profile }: SidebarProps) {
                 <span
                   className="w-9 h-7 rounded-lg flex items-center justify-center transition-colors"
                   style={{
-                    backgroundColor: moreActive ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)' : 'transparent',
+                    backgroundColor: moreActive
+                      ? 'color-mix(in srgb, var(--color-primary) 16%, transparent)'
+                      : 'transparent',
                   }}
                 >
                   <span
@@ -215,8 +255,10 @@ export function Sidebar({ profile }: SidebarProps) {
                     >
                       {icon}
                     </span>
-                    <span className="text-[11px] font-semibold text-center leading-tight"
-                      style={{ color: active ? 'var(--color-primary)' : 'var(--on-surface)' }}>
+                    <span
+                      className="text-[11px] font-semibold text-center leading-tight"
+                      style={{ color: active ? 'var(--color-primary)' : 'var(--on-surface)' }}
+                    >
                       {t(`nav.${key}`)}
                     </span>
                   </Link>
@@ -267,19 +309,34 @@ export function Sidebar({ profile }: SidebarProps) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 flex-shrink-0"
-          style={{ height: '64px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
-            <div className="w-9 h-9 rounded-[10px] flex items-center justify-center"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}>
-              <Image src={logoSrc} alt="Skolar" width={22} height={22} />
+        <div
+          className="flex items-center justify-between px-5 flex-shrink-0"
+          style={{ height: '64px', borderBottom: '1px solid var(--border-subtle)' }}
+        >
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3"
+            onClick={() => setMobileOpen(false)}
+          >
+            <div
+              className="w-9 h-9 rounded-[10px] flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 14%, transparent)' }}
+            >
+              <Image src={mobileLogo} alt="Skolar" width={22} height={22} />
             </div>
             <div>
-              <span className="text-[16px] font-bold tracking-tight leading-none block"
-                style={{ color: 'var(--on-surface)', letterSpacing: '-0.018em' }}>Skolar</span>
-              <span className="text-[9px] uppercase tracking-[0.18em] font-mono leading-none"
-                style={{ color: 'var(--color-outline)' }}>Asistente Académico</span>
+              <span
+                className="text-[16px] font-bold tracking-tight leading-none block"
+                style={{ color: 'var(--on-surface)', letterSpacing: '-0.018em' }}
+              >
+                Skolar
+              </span>
+              <span
+                className="text-[9px] uppercase tracking-[0.18em] font-mono leading-none"
+                style={{ color: 'var(--color-outline)' }}
+              >
+                Asistente Académico
+              </span>
             </div>
           </Link>
           <button
@@ -290,29 +347,33 @@ export function Sidebar({ profile }: SidebarProps) {
               backgroundColor: 'var(--s-low)',
               border: '1px solid var(--border-subtle)',
             }}
-            aria-label="Cerrar menú"
+            aria-label={language === 'es' ? 'Cerrar menú' : 'Close menu'}
           >
             <span className="material-symbols-outlined text-[16px]">close</span>
           </button>
         </div>
 
-        {/* User block */}
         <div className="px-5 pt-4 pb-3">
           <div className="text-[12.5px] font-bold leading-none" style={{ color: 'var(--on-surface)' }}>
-            {profile?.full_name || 'Estudiante'}
+            {displayName}
           </div>
-          <div className="text-[9.5px] uppercase tracking-[0.16em] font-mono mt-1" style={{ color: 'var(--color-outline)' }}>
+          <div
+            className="text-[9.5px] uppercase tracking-[0.16em] font-mono mt-1"
+            style={{ color: 'var(--color-outline)' }}
+          >
             {profile?.is_premium ? 'PREMIUM · ALL ACCESS' : 'FREE'}
           </div>
         </div>
 
-        {/* Section label */}
         <div className="px-5 pt-2 pb-1">
-          <span className="text-[9px] uppercase tracking-[0.18em] font-mono font-semibold"
-            style={{ color: 'var(--color-outline)' }}>{language === 'es' ? 'Navegación' : 'Navigation'}</span>
+          <span
+            className="text-[9px] uppercase tracking-[0.18em] font-mono font-semibold"
+            style={{ color: 'var(--color-outline)' }}
+          >
+            {language === 'es' ? 'Navegación' : 'Navigation'}
+          </span>
         </div>
 
-        {/* Nav items */}
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto" aria-label="Side menu">
           {NAV_ITEMS.map(({ key, href, icon }) => {
             const active = isActive(href)
@@ -333,14 +394,18 @@ export function Sidebar({ profile }: SidebarProps) {
                     : 'transparent',
                 }}
               >
-                <span className="material-symbols-outlined text-[20px] flex-shrink-0"
-                  style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
+                <span
+                  className="material-symbols-outlined text-[20px] flex-shrink-0"
+                  style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}
+                >
                   {icon}
                 </span>
                 <span className="flex-1 leading-none">{t(`nav.${key}`)}</span>
                 {active && (
-                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: accentColor }} />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: accentColor }}
+                  />
                 )}
               </Link>
             )
@@ -363,8 +428,10 @@ export function Sidebar({ profile }: SidebarProps) {
                   fontSize: '13px',
                 }}
               >
-                <span className="material-symbols-outlined text-[18px] flex-shrink-0"
-                  style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
+                <span
+                  className="material-symbols-outlined text-[18px] flex-shrink-0"
+                  style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}
+                >
                   {icon}
                 </span>
                 <span className="flex-1 leading-none">{label}</span>
@@ -373,7 +440,6 @@ export function Sidebar({ profile }: SidebarProps) {
           })}
         </nav>
 
-        {/* Logout footer */}
         <div className="p-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           <button
             onClick={handleLogout}
@@ -391,78 +457,94 @@ export function Sidebar({ profile }: SidebarProps) {
         </div>
       </aside>
 
-      {/* ─────────── Desktop sidebar (narrow icon-only, 60px) ─────────── */}
+      {/* ─────────── Desktop sidebar (extendable, 240/72) ─────────── */}
       <aside
-        className="hidden lg:flex flex-col fixed top-0 left-0 h-full z-30 sidebar"
-        style={{ width: '60px' }}
+        className={`hidden lg:flex t-sidebar ${collapsed ? 'is-collapsed' : ''}`}
+        aria-label={t('nav.dashboard')}
       >
-        {/* Logo */}
-        <Link
-          href="/dashboard"
-          className="sidebar__logo group"
-          title="Skolar — Asistente Académico"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
-          }}
-        >
-          <Image src={logoSrc} alt="Skolar" width={22} height={22} priority />
-        </Link>
-
-        {/* Nav items */}
-        <nav className="sidebar__nav" aria-label="Main navigation">
-          {NAV_ITEMS.map(({ key, href, icon }) => {
-            const active = isActive(href)
-            const isAI = key === 'ai'
-            return (
-              <Link
-                key={key}
-                href={href}
-                title={t(`nav.${key}`)}
-                aria-current={pathname === href ? 'page' : undefined}
-                className={`sidebar__btn ${active ? 'active' : ''} ${isAI ? 'ai' : ''}`}
-              >
-                <span className="material-symbols-outlined">{icon}</span>
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="sidebar__divider" />
-
-        {/* Settings */}
-        <Link
-          href="/settings"
-          title={t('nav.settings')}
-          className={`sidebar__btn ${isActive('/settings') ? 'active' : ''}`}
-        >
-          <span className="material-symbols-outlined">settings</span>
-        </Link>
-
-        {/* Avatar */}
-        <Link
-          href="/settings"
-          title={profile?.full_name || 'Perfil'}
-          className={`sidebar__avatar mt-1 ${isActive('/settings') ? 'active' : ''}`}
-        >
-          {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover rounded-[8px]" />
+        <Link href="/dashboard" className="t-sidebar__logo" aria-label="Skolar">
+          {collapsed ? (
+            <Image src={markLogo} alt="Skolar" width={28} height={28} priority />
           ) : (
-            initials
+            <Image
+              src={fullLogo}
+              alt="Skolar — Asistente Académico"
+              width={200}
+              height={44}
+              priority
+              style={{ width: 'auto', height: 44, objectFit: 'contain' }}
+            />
           )}
         </Link>
 
-        {/* Logout (small, bottom) */}
+        <div className="t-sidebar__role" aria-hidden={collapsed}>
+          <span className="material-symbols-outlined">school</span>
+          <span>{language === 'es' ? 'Estudiante' : 'Student'}</span>
+        </div>
+
+        <nav className="t-sidebar__nav" aria-label="Student navigation">
+          {topItems.map(renderItem)}
+          {!collapsed && (
+            <div className="t-sidebar__group-label">
+              {language === 'es' ? 'General' : 'General'}
+            </div>
+          )}
+          {collapsed && <hr className="t-sidebar__group-hr" />}
+          {generalItems.map(renderItem)}
+        </nav>
+
         <button
-          onClick={handleLogout}
-          disabled={loggingOut}
-          title={t('nav.logout')}
-          className="sidebar__btn"
-          style={{ marginTop: '4px', color: 'var(--color-outline)' }}
+          type="button"
+          className="t-sidebar__collapse"
+          onClick={toggle}
+          aria-label={
+            collapsed
+              ? language === 'es' ? 'Expandir' : 'Expand'
+              : language === 'es' ? 'Colapsar' : 'Collapse'
+          }
+          aria-expanded={!collapsed}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-            {loggingOut ? 'hourglass_empty' : 'logout'}
+          <span className="material-symbols-outlined">
+            {collapsed ? 'chevron_right' : 'chevron_left'}
+          </span>
+          <span className="t-sidebar__collapse__label">
+            {language === 'es' ? 'Colapsar' : 'Collapse'}
           </span>
         </button>
+
+        <div className="t-sidebar__profile">
+          <div className="t-sidebar__profile__avatar" title={displayName}>
+            {profile?.avatar_url ? (
+              <Image
+                src={profile.avatar_url}
+                alt={displayName}
+                width={36}
+                height={36}
+                style={{ borderRadius: 999, objectFit: 'cover' }}
+              />
+            ) : (
+              initials
+            )}
+          </div>
+          <div className="t-sidebar__profile__info">
+            <div className="t-sidebar__profile__name">{displayName}</div>
+            <div className="t-sidebar__profile__role">
+              {language === 'es' ? 'Estudiante' : 'Student'}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="t-sidebar__profile__logout"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            aria-label={t('nav.logout')}
+            title={t('nav.logout')}
+          >
+            <span className="material-symbols-outlined">
+              {loggingOut ? 'hourglass_empty' : 'logout'}
+            </span>
+          </button>
+        </div>
       </aside>
     </>
   )
