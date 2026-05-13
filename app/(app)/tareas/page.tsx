@@ -6,7 +6,9 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
+  MouseSensor,
   PointerSensor,
+  TouchSensor,
   closestCorners,
   useDroppable,
   useSensor,
@@ -121,11 +123,13 @@ function SortableTaskCard({
   subjects,
   onOpen,
   onDelete,
+  onMove,
 }: {
   task: Task
   subjects: Subject[]
   onOpen: (id: string) => void
   onDelete: (id: string) => void
+  onMove: (id: string, direction: 1 | -1) => void
 }) {
   const { t } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -136,6 +140,9 @@ function SortableTaskCard({
   const tagClass = subjectTag(info.color)
   const col = statusToCol(task.status)
   const isDone = col === 'done'
+  const colIdx = COLS.indexOf(col)
+  const canBack = colIdx > 0
+  const canNext = colIdx < COLS.length - 1
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -156,8 +163,11 @@ function SortableTaskCard({
           onOpen(task.id)
         }
       }}
-      className={`kan-card ${tagClass}${isDone ? ' is-done' : ''}${isDragging ? ' is-dragging' : ''}`}
+      className={`kan-card kan-card--v2 ${tagClass}${isDone ? ' is-done' : ''}${isDragging ? ' is-dragging' : ''}${task.priority === 'high' ? ' is-prio-high' : task.priority === 'low' ? ' is-prio-low' : ' is-prio-mid'}`}
     >
+      <span className="kan-card__grip" aria-hidden>
+        <span className="material-symbols-outlined">drag_indicator</span>
+      </span>
       <button
         type="button"
         className="kan-card__delete"
@@ -168,6 +178,28 @@ function SortableTaskCard({
         <span className="material-symbols-outlined">close</span>
       </button>
       <TaskCardInner task={task} subjects={subjects} />
+      <div className="kan-card__nav" onPointerDown={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="kan-card__nav-btn"
+          onClick={(e) => { e.stopPropagation(); if (canBack) onMove(task.id, -1) }}
+          disabled={!canBack}
+          aria-label="Anterior"
+          title={canBack ? `← ${t(`tareas.cols.${COLS[colIdx - 1]}`)}` : ''}
+        >
+          <span className="material-symbols-outlined">chevron_left</span>
+        </button>
+        <button
+          type="button"
+          className="kan-card__nav-btn"
+          onClick={(e) => { e.stopPropagation(); if (canNext) onMove(task.id, 1) }}
+          disabled={!canNext}
+          aria-label="Siguiente"
+          title={canNext ? `${t(`tareas.cols.${COLS[colIdx + 1]}`)} →` : ''}
+        >
+          <span className="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
     </div>
   )
 }
@@ -180,6 +212,7 @@ function KanColumn({
   onOpen,
   onDelete,
   onAdd,
+  onMove,
   autoOpenAdd,
 }: {
   col: TaskCol
@@ -188,6 +221,7 @@ function KanColumn({
   onOpen: (id: string) => void
   onDelete: (id: string) => void
   onAdd: (col: TaskCol, title: string, subjectId: string | null) => Promise<void>
+  onMove: (id: string, direction: 1 | -1) => void
   autoOpenAdd?: boolean
 }) {
   const { t } = useTranslation()
@@ -238,6 +272,7 @@ function KanColumn({
             subjects={subjects}
             onOpen={onOpen}
             onDelete={onDelete}
+            onMove={onMove}
           />
         ))}
       </SortableContext>
@@ -391,9 +426,35 @@ export default function TareasPage() {
   const [autoOpenPending, setAutoOpenPending] = useState(false)
 
   const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 140, tolerance: 8 } }),
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
+
+  const haptic = (ms = 12) => {
+    try { if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(ms) } catch {}
+  }
+
+  const moveTaskCol = useCallback(async (id: string, direction: 1 | -1) => {
+    const task = tasks.find(tk => tk.id === id)
+    if (!task) return
+    const currentCol = statusToCol(task.status)
+    const idx = COLS.indexOf(currentCol)
+    const newIdx = idx + direction
+    if (newIdx < 0 || newIdx >= COLS.length) return
+    const newCol = COLS[newIdx]
+    const newStatus = colToStatus(newCol)
+    const isDone = newCol === 'done'
+    const patch: Partial<Task> = {
+      status: newStatus,
+      is_done: isDone,
+      done_at: isDone ? new Date().toISOString() : null,
+    }
+    haptic(10)
+    setTasks(prev => prev.map(tk => tk.id === id ? { ...tk, ...patch } : tk))
+    await supabase.from('tasks').update(patch).eq('id', id)
+  }, [tasks, supabase])
 
   // Auto-open the Pendientes quick-add when arriving via ?new=1
   useEffect(() => {
@@ -446,7 +507,7 @@ export default function TareasPage() {
     return tk ? statusToCol(tk.status) : null
   }
 
-  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
+  const onDragStart = (e: DragStartEvent) => { setActiveId(String(e.active.id)); haptic(15) }
 
   // Live cross-column move during drag — updates local status optimistically.
   const onDragOver = (e: DragOverEvent) => {
@@ -499,6 +560,7 @@ export default function TareasPage() {
       is_done: isDone,
       done_at: isDone ? new Date().toISOString() : null,
     }
+    haptic(8)
     await supabase.from('tasks').update(patch).eq('id', aId)
   }
 
@@ -590,6 +652,7 @@ export default function TareasPage() {
               onOpen={openCard}
               onDelete={deleteCard}
               onAdd={addCard}
+              onMove={moveTaskCol}
               autoOpenAdd={col === 'pending' && autoOpenPending}
             />
           ))}

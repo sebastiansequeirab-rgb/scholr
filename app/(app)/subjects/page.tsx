@@ -6,6 +6,7 @@ import { useTranslation } from '@/hooks/useTranslation'
 import { SubjectModal, ScheduleManager } from '@/features/subjects/components/SubjectModal'
 import { IconPicker } from '@/features/subjects/components/IconPicker'
 import { SubjectDetail } from '@/features/subjects/components/SubjectDetail'
+import { ScheduleImportWizard } from '@/features/ai/components/ScheduleImportWizard'
 import type { Subject, Schedule } from '@/types'
 import { getSubjectIcon } from '@/features/subjects/utils'
 import { subjectTag } from '@/lib/utils'
@@ -29,6 +30,7 @@ export default function SubjectsPage() {
   const [kebabOpen,        setKebabOpen]        = useState<string | null>(null)
   const [detailSubject,    setDetailSubject]    = useState<Subject | null>(null)
   const [detailTab,        setDetailTab]        = useState<'progress' | 'chat'>('progress')
+  const [importOpen,       setImportOpen]       = useState(false)
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
@@ -154,6 +156,15 @@ export default function SubjectsPage() {
           </p>
         </div>
         <div className="screen-head__actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setImportOpen(true)}
+            title="Importar horario con IA"
+          >
+            <span className="material-symbols-outlined">auto_awesome</span>
+            Importar con IA
+          </button>
           <button
             type="button"
             className="btn btn-secondary"
@@ -418,6 +429,21 @@ export default function SubjectsPage() {
           onClose={() => setModalOpen(false)}
           onSaved={fetchData}
         />
+      )}
+
+      {/* Schedule Import Wizard (AI) */}
+      {importOpen && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setImportOpen(false) }}
+        >
+          <div className="modal-content" style={{ maxWidth: 720, padding: 0, overflow: 'hidden' }} role="dialog" aria-modal="true">
+            <ScheduleImportWizard
+              language={(t('common.cancel') === 'Cancelar') ? 'es' : 'en'}
+              onDone={() => { setImportOpen(false); fetchData() }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Delete Confirm */}

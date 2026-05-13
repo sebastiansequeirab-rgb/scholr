@@ -1,6 +1,11 @@
 export const TEACHER_NAV_ITEMS = [
-  { key: 'teacher.nav.dashboard', href: '/teacher/dashboard', icon: 'home'      },
-  { key: 'teacher.nav.courses',   href: '/teacher/courses',   icon: 'menu_book' },
+  { key: 'teacher.nav.panel',         href: '/teacher',                icon: 'dashboard',   group: 'top'     as const },
+  { key: 'teacher.nav.courses',       href: '/teacher/courses',        icon: 'menu_book',   group: 'top'     as const },
+  { key: 'teacher.nav.grades',        href: '/teacher/grades',         icon: 'grade',       group: 'general' as const },
+  { key: 'teacher.nav.announcements', href: '/teacher/announcements',  icon: 'campaign',    group: 'general' as const },
+  { key: 'teacher.nav.documents',     href: '/teacher/documents',      icon: 'description', group: 'general' as const },
+  { key: 'teacher.nav.students',      href: '/teacher/students',       icon: 'group',       group: 'general' as const },
+  { key: 'teacher.nav.messages',      href: '/teacher/mensajes',       icon: 'forum',       group: 'general' as const },
 ]
 
 export const NAV_ITEMS = [
@@ -10,6 +15,8 @@ export const NAV_ITEMS = [
   { key: 'subjects',     href: '/subjects',     icon: 'menu_book'      },
   { key: 'tareas',       href: '/tareas',       icon: 'check_circle'   },
   { key: 'evaluaciones', href: '/evaluaciones', icon: 'edit_note'      },
+  { key: 'anuncios',     href: '/anuncios',     icon: 'campaign'       },
+  { key: 'mensajes',     href: '/mensajes',     icon: 'forum'          },
   { key: 'notes',        href: '/notes',        icon: 'sticky_note_2'  },
 ]
 
@@ -24,12 +31,13 @@ export const BOTTOM_NAV = [
 // Items revealed inside the "More" bottom sheet
 export const MORE_ITEMS = [
   { key: 'evaluaciones', href: '/evaluaciones', icon: 'edit_note'     },
+  { key: 'mensajes',     href: '/mensajes',     icon: 'forum'         },
   { key: 'ai',           href: '/ai',           icon: 'auto_awesome'  },
   { key: 'notes',        href: '/notes',        icon: 'sticky_note_2' },
 ]
 
 // Paths that belong to "More" — used to highlight the More tab when active
-export const MORE_PATHS = ['/evaluaciones', '/ai', '/notes', '/settings', '/personalization', '/ai-settings']
+export const MORE_PATHS = ['/evaluaciones', '/mensajes', '/ai', '/notes', '/settings', '/personalization', '/ai-settings']
 
 // Side drawer — account & utility only (no duplicate of bottom nav main items)
 export const SIDE_MENU_ITEMS = [

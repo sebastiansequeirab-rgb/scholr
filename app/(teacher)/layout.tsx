@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { TeacherSidebar } from '@/features/teacher/layout/TeacherSidebar'
-import { SidebarCollapseProvider } from '@/components/layout/SidebarCollapseContext'
+import { cookies } from 'next/headers'
+import { TeacherShell } from '@/features/teacher/layout/TeacherShell'
+import { Toaster } from 'sonner'
 import type { Profile } from '@/types'
 
 export default async function TeacherLayout({
@@ -12,9 +13,7 @@ export default async function TeacherLayout({
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect('/login')
-  }
+  if (!user) redirect('/login')
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -27,19 +26,25 @@ export default async function TeacherLayout({
   }
 
   const theme = (profile as Profile | null)?.theme || 'indigo'
+  const collapsed = cookies().get('teacher_sidebar_collapsed')?.value === '1'
 
   return (
-    <SidebarCollapseProvider>
-      <div data-theme={theme}>
-        <TeacherSidebar profile={profile as Profile | null} />
-
-        <div className="sidebar-offset">
-          <div className="pt-14 lg:pt-0" />
-          <main className="min-h-screen p-4 pb-20 lg:pb-8 lg:p-8">
-            {children}
-          </main>
-        </div>
-      </div>
-    </SidebarCollapseProvider>
+    <div data-theme={theme}>
+      <TeacherShell profile={profile as Profile | null} initialCollapsed={collapsed}>
+        {children}
+      </TeacherShell>
+      <Toaster
+        theme="dark"
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: 'var(--s-low)',
+            color: 'var(--on-surface)',
+            border: '1px solid var(--border-subtle)',
+            fontFamily: 'var(--font-sans)',
+          },
+        }}
+      />
+    </div>
   )
 }

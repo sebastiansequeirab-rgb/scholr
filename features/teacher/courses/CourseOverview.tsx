@@ -2,183 +2,266 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslation } from '@/hooks/useTranslation'
 import { getInitials } from '@/lib/utils'
+import { accentClass, gradeClass } from '@/lib/accent'
+import { dayLabel } from '@/features/teacher/lib/courseStats'
+import { fileIcon, formatBytes } from '@/lib/mime'
+import { CourseCodeBlock } from './CourseCodeBlock'
+import { CourseModal } from './CourseModal'
+import { deleteCourseAction } from '@/app/(teacher)/teacher/courses/actions'
+import { toast } from 'sonner'
+import type { Course } from '@/types'
 
-interface Student {
+export type CourseOverviewStudent = {
   id: string
   full_name: string
   avatar_url: string | null
+  average: number | null
 }
 
-interface CourseOverviewProps {
-  course: {
-    id: string
-    name: string
-    color: string
-    icon: string | null
-    access_code: string | null
-  }
-  students: Student[]
+export type CourseOverviewSchedule = {
+  id: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  room: string | null
 }
 
-export function CourseOverview({ course, students }: CourseOverviewProps) {
-  const { t } = useTranslation()
-  const [copied, setCopied] = useState(false)
+export type CourseOverviewAnnouncement = {
+  id: string
+  title: string
+  content: string | null
+  priority: 'normal' | 'urgent'
+  created_at: string
+}
 
-  const handleCopyCode = () => {
-    if (!course.access_code) return
-    navigator.clipboard.writeText(course.access_code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+export type CourseOverviewDocument = {
+  id: string
+  title: string
+  file_type: string | null
+  size_bytes: number | null
+  created_at: string
+}
+
+interface Props {
+  course: Course
+  totals: {
+    students: number
+    average: number | null
+    pass_rate: number | null
+    pending_review: number
   }
+  schedules: CourseOverviewSchedule[]
+  topStudents: CourseOverviewStudent[]
+  latestAnnouncement: CourseOverviewAnnouncement | null
+  topDocuments: CourseOverviewDocument[]
+}
 
-  const tabs = [
-    { href: `/teacher/courses/${course.id}/schedules`,     icon: 'calendar_month',       label: t('teacher.schedules.title')     },
-    { href: `/teacher/courses/${course.id}/grades`,        icon: 'grade',                label: t('teacher.grades.title')        },
-    { href: `/teacher/courses/${course.id}/announcements`, icon: 'campaign',             label: t('teacher.announcements.title') },
-    { href: `/teacher/courses/${course.id}/documents`,     icon: 'folder_open',          label: t('teacher.documents.title')     },
-    { href: `/teacher/courses/${course.id}/students`,      icon: 'group',                label: t('teacher.students.title')      },
-  ]
+export function CourseOverview({ course, totals, schedules, topStudents, latestAnnouncement, topDocuments }: Props) {
+  const { t, language } = useTranslation()
+  const router = useRouter()
+  const [editOpen, setEditOpen] = useState(false)
+  const acc = accentClass(course.accent)
+
+  const onDelete = async () => {
+    if (!confirm('¿Eliminar este curso? Se borrarán todos sus exámenes, anuncios y documentos asociados.')) return
+    const r = await deleteCourseAction(course.id)
+    if (r.ok) { toast.success('Curso eliminado'); router.push('/teacher/courses') }
+    else toast.error(r.error ?? t('teacher.common.error'))
+  }
 
   return (
-    <div className="max-w-3xl mx-auto reveal-stagger">
-      <Link href="/teacher/courses" className="kicker inline-flex items-center gap-1.5 mb-3 hover:opacity-70 transition-opacity">
-        <span className="material-symbols-outlined text-[14px]">arrow_back</span>
+    <div className={`t-screen ${acc}`}>
+      <Link href="/teacher/courses" className="t-section-head__link" style={{ marginBottom: 14, display: 'inline-flex' }}>
+        <span className="material-symbols-outlined">arrow_back</span>
         {t('teacher.courses.title')}
       </Link>
 
-      {/* Course header */}
-      <header className="screen-head">
-        <div className="screen-head__left">
-          <span className="kicker" style={{ color: course.color }}>Curso · {students.length} {students.length === 1 ? 'estudiante' : 'estudiantes'}</span>
-          <h1 className="screen-head__title flex items-center gap-3">
-            <span className="inline-flex w-10 h-10 items-center justify-center"
-              style={{
-                backgroundColor: `color-mix(in srgb, ${course.color} 14%, transparent)`,
-                borderRadius: 'var(--radius-lg)',
-              }}>
-              <span className="material-symbols-outlined text-[20px]"
-                style={{ color: course.color, fontVariationSettings: "'FILL' 1" }}>
-                {course.icon || 'menu_book'}
-              </span>
-            </span>
-            <span className="serif">{course.name}</span>
+      <header style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 6, marginBottom: 22 }}>
+        <span className="t-hero__kicker">
+          CURSO · {totals.students} {totals.students === 1 ? 'estudiante' : 'estudiantes'}
+          {course.semester ? ` · ${course.semester}` : ''}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          <div className="t-course-card__icon" style={{ width: 64, height: 64, borderRadius: 16 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 32 }}>{course.icon || 'menu_book'}</span>
+          </div>
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 42, color: 'var(--on-surface)', lineHeight: 1.05, letterSpacing: '-0.015em' }}>
+            {course.name}
           </h1>
-        </div>
-      </header>
-
-      {/* Access code card */}
-      {course.access_code && (
-        <div className="card overflow-hidden mb-4" style={{ padding: 0, position: 'relative' }}>
-          <span aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: course.color }} />
-          <div className="p-4 flex items-center justify-between gap-3">
-            <div>
-              <span className="kicker">{t('teacher.courses.accessCode')} · {t('teacher.courses.shareCode')}</span>
-              <p className="text-[28px] font-black font-mono tabular tracking-wider mt-1 leading-none"
-                style={{ color: course.color }}>
-                {course.access_code}
-              </p>
-            </div>
-            <button
-              onClick={handleCopyCode}
-              className="btn btn-secondary"
-              style={copied ? {
-                background: 'color-mix(in srgb, var(--success) 14%, transparent)',
-                color: 'var(--success)',
-                borderColor: 'color-mix(in srgb, var(--success) 30%, transparent)',
-              } : undefined}
-            >
-              <span className="material-symbols-outlined">
-                {copied ? 'check' : 'content_copy'}
-              </span>
-              {copied ? t('teacher.courses.codeCopied') : t('teacher.courses.copyCode')}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <button type="button" className="t-btn-line" onClick={() => setEditOpen(true)} aria-label="Editar curso">
+              <span className="material-symbols-outlined">edit</span>
+              Editar
+            </button>
+            <button type="button" className="t-btn-line" onClick={onDelete} aria-label="Eliminar curso" style={{ color: 'var(--danger)' }}>
+              <span className="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>
-      )}
+      </header>
 
-      {/* Quick action tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
-        {tabs.map(({ href, icon, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className="card p-4 flex items-center gap-3 hover:bg-[var(--s-base)] transition-all duration-150 active:scale-[0.99]"
-          >
-            <div className="w-9 h-9 flex items-center justify-center flex-shrink-0"
-              style={{
-                backgroundColor: `color-mix(in srgb, ${course.color} 12%, transparent)`,
-                borderRadius: 'var(--radius)',
-              }}>
-              <span className="material-symbols-outlined text-[18px]"
-                style={{ color: course.color, fontVariationSettings: "'FILL' 1" }}>
-                {icon}
-              </span>
+      <CourseCodeBlock courseId={course.id} code={course.access_code} />
+
+      <section className="t-stat-strip" style={{ marginTop: 22 }} aria-label="Resumen del curso">
+        <div className="t-stat-strip__cell">
+          <span className="t-stat-strip__label">Promedio</span>
+          <span className={`t-stat-strip__value ${totals.average != null ? gradeClass(totals.average) : ''}`}>
+            {totals.average != null ? totals.average.toFixed(1) : '—'}
+          </span>
+        </div>
+        <div className="t-stat-strip__cell">
+          <span className="t-stat-strip__label">Aprobación</span>
+          <span className="t-stat-strip__value">{totals.pass_rate != null ? `${Math.round(totals.pass_rate)}%` : '—'}</span>
+        </div>
+        <div className="t-stat-strip__cell">
+          <span className="t-stat-strip__label">Entregas</span>
+          <span className="t-stat-strip__value">{totals.pending_review}</span>
+        </div>
+        <div className="t-stat-strip__cell">
+          <span className="t-stat-strip__label">Asistencia</span>
+          <span className="t-stat-strip__value">—</span>
+        </div>
+      </section>
+
+      <section className="t-grid-2" style={{ marginTop: 28 }}>
+        <div>
+          <header className="t-section-head" style={{ marginTop: 0 }}>
+            <div className="t-section-head__left">
+              <span className="t-section-head__kicker">Horarios</span>
+              <h2 className="t-section-head__title">Cuándo se reúnen</h2>
             </div>
-            <span className="flex-1 font-semibold text-sm" style={{ color: 'var(--on-surface)' }}>
-              {label}
-            </span>
-            <span className="material-symbols-outlined text-[14px]" style={{ color: 'var(--color-outline)' }}>
-              chevron_right
-            </span>
-          </Link>
-        ))}
-      </div>
-
-      {/* Students preview */}
-      <div>
-        <header className="section-head">
-          <div className="section-head__left">
-            <span className="material-symbols-outlined text-[16px]"
-              style={{ color: course.color, fontVariationSettings: "'FILL' 1" }}>group</span>
-            <span className="section-head__title">{t('teacher.students.title')}</span>
-            {students.length > 0 && (
-              <span className="section-head__count tabular">{students.length}</span>
+          </header>
+          <div className="t-card" style={{ padding: 8 }}>
+            {schedules.length === 0 ? (
+              <Empty icon="schedule" label="Sin horarios configurados" />
+            ) : (
+              <ul className="t-list-divider" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {schedules.map((s) => (
+                  <li key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 6px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--color-outline)' }}>schedule</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, color: 'var(--on-surface)' }}>{dayLabel(s.day_of_week, language as 'es' | 'en')}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.1em', color: 'var(--color-outline)', textTransform: 'uppercase', marginTop: 2 }}>
+                        {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}{s.room ? ` · ${s.room}` : ''}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
-          {students.length > 0 && (
-            <Link href={`/teacher/courses/${course.id}/students`} className="section-head__link">
-              {t('common.seeAll')}
-              <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+
+          <header className="t-section-head">
+            <div className="t-section-head__left">
+              <span className="t-section-head__kicker">Inscritos</span>
+              <h2 className="t-section-head__title">{t('teacher.students.title')}</h2>
+            </div>
+            <Link href={`/teacher/students?course=${course.id}`} className="t-section-head__link">
+              {t('teacher.common.seeAll')}
+              <span className="material-symbols-outlined">arrow_forward</span>
             </Link>
-          )}
-        </header>
-        {students.length === 0 ? (
-          <div className="card p-8 text-center">
-            <span className="material-symbols-outlined text-3xl mb-2 block"
-              style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
-              group
-            </span>
-            <p className="text-sm" style={{ color: 'var(--on-surface-variant)' }}>
-              {t('teacher.students.noStudents')}
-            </p>
+          </header>
+          <div className="t-card" style={{ padding: 8 }}>
+            {topStudents.length === 0 ? (
+              <Empty icon="group" label={t('teacher.students.noStudents')} />
+            ) : (
+              <ul className="t-list-divider" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {topStudents.map((s) => (
+                  <li key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 6px' }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 999, background: 'var(--accent-bg, color-mix(in srgb, var(--color-primary) 12%, transparent))', color: 'var(--accent-color, var(--color-primary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
+                      {s.avatar_url ? <img src={s.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: 999, objectFit: 'cover' }} /> : getInitials(s.full_name)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--on-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.full_name}
+                    </div>
+                    <div className={`${gradeClass(s.average)}`} style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 600 }}>
+                      {s.average != null ? s.average.toFixed(1) : '—'}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        ) : (
-          <div className="card" style={{ padding: 6 }}>
-            {students.slice(0, 6).map((student) => (
-              <div key={student.id} className="row" style={{ ['--accent-color' as string]: course.color }}>
-                <div className="row__time flex items-center justify-center">
-                  <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold"
-                    style={{
-                      backgroundColor: `color-mix(in srgb, ${course.color} 18%, transparent)`,
-                      color: course.color,
-                    }}>
-                    {student.avatar_url
-                      ? <img src={student.avatar_url} alt={student.full_name} className="w-full h-full object-cover" />
-                      : getInitials(student.full_name)
-                    }
-                  </div>
+        </div>
+
+        <div>
+          <header className="t-section-head" style={{ marginTop: 0 }}>
+            <div className="t-section-head__left">
+              <span className="t-section-head__kicker">Último</span>
+              <h2 className="t-section-head__title">Anuncio</h2>
+            </div>
+            <Link href={`/teacher/announcements?course=${course.id}`} className="t-section-head__link">
+              {t('teacher.common.seeAll')}
+              <span className="material-symbols-outlined">arrow_forward</span>
+            </Link>
+          </header>
+          <div className="t-card t-card--accent">
+            {!latestAnnouncement ? (
+              <Empty icon="campaign" label={t('teacher.announcements.noAnnouncements')} />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  {latestAnnouncement.priority === 'urgent' && <span className="t-tag" style={{ color: 'var(--danger)', background: 'color-mix(in srgb, var(--danger) 14%, transparent)' }}>Urgente</span>}
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '0.16em', color: 'var(--color-outline)', textTransform: 'uppercase', marginLeft: 'auto' }}>
+                    {new Date(latestAnnouncement.created_at).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short' })}
+                  </span>
                 </div>
-                <div className="row__main">
-                  <div className="row__title">{student.full_name}</div>
-                </div>
-                <div className="row__right" />
+                <div style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 20, color: 'var(--on-surface)' }}>{latestAnnouncement.title}</div>
+                {latestAnnouncement.content && (
+                  <div style={{ fontSize: 13.5, color: 'var(--on-surface-variant)', whiteSpace: 'pre-wrap' }}>{latestAnnouncement.content}</div>
+                )}
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
+
+          <header className="t-section-head">
+            <div className="t-section-head__left">
+              <span className="t-section-head__kicker">Material</span>
+              <h2 className="t-section-head__title">{t('teacher.documents.title')}</h2>
+            </div>
+            <Link href={`/teacher/documents?course=${course.id}`} className="t-section-head__link">
+              {t('teacher.common.seeAll')}
+              <span className="material-symbols-outlined">arrow_forward</span>
+            </Link>
+          </header>
+          <div className="t-card" style={{ padding: 8 }}>
+            {topDocuments.length === 0 ? (
+              <Empty icon="folder_open" label={t('teacher.documents.noDocuments')} />
+            ) : (
+              <ul className="t-list-divider" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {topDocuments.map((d) => {
+                  const { icon, label } = fileIcon(d.file_type, d.title)
+                  return (
+                    <li key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 6px' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--accent-color, var(--color-primary))' }}>{icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, color: 'var(--on-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.1em', color: 'var(--color-outline)', textTransform: 'uppercase', marginTop: 2 }}>
+                          {label} · {formatBytes(d.size_bytes)}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <CourseModal open={editOpen} course={course} onClose={() => setEditOpen(false)} />
+    </div>
+  )
+}
+
+function Empty({ icon, label }: { icon: string; label: string }) {
+  return (
+    <div style={{ padding: '28px 12px', textAlign: 'center', color: 'var(--on-surface-variant)' }}>
+      <span className="material-symbols-outlined" style={{ fontSize: 28, color: 'var(--color-outline)' }}>{icon}</span>
+      <div style={{ marginTop: 6, fontSize: 13.5 }}>{label}</div>
     </div>
   )
 }

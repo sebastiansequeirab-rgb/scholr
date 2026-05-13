@@ -1,149 +1,155 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { useTranslation } from '@/hooks/useTranslation'
-import { generateAccessCode } from './utils'
-import { SUBJECT_COLORS } from '@/types'
+import { COURSE_ACCENTS, type CourseAccent, type Course } from '@/types'
+import { accentClass } from '@/lib/accent'
+import { COURSE_ICONS } from './courseIcons'
+import { createCourseAction, updateCourseAction, type CourseFormState } from '@/app/(teacher)/teacher/courses/actions'
 
 interface CourseModalProps {
   open: boolean
   onClose: () => void
-  onSaved: () => void
-  teacherId: string
+  course?: Course | null
 }
 
-export function CourseModal({ open, onClose, onSaved, teacherId }: CourseModalProps) {
+const initialState: CourseFormState = {}
+
+export function CourseModal({ open, onClose, course }: CourseModalProps) {
   const { t } = useTranslation()
+  const router = useRouter()
+  const editing = !!course
   const [name, setName] = useState('')
-  const [color, setColor] = useState(SUBJECT_COLORS[0])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [semester, setSemester] = useState('')
+  const [credits, setCredits] = useState(0)
+  const [accent, setAccent] = useState<CourseAccent>('blue')
+  const [icon, setIcon] = useState<string>('menu_book')
+  const [state, setState] = useState<CourseFormState>(initialState)
+  const [pending, start] = useTransition()
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!open) {
-      setName('')
-      setColor(SUBJECT_COLORS[0])
-      setError('')
-    }
-  }, [open])
+    if (!open) return
+    setName(course?.name ?? '')
+    setSemester(course?.semester ?? '')
+    setCredits(course?.credits ?? 0)
+    setAccent((course?.accent as CourseAccent) ?? 'blue')
+    setIcon(course?.icon ?? 'menu_book')
+    setState(initialState)
+    setTimeout(() => dialogRef.current?.querySelector<HTMLInputElement>('input[name="name"]')?.focus(), 50)
+  }, [open, course])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) { setError(t('auth.errors.required')); return }
-
-    setLoading(true)
-    setError('')
-
-    const supabase = createClient()
-    const access_code = generateAccessCode(name)
-
-    const { error: dbError } = await supabase.from('subjects').insert({
-      name: name.trim(),
-      color,
-      teacher_id: teacherId,
-      access_code,
-      user_id: teacherId,
-    })
-
-    if (dbError) {
-      // Access code collision — retry with new code
-      if (dbError.code === '23505') {
-        const retryCode = generateAccessCode(name + Math.random())
-        const { error: retryError } = await supabase.from('subjects').insert({
-          name: name.trim(),
-          color,
-          teacher_id: teacherId,
-          access_code: retryCode,
-          user_id: teacherId,
-        })
-        if (retryError) { setError(retryError.message); setLoading(false); return }
-      } else {
-        setError(dbError.message)
-        setLoading(false)
-        return
-      }
-    }
-
-    setLoading(false)
-    onSaved()
-    onClose()
-  }
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   if (!open) return null
 
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    start(async () => {
+      const result = editing
+        ? await updateCourseAction(course!.id, state, fd)
+        : await createCourseAction(state, fd)
+      setState(result)
+      if (result.ok) {
+        toast.success(editing ? t('teacher.common.saved') : `${t('teacher.common.newCourse')} ✓`)
+        if (!editing && result.id) {
+          onClose()
+          router.push(`/teacher/courses/${result.id}`)
+        } else {
+          onClose()
+          router.refresh()
+        }
+      } else {
+        toast.error(result.error ?? t('teacher.common.error'))
+      }
+    })
+  }
+
+  const title = editing ? t('teacher.courses.edit') : t('teacher.courses.add')
+
   return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <span className="kicker" style={{ color }}>Nuevo</span>
-            <h2 className="text-[22px] font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
-              <span className="serif">{t('teacher.courses.add').toLowerCase()}</span>
-            </h2>
-          </div>
-          <button onClick={onClose} className="btn btn-icon btn-ghost" aria-label="Cerrar">
+    <div className="t-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div ref={dialogRef} className={`t-modal ${accentClass(accent)}`} role="dialog" aria-modal="true" aria-labelledby="course-modal-title">
+        <header className="t-modal__head">
+          <h3 id="course-modal-title">{title}</h3>
+          <button type="button" onClick={onClose} className="t-btn-line" aria-label={t('teacher.common.cancel')}>
             <span className="material-symbols-outlined">close</span>
           </button>
-        </div>
+        </header>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="label">{t('teacher.courses.name')}</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="input"
-              placeholder="Ej. Cálculo I"
-              autoFocus
-            />
+        <form onSubmit={onSubmit} className="t-modal__body">
+          <div className="t-field">
+            <label htmlFor="course-name">{t('teacher.courses.name')}</label>
+            <input id="course-name" name="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} placeholder="Cálculo I" />
+            {state.fieldErrors?.name && <span className="t-field__error">{state.fieldErrors.name}</span>}
           </div>
 
-          <div>
-            <label className="label">{t('subjects.color')}</label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {SUBJECT_COLORS.map((c) => {
-                const active = color === c
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className="relative w-8 h-8 rounded-full transition-transform hover:scale-110 flex items-center justify-center"
-                    style={{
-                      backgroundColor: c,
-                      boxShadow: active ? `0 0 0 2px var(--s-base), 0 0 0 4px ${c}` : 'none',
-                    }}
-                    aria-label={`Color ${c}`}
-                    aria-pressed={active}
-                  >
-                    {active && (
-                      <span className="material-symbols-outlined text-[14px]" style={{ color: 'white', fontVariationSettings: "'FILL' 1" }}>
-                        check
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 12 }}>
+            <div className="t-field">
+              <label htmlFor="course-semester">Semestre</label>
+              <input id="course-semester" name="semester" type="text" value={semester} onChange={(e) => setSemester(e.target.value)} maxLength={40} placeholder="2026-1" />
+            </div>
+            <div className="t-field">
+              <label htmlFor="course-credits">Créditos</label>
+              <input id="course-credits" name="credits" type="number" value={credits} onChange={(e) => setCredits(Number(e.target.value))} min={0} max={20} />
             </div>
           </div>
 
-          {error && (
-            <p className="text-xs" style={{ color: 'var(--danger)' }}>
-              {error}
-            </p>
-          )}
-
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
-              {t('common.cancel')}
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary flex-1"
-              style={{ background: color, color: 'white', borderColor: color }}>
-              {loading ? t('common.loading') : t('common.save')}
-            </button>
+          <div className="t-field">
+            <label>Color de acento</label>
+            <div className="t-swatches" role="radiogroup" aria-label="Color de acento">
+              {COURSE_ACCENTS.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  className={`t-swatch acc-${a} ${accent === a ? 'is-active' : ''}`}
+                  onClick={() => setAccent(a)}
+                  role="radio"
+                  aria-checked={accent === a}
+                  aria-label={a}
+                />
+              ))}
+            </div>
+            <input type="hidden" name="accent" value={accent} />
           </div>
+
+          <div className="t-field">
+            <label>Icono</label>
+            <div className="t-icon-picker" role="radiogroup" aria-label="Icono">
+              {COURSE_ICONS.map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`t-icon-picker__btn ${icon === i ? 'is-active' : ''}`}
+                  onClick={() => setIcon(i)}
+                  role="radio"
+                  aria-checked={icon === i}
+                  aria-label={i}
+                >
+                  <span className="material-symbols-outlined">{i}</span>
+                </button>
+              ))}
+            </div>
+            <input type="hidden" name="icon" value={icon} />
+          </div>
+
+          {state.error && !state.fieldErrors && <p className="t-field__error">{state.error}</p>}
+
+          <footer style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button type="button" onClick={onClose} className="t-btn-line">{t('teacher.common.cancel')}</button>
+            <button type="submit" disabled={pending} className="t-btn-new">
+              <span className="material-symbols-outlined">{pending ? 'hourglass_empty' : 'check'}</span>
+              {pending ? t('teacher.common.loading') : t('teacher.common.save')}
+            </button>
+          </footer>
         </form>
       </div>
     </div>

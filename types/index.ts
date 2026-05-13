@@ -8,11 +8,16 @@ export type Profile = {
   updated_at: string
   avatar_url: string | null
   role: 'student' | 'teacher'
+  current_week: number | null
+  semester_weeks: number | null
 }
 
 export type EvaluationPlan = {
   items: { name: string; percentage: number }[]
 }
+
+export type CourseAccent = 'rose' | 'blue' | 'amber' | 'green' | 'violet' | 'teal'
+export const COURSE_ACCENTS: CourseAccent[] = ['rose', 'blue', 'amber', 'green', 'violet', 'teal']
 
 export type Subject = {
   id: string
@@ -27,7 +32,12 @@ export type Subject = {
   access_code: string | null
   teacher_id: string | null
   evaluation_plan: EvaluationPlan | null
+  semester: string | null
+  accent: CourseAccent | null
 }
+
+/** Teacher portal alias for Subject. Subjects with `teacher_id` are courses. */
+export type Course = Subject
 
 export type Schedule = {
   id: string
@@ -92,6 +102,22 @@ export type Exam = {
   assigned_by: string | null
   study_plan: StudyStep[]
   estimated_hours: number | null
+  position: number
+}
+
+export type SubmissionRecordStatus = 'pending_review' | 'graded' | 'returned' | 'draft'
+
+export type Submission = {
+  id: string
+  course_id: string
+  student_id: string
+  exam_id: string | null
+  status: SubmissionRecordStatus
+  content: string | null
+  file_url: string | null
+  submitted_at: string
+  reviewed_at: string | null
+  reviewed_by: string | null
 }
 
 export type Enrollment = {
@@ -148,6 +174,18 @@ export type Note = {
   content: string
   updated_at: string
   created_at: string
+}
+
+export type ChatMessage = {
+  id: string
+  teacher_id: string
+  student_id: string
+  course_id: string | null
+  sender_id: string
+  subject: string | null
+  body: string
+  created_at: string
+  read_at: string | null
 }
 
 export const SUBJECT_COLORS = [

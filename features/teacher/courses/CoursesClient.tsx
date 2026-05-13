@@ -1,170 +1,134 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import { useTranslation } from '@/hooks/useTranslation'
 import { CourseModal } from './CourseModal'
+import { accentClass } from '@/lib/accent'
+import type { Course } from '@/types'
 
-interface Course {
-  id: string
-  name: string
-  color: string
-  icon: string | null
-  access_code: string | null
+type CourseListItem = Course & {
   student_count: number
+  average: number | null
+  pass_rate: number | null
+  pending_review: number
 }
 
-interface CoursesClientProps {
-  initialCourses: Course[]
-  teacherId: string
+interface Props {
+  initialCourses: CourseListItem[]
 }
 
-export function CoursesClient({ initialCourses, teacherId }: CoursesClientProps) {
+export function CoursesClient({ initialCourses }: Props) {
   const { t } = useTranslation()
   const router = useRouter()
-  const [modalOpen, setModalOpen] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const sp = useSearchParams()
+  const [modalOpen, setModalOpen] = useState(sp.get('new') === '1')
+  const [editing, setEditing] = useState<Course | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
 
-  const handleCopyCode = (code: string, courseId: string) => {
-    navigator.clipboard.writeText(code)
-    setCopiedId(courseId)
-    setTimeout(() => setCopiedId(null), 2000)
-  }
+  useEffect(() => {
+    if (sp.get('new') === '1' && !modalOpen) setModalOpen(true)
+  }, [sp, modalOpen])
 
-  const handleSaved = () => {
-    router.refresh()
+  const copyCode = async (code: string, id: string) => {
+    try { await navigator.clipboard.writeText(code); setCopied(id); toast.success(t('teacher.common.copied'))
+      setTimeout(() => setCopied(null), 2000) } catch {
+      toast.error(t('teacher.common.error'))
+    }
   }
 
   return (
-    <div className="max-w-4xl mx-auto reveal-stagger">
-      {/* Header */}
-      <header className="screen-head">
-        <div className="screen-head__left">
-          <span className="kicker">Skolar · {t('teacher.dashboard.title')}</span>
-          <h1 className="screen-head__title">
-            <span className="serif">{t('teacher.courses.title').toLowerCase()}</span>
-          </h1>
+    <div className="t-screen">
+      <header className="t-section-head" style={{ marginTop: 0 }}>
+        <div className="t-section-head__left">
+          <span className="t-section-head__kicker">{t('teacher.common.kicker')}</span>
+          <h1 className="t-section-head__title">{t('teacher.courses.title').toLowerCase()}</h1>
         </div>
-        <div className="screen-head__actions">
-          <button onClick={() => setModalOpen(true)} className="btn btn-primary">
-            <span className="material-symbols-outlined">add</span>
-            {t('teacher.courses.add')}
-          </button>
-        </div>
+        <button type="button" className="t-btn-new" onClick={() => { setEditing(null); setModalOpen(true) }}>
+          <span className="material-symbols-outlined">add</span>
+          {t('teacher.common.newCourse')}
+        </button>
       </header>
 
-      {/* Courses grid */}
       {initialCourses.length === 0 ? (
-        <div className="card p-10 text-center">
-          <span className="material-symbols-outlined text-4xl mb-2 block"
-            style={{ color: 'var(--color-outline)', fontVariationSettings: "'FILL' 0" }}>
-            menu_book
-          </span>
-          <span className="kicker">Comienza aquí</span>
-          <p className="text-base font-bold mt-1" style={{ color: 'var(--on-surface)', letterSpacing: '-0.01em' }}>
-            <span className="serif">{t('teacher.dashboard.noCourses').toLowerCase()}</span>
-          </p>
-          <p className="text-xs mt-1 mb-4" style={{ color: 'var(--color-outline)' }}>
-            {t('teacher.dashboard.createFirst')}
-          </p>
-          <button onClick={() => setModalOpen(true)} className="btn btn-primary mx-auto inline-flex">
+        <div className="t-empty">
+          <div className="t-empty__icon"><span className="material-symbols-outlined">menu_book</span></div>
+          <div className="t-empty__title">{t('teacher.dashboard.noCourses')}</div>
+          <div className="t-empty__sub">{t('teacher.dashboard.createFirst')}</div>
+          <button type="button" className="t-btn-new" onClick={() => { setEditing(null); setModalOpen(true) }}>
             <span className="material-symbols-outlined">add</span>
-            {t('teacher.courses.add')}
+            {t('teacher.common.newCourse')}
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {initialCourses.map((course) => {
-            const copied = copiedId === course.id
-            return (
-              <div key={course.id} className="card overflow-hidden" style={{ padding: 0, position: 'relative' }}>
-                <span aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: course.color }} />
-                <div className="p-5 space-y-4">
-                  {/* Course header */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 flex items-center justify-center flex-shrink-0"
-                      style={{
-                        backgroundColor: `color-mix(in srgb, ${course.color} 14%, transparent)`,
-                        borderRadius: 'var(--radius-lg)',
-                      }}>
-                      <span className="material-symbols-outlined text-[18px]"
-                        style={{ color: course.color, fontVariationSettings: "'FILL' 1" }}>
-                        {course.icon || 'menu_book'}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="kicker" style={{ color: course.color }}>Curso</span>
-                      <p className="font-bold text-[17px] mt-0.5 truncate" style={{ color: 'var(--on-surface)', letterSpacing: '-0.015em' }}>
-                        <span className="serif">{course.name}</span>
-                      </p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--on-surface-variant)' }}>
-                        <span className="font-mono tabular">{course.student_count}</span> {t('teacher.courses.students').toLowerCase()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Access code */}
-                  {course.access_code && (
-                    <div className="p-3 flex items-center justify-between gap-2"
-                      style={{
-                        backgroundColor: 'var(--s-low)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: 'var(--radius)',
-                      }}>
-                      <div>
-                        <span className="kicker">{t('teacher.courses.accessCode')}</span>
-                        <p className="text-lg font-black font-mono tabular tracking-wider mt-0.5" style={{ color: course.color }}>
-                          {course.access_code}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleCopyCode(course.access_code!, course.id)}
-                        className="btn btn-secondary text-xs"
-                        style={copied ? {
-                          background: 'color-mix(in srgb, var(--success) 14%, transparent)',
-                          color: 'var(--success)',
-                          borderColor: 'color-mix(in srgb, var(--success) 30%, transparent)',
-                        } : undefined}
-                      >
-                        <span className="material-symbols-outlined">
-                          {copied ? 'check' : 'content_copy'}
-                        </span>
-                        {copied ? t('teacher.courses.codeCopied') : t('teacher.courses.copyCode')}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/teacher/courses/${course.id}`}
-                      className="btn btn-primary flex-1 text-xs"
-                      style={{ background: course.color, color: 'white', borderColor: course.color }}
-                    >
-                      <span className="material-symbols-outlined">open_in_new</span>
-                      {t('teacher.courses.overview')}
-                    </Link>
-                    <Link
-                      href={`/teacher/courses/${course.id}/grades`}
-                      className="btn btn-secondary flex-1 text-xs"
-                    >
-                      <span className="material-symbols-outlined">grade</span>
-                      {t('teacher.grades.title')}
-                    </Link>
-                  </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))', gap: 16 }}>
+          {initialCourses.map((course) => (
+            <Link key={course.id} href={`/teacher/courses/${course.id}`} className={`t-course-card ${accentClass(course.accent)}`}>
+              <div className="t-course-card__head">
+                <div className="t-course-card__icon">
+                  <span className="material-symbols-outlined">{course.icon || 'menu_book'}</span>
+                </div>
+                <div className="t-course-card__title">
+                  <span className="t-course-card__kicker">Curso{course.semester ? ` · ${course.semester}` : ''}</span>
+                  <span className="t-course-card__name">{course.name}</span>
                 </div>
               </div>
-            )
-          })}
+
+              <div className="t-course-card__meta">
+                {course.student_count} {t('teacher.courses.students').toLowerCase()}
+                {(course.credits ?? 0) > 0 && <> · {course.credits} créditos</>}
+              </div>
+
+              {course.access_code && (
+                <div className="t-course-card__code">
+                  <div>
+                    <span className="t-code-block__label">{t('teacher.courses.accessCode')}</span>
+                    <div className="t-course-card__code-value">{course.access_code}</div>
+                  </div>
+                  <button
+                    type="button"
+                    className="t-btn-line"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyCode(course.access_code!, course.id) }}
+                  >
+                    <span className="material-symbols-outlined">{copied === course.id ? 'check' : 'content_copy'}</span>
+                    {copied === course.id ? t('teacher.common.copied') : t('teacher.common.copy')}
+                  </button>
+                </div>
+              )}
+
+              <div className="t-stat-strip" style={{ borderRadius: 10 }}>
+                <div className="t-stat-strip__cell">
+                  <span className="t-stat-strip__label">Promedio</span>
+                  <span className="t-stat-strip__value">{course.average != null ? course.average.toFixed(1) : '—'}</span>
+                </div>
+                <div className="t-stat-strip__cell">
+                  <span className="t-stat-strip__label">Aprobación</span>
+                  <span className="t-stat-strip__value">{course.pass_rate != null ? `${Math.round(course.pass_rate)}%` : '—'}</span>
+                </div>
+                <div className="t-stat-strip__cell">
+                  <span className="t-stat-strip__label">Por revisar</span>
+                  <span className="t-stat-strip__value">{course.pending_review}</span>
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
 
       <CourseModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSaved={handleSaved}
-        teacherId={teacherId}
+        course={editing}
+        onClose={() => {
+          setModalOpen(false)
+          setEditing(null)
+          if (sp.get('new') === '1') {
+            const params = new URLSearchParams(sp.toString())
+            params.delete('new')
+            router.replace(`/teacher/courses${params.toString() ? `?${params.toString()}` : ''}`)
+          }
+        }}
       />
     </div>
   )

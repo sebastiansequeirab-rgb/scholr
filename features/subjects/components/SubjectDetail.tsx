@@ -411,40 +411,12 @@ export function SubjectDetail({
                     hint={language === 'es' ? 'si mantenés ritmo' : 'if you keep pace'}
                   />
                   <KpiBox
-                    icon="flag"
-                    label={language === 'es' ? 'Para aprobar' : 'To pass'}
-                    value={
-                      summary.neededToPass == null
-                        ? '—'
-                        : summary.neededToPass === 0
-                          ? '✓'
-                          : !Number.isFinite(summary.neededToPass)
-                            ? '✕'
-                            : summary.neededToPass.toFixed(2)
-                    }
-                    unit={
-                      summary.neededToPass == null || summary.neededToPass === 0 || !Number.isFinite(summary.neededToPass)
-                        ? ''
-                        : `/${MAX_SCORE}`
-                    }
-                    hint={
-                      summary.neededToPass === 0
-                        ? (language === 'es' ? 'ya aprobando' : 'already passing')
-                        : !Number.isFinite(summary.neededToPass ?? 0)
-                          ? (language === 'es' ? 'imposible' : 'impossible')
-                          : language === 'es' ? `meta ≥ ${PASS}` : `target ≥ ${PASS}`
-                    }
-                    tone={
-                      summary.neededToPass == null
-                        ? 'pending'
-                        : summary.neededToPass === 0
-                          ? 'pass'
-                          : !Number.isFinite(summary.neededToPass)
-                            ? 'fail'
-                            : summary.neededToPass > 14
-                              ? 'risk'
-                              : 'pass'
-                    }
+                    icon="savings"
+                    label={language === 'es' ? 'Puntos acumulados' : 'Points earned'}
+                    value={summary.pointsEarned.toFixed(2)}
+                    unit={`/${MAX_SCORE}`}
+                    hint={language === 'es' ? 'ya asegurados' : 'already secured'}
+                    tone={summary.pointsEarned >= PASS ? 'pass' : (summary.pointsEarned >= 6 ? 'risk' : 'pending')}
                   />
                   <KpiBox
                     icon="verified"
