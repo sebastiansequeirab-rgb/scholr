@@ -19,10 +19,9 @@ import {
   type GradeItem,
   type GradeStatus,
 } from '@/lib/grades'
-import { SubjectChat } from './SubjectChat'
 import { getSubjectIcon } from '@/features/subjects/utils'
 
-type DetailTab = 'progress' | 'chat' | 'documents'
+type DetailTab = 'progress' | 'documents'
 
 export function SubjectDetail({
   subject,
@@ -321,7 +320,6 @@ export function SubjectDetail({
           {([
             { id: 'progress',  icon: 'calculate',    label_es: 'Calculadora', label_en: 'Calculator', show: true                  },
             { id: 'documents', icon: 'folder_open',  label_es: 'Archivos',    label_en: 'Files',      show: !!subject.teacher_id  },
-            { id: 'chat',      icon: 'auto_awesome', label_es: 'Chat IA',     label_en: 'AI Chat',    show: true                  },
           ] as const).filter(tab => tab.show).map(tab => {
             const active = activeTab === tab.id
             return (
@@ -402,13 +400,6 @@ export function SubjectDetail({
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* ─────────── Chat tab ─────────── */}
-        {activeTab === 'chat' && (
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <SubjectChat subject={subject} />
           </div>
         )}
 

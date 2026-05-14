@@ -29,7 +29,7 @@ export default function SubjectsPage() {
   const [iconPickerOpen,   setIconPickerOpen]   = useState<string | null>(null)
   const [kebabOpen,        setKebabOpen]        = useState<string | null>(null)
   const [detailSubject,    setDetailSubject]    = useState<Subject | null>(null)
-  const [detailTab,        setDetailTab]        = useState<'progress' | 'chat'>('progress')
+  const [detailTab,        setDetailTab]        = useState<'progress' | 'documents'>('progress')
   const [importOpen,       setImportOpen]       = useState(false)
 
   const fetchData = useCallback(async () => {
