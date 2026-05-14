@@ -3835,6 +3835,14 @@ button.card:hover {
   white-space: nowrap;
   min-width: 0;
 }
+.cal-evchip__time {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
 .cal-evchip--task { border-left-style: dashed; }
 .cal-evchip--urgent {
   border-left-color: var(--danger);

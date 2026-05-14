@@ -610,6 +610,7 @@ function WeekView({
   locale: string
   onPick: (e: CalEvent) => void
 }) {
+  const { t } = useTranslation()
   const ws = startOfWeekMon(cursor)
   const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i))
   const hours = Array.from({ length: SLOT_HOURS + 1 }, (_, i) => SLOT_START + i)
@@ -633,12 +634,12 @@ function WeekView({
         })}
       </div>
 
-      {/* All-day strip */}
+      {/* Activities strip (exams + tasks — no schedules) */}
       <div className="cal-wk__row-allday">
-        <div className="cal-wk__allday-label">all-day</div>
+        <div className="cal-wk__allday-label">{t('calendar.activities')}</div>
         {days.map((d, i) => {
           const isTd = isSameDay(d, now)
-          const dayEvents = eventsForDay(d).filter(e => e.allDay)
+          const dayEvents = eventsForDay(d).filter(e => e.type === 'exam' || e.type === 'task')
           return (
             <div key={i} className={`cal-wk__allday-cell ${isTd ? 'is-today' : ''}`}>
               {dayEvents.map(ev => (
@@ -649,6 +650,9 @@ function WeekView({
                 >
                   {ev.status === 'urgent' && <span className="material-symbols-outlined cal-evchip__icon">flag</span>}
                   {ev.type === 'task' && ev.status !== 'urgent' && <span className="material-symbols-outlined cal-evchip__icon">task_alt</span>}
+                  {ev.type === 'exam' && ev.end && (
+                    <span className="cal-evchip__time">{hhmm(ev.start)}</span>
+                  )}
                   <span className="cal-evchip__title">{ev.title}</span>
                 </button>
               ))}
@@ -666,7 +670,7 @@ function WeekView({
         </div>
         {days.map((d, i) => {
           const isTd = isSameDay(d, now)
-          const dayEvents = eventsForDay(d).filter(e => !e.allDay && e.end)
+          const dayEvents = eventsForDay(d).filter(e => e.type === 'schedule' && e.end)
           return (
             <div key={i} className={`cal-wk__col ${isTd ? 'is-today' : ''}`} style={{ height: ROW_PX * SLOT_HOURS }}>
               {hours.slice(0, -1).map(h => (
@@ -725,9 +729,10 @@ function DayView({
   language: 'es' | 'en'
   onPick: (e: CalEvent) => void
 }) {
+  const { t } = useTranslation()
   const dayEvents = events.filter(e => isSameDay(e.start, cursor))
-  const allDay = dayEvents.filter(e => e.allDay)
-  const timed = dayEvents.filter(e => !e.allDay && e.end).sort((a, b) => a.start.getTime() - b.start.getTime())
+  const activities = dayEvents.filter(e => e.type === 'exam' || e.type === 'task')
+  const timed = dayEvents.filter(e => e.type === 'schedule' && e.end).sort((a, b) => a.start.getTime() - b.start.getTime())
   const isTd = isSameDay(cursor, now)
   const hours = Array.from({ length: SLOT_HOURS + 1 }, (_, i) => SLOT_START + i)
   const dayLabel = cursor.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase()
@@ -738,8 +743,8 @@ function DayView({
         <span className="cal-day__head-label">{dayLabel}</span>
       </div>
 
-      {/* Urgent banner (all-day + status urgent) */}
-      {allDay.filter(e => e.status === 'urgent').map(ev => (
+      {/* Urgent banner (urgent activities) */}
+      {activities.filter(e => e.status === 'urgent').map(ev => (
         <button key={ev.id} className="cal-day__urgent" onClick={() => onPick(ev)}>
           <span className="material-symbols-outlined">flag</span>
           <strong>{ev.title}</strong>
@@ -749,17 +754,20 @@ function DayView({
         </button>
       ))}
 
-      {/* Other all-day pills */}
-      {allDay.filter(e => e.status !== 'urgent').length > 0 && (
+      {/* Activities (exams + tasks — exclude urgent which has its own banner) */}
+      {activities.filter(e => e.status !== 'urgent').length > 0 && (
         <div className="cal-day__allday">
-          <div className="cal-day__allday-label">all-day</div>
+          <div className="cal-day__allday-label">{t('calendar.activities')}</div>
           <div className="cal-day__allday-list">
-            {allDay.filter(e => e.status !== 'urgent').map(ev => (
+            {activities.filter(e => e.status !== 'urgent').map(ev => (
               <button
                 key={ev.id}
                 className={`cal-evchip cal-evchip--allday ${ev.tagClass} ${ev.type === 'task' ? 'cal-evchip--task' : ''}`}
                 onClick={() => onPick(ev)}
               >
+                {ev.type === 'exam' && ev.end && (
+                  <span className="cal-evchip__time">{hhmm(ev.start)}</span>
+                )}
                 <span className="cal-evchip__title">{ev.title}</span>
               </button>
             ))}

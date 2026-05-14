@@ -472,7 +472,8 @@
     "week": "Semana",
     "day": "Día",
     "today": "Hoy",
-    "addExam": "Agregar actividad"
+    "addExam": "Agregar actividad",
+    "activities": "Actividades"
   },
   "settings": {
     "title": "Ajustes",

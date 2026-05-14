@@ -472,7 +472,8 @@
     "week": "Week",
     "day": "Day",
     "today": "Today",
-    "addExam": "Add activity"
+    "addExam": "Add activity",
+    "activities": "Activities"
   },
   "settings": {
     "title": "Settings",
