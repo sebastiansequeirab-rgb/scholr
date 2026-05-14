@@ -257,7 +257,6 @@ export default function SubjectsPage() {
                           style={{ background: 'var(--s-high)', border: '1px solid var(--border-default)', minWidth: 150 }}>
                           <KebabAction icon="edit" label="Editar" onClick={(e) => { e.stopPropagation(); setEditingSubject(subject); setModalOpen(true); setKebabOpen(null) }} />
                           <KebabAction icon="calendar_month" label="Horarios" onClick={(e) => { e.stopPropagation(); setExpandedSubject(expandedSubject === subject.id ? null : subject.id); setKebabOpen(null) }} />
-                          <KebabAction icon="auto_awesome" label="Chat IA" onClick={(e) => { e.stopPropagation(); setDetailTab('chat'); setDetailSubject(subject); setKebabOpen(null) }} accent="var(--color-tertiary)" />
                           <KebabAction icon="palette" label="Ícono" onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === subject.id ? null : subject.id); setKebabOpen(null) }} />
                           <KebabAction icon="delete" label="Eliminar" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(subject.id); setKebabOpen(null) }} accent="var(--danger)" />
                         </div>
