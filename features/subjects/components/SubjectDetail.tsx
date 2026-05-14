@@ -46,6 +46,31 @@ export function SubjectDetail({
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({})
   // Per-exam save state for the persistence UI ('idle' | 'saving' | 'saved' | 'error')
   const [saveStatus, setSaveStatus] = useState<Record<string, 'idle' | 'saving' | 'saved' | 'error'>>({})
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  const handleDownload = useCallback(async (doc: Document) => {
+    if (!doc.file_url) return
+    setDownloadingId(doc.id)
+    try {
+      // file_url may be an absolute publicUrl (…/course-documents/<path>) or a bare storage path.
+      let storagePath = doc.file_url
+      const marker = '/course-documents/'
+      const idx = storagePath.indexOf(marker)
+      if (idx !== -1) storagePath = storagePath.slice(idx + marker.length)
+
+      const supabase = createClient()
+      const { data, error } = await supabase.storage
+        .from('course-documents')
+        .createSignedUrl(storagePath, 60)
+      if (error || !data?.signedUrl) {
+        console.error('createSignedUrl failed', error)
+        return
+      }
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+    } finally {
+      setDownloadingId(null)
+    }
+  }, [])
 
   const fetchExams = useCallback(async () => {
     const supabase = createClient()
@@ -361,15 +386,18 @@ export function SubjectDetail({
                         {doc.size_bytes != null ? formatFileSize(doc.size_bytes) : '—'}
                       </p>
                     </div>
-                    <a
-                      href={doc.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(doc)}
+                      disabled={downloadingId === doc.id}
                       className="btn btn-icon btn-ghost"
                       style={{ color: 'var(--color-primary)' }}
+                      aria-label={language === 'es' ? 'Descargar' : 'Download'}
                     >
-                      <span className="material-symbols-outlined">download</span>
-                    </a>
+                      <span className="material-symbols-outlined">
+                        {downloadingId === doc.id ? 'hourglass_empty' : 'download'}
+                      </span>
+                    </button>
                   </div>
                 ))}
               </div>
