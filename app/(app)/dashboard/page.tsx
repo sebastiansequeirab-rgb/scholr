@@ -214,14 +214,6 @@ export default async function DashboardPage() {
     return creditsSum > 0 ? weightedSum / creditsSum : null
   })()
 
-  // ── ISO week for the Semana N / 52 chip ──
-  const isoWeek = (() => {
-    const d = new Date(Date.UTC(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()))
-    const dayNum = d.getUTCDay() || 7
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-  })()
 
   // ── Stats for the hero pills ──
   const todayClassesCount = todaySchedules.length
@@ -252,8 +244,6 @@ export default async function DashboardPage() {
 
       {/* ─────────── SUB-HEADER · meta chips + alert ─────────── */}
       <DashMetaBar
-        weekIndex={(profile as { current_week: number | null } | null)?.current_week ?? isoWeek}
-        weekTotal={(profile as { semester_weeks: number | null } | null)?.semester_weeks ?? 16}
         avg={weightedAvg}
         alertDueLabel={alertDueLabel}
       />

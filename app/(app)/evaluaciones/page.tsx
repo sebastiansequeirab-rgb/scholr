@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/hooks/useTranslation'
 import { subjectTag } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { computeAlertDueLabel, computeIsoWeek, computeWeightedAvg, subjectInfo } from '@/lib/meta'
+import { computeAlertDueLabel, computeWeightedAvg, subjectInfo } from '@/lib/meta'
 import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 import { SideDrawer } from '@/components/ui/SideDrawer'
 import type { ActivityType, Exam, StudyStep, Subject, Task } from '@/types'
@@ -758,16 +758,12 @@ export default function EvaluacionesPage() {
   }
 
   // Real DashMetaBar values
-  const now = new Date()
-  const isoWeek = computeIsoWeek(now)
   const avg = computeWeightedAvg(subjects, exams)
   const alertDueLabel = computeAlertDueLabel(tasks, exams, language)
 
   return (
     <div className="max-w-[1240px] mx-auto reveal-stagger">
       <DashMetaBar
-        weekIndex={isoWeek}
-        weekTotal={52}
         avg={avg}
         alertDueLabel={alertDueLabel}
       />

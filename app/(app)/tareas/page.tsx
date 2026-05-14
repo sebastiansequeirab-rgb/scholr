@@ -29,7 +29,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@/hooks/useTranslation'
 import { subjectTag } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { computeAlertDueLabel, computeIsoWeek, computeWeightedAvg, subjectInfo } from '@/lib/meta'
+import { computeAlertDueLabel, computeWeightedAvg, subjectInfo } from '@/lib/meta'
 import { DashMetaBar } from '@/features/home/components/DashMetaBar'
 import { SideDrawer } from '@/components/ui/SideDrawer'
 import type { Exam, Subject, Task } from '@/types'
@@ -603,16 +603,12 @@ export default function TareasPage() {
   const activeTask = activeId ? tasks.find(tk => tk.id === activeId) ?? null : null
 
   // Real DashMetaBar values
-  const now = new Date()
-  const isoWeek = computeIsoWeek(now)
   const avg = computeWeightedAvg(subjects, exams)
   const alertDueLabel = computeAlertDueLabel(tasks, exams, language)
 
   return (
     <div className="max-w-[1240px] mx-auto reveal-stagger">
       <DashMetaBar
-        weekIndex={isoWeek}
-        weekTotal={52}
         avg={avg}
         alertDueLabel={alertDueLabel}
       />

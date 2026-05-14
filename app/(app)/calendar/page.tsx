@@ -400,8 +400,6 @@ export default function CalendarPage() {
 
       {/* Contextual top-bar (live clock + week + avg + urgent) */}
       <DashMetaBar
-        weekIndex={isoWeekOf(now)}
-        weekTotal={52}
         avg={weightedAvg}
         alertDueLabel={alertDueLabel}
       />

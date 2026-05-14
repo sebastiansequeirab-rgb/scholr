@@ -1,35 +1,29 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslation } from '@/hooks/useTranslation'
 import { SideDrawer } from '@/components/ui/SideDrawer'
-import { updateSemesterProgressAction } from '@/app/(app)/dashboard/actions'
+import { useWeek } from '@/components/layout/WeekContext'
 
 /**
  * Sub-header del dashboard con chips contextuales (reloj 24h + semana editable + promedio)
  * y alerta inline a la derecha (entrega cierra en HHh MMm).
- * El editor de semana abre el SideDrawer canónico de la plataforma.
+ * La semana es global (WeekContext) — editable desde todas las vistas que renderizan este componente.
  */
 export function DashMetaBar({
-  weekIndex,
-  weekTotal,
   avg,
   alertDueLabel,
 }: {
-  weekIndex: number | null
-  weekTotal: number | null
   avg: number | null
   alertDueLabel: string | null
 }) {
   const { language, t } = useTranslation()
-  const router = useRouter()
+  const { currentWeek: weekIndex, semesterWeeks: weekTotal, setWeek, pending } = useWeek()
   const [now, setNow] = useState<Date | null>(null)
   const [editing, setEditing] = useState(false)
   const [currentWeek, setCurrentWeek] = useState(weekIndex ?? 1)
   const [totalWeeks, setTotalWeeks] = useState(weekTotal ?? 16)
-  const [pending, startTransition] = useTransition()
 
   useEffect(() => {
     setNow(new Date())
@@ -40,17 +34,14 @@ export function DashMetaBar({
   useEffect(() => { setCurrentWeek(weekIndex ?? 1) }, [weekIndex])
   useEffect(() => { setTotalWeeks(weekTotal ?? 16) }, [weekTotal])
 
-  const onSave = () => {
-    startTransition(async () => {
-      const r = await updateSemesterProgressAction({ current_week: currentWeek, semester_weeks: totalWeeks })
-      if (r.ok) {
-        toast.success(language === 'es' ? 'Semana actualizada' : 'Week updated')
-        setEditing(false)
-        router.refresh()
-      } else {
-        toast.error(r.error ?? 'Error')
-      }
-    })
+  const onSave = async () => {
+    const r = await setWeek(currentWeek, totalWeeks)
+    if (r.ok) {
+      toast.success(language === 'es' ? 'Semana actualizada' : 'Week updated')
+      setEditing(false)
+    } else {
+      toast.error(r.error ?? 'Error')
+    }
   }
 
   if (!now) {
