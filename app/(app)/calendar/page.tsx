@@ -477,7 +477,7 @@ export default function CalendarPage() {
                       ? (picked.activityType
                           ? (language === 'en' ? ACTIVITY_TYPES[picked.activityType].label_en : ACTIVITY_TYPES[picked.activityType].label_es)
                           : t('nav.exams'))
-                      : picked.type === 'task' ? t('nav.tasks') : t('subjects.schedules')}
+                      : picked.type === 'task' ? t('nav.tareas') : t('subjects.schedules')}
                   </span>
                   <h2 className="font-bold text-base" style={{ color: 'var(--on-surface)' }}>{picked.title}</h2>
                 </div>

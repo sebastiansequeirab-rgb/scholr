@@ -93,7 +93,7 @@ export function UrgentTasksSection({
         return (
           <li
             key={task.id}
-            onClick={() => router.push('/tasks')}
+            onClick={() => router.push('/tareas')}
             className="row cursor-pointer active:scale-[0.99] transition-transform"
             style={{
               ['--accent-color' as string]: accent,

@@ -1,10 +1,12 @@
 # CLAUDE.md — Skolar
 
-> Last refresh: 2026-05-13 · Teacher portal v2 merged · Home estudiante polish v2.2 deployed
+> Last refresh: 2026-05-13 · Teacher portal v2 merged · Home estudiante polish v2.2 deployed · SPEC.md consolidado
 
 ## What is this
 
 Academic platform ES/EN — two connected portals: **Student** (`/dashboard`) + **Teacher** (`/teacher`).
+
+**Source of truth del producto**: [`/skolar/SPEC.md`](./SPEC.md) — define el comportamiento end-to-end (portales, materias propias vs del profesor, sincronización, reglas). Detalle por portal en [`active/portals/STUDENT_PORTAL.md`](./active/portals/STUDENT_PORTAL.md) y [`active/portals/TEACHER_PORTAL.md`](./active/portals/TEACHER_PORTAL.md). Este archivo cubre stack, workflow y reglas técnicas — no comportamiento de producto.
 
 - **Production**: https://scholr-5x9n.vercel.app/
 - **Vercel project**: `scholr` (NOT `skolar` — old alias)
@@ -85,7 +87,7 @@ skolar/
 │   │   ├── subjects/             ← subject list + detail
 │   │   ├── notes/                ← Tiptap notes
 │   │   ├── ai/                   ← Skolar AI chat
-│   │   ├── ai-settings/, settings/, personalization/, planner/, tasks/, exams/
+│   │   ├── ai-settings/, settings/, personalization/, exams/
 │   ├── (teacher)/                ← Teacher portal v2
 │   │   ├── layout.tsx            ← auth guard + TeacherShell wrapper
 │   │   └── teacher/
@@ -211,6 +213,8 @@ const progress = exams
 
 - Supabase Dashboard → Authentication → Password Strength → Enable (never done automatically).
 - The `/teacher` home shows empty state when the logged-in user has no `subjects.teacher_id = user.id` rows. Not a bug — create a course or assign the user to one.
+- Migration `2026_05_14_docs_bidirectional.sql` — apply on Supabase (RLS para que alumno enrolled suba docs). Archivo listo en `supabase/migrations/`.
+- UI "Subir documento" en `features/subjects/components/SubjectDetail.tsx` tab Documents para alumno enrolled — pendiente.
 
 ## Common pitfalls (already burned, do not repeat)
 
